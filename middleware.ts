@@ -1,8 +1,16 @@
-import { type NextRequest } from 'next/server'
+import { type NextRequest, NextResponse } from 'next/server'
 import { updateSession } from '@/lib/supabase/middleware'
 
 export async function middleware(request: NextRequest) {
-  return await updateSession(request)
+  const { pathname } = request.nextUrl
+
+  // Only run Supabase session logic on admin routes.
+  // All public store routes pass through without touching auth.
+  if (pathname.startsWith('/admin')) {
+    return await updateSession(request)
+  }
+
+  return NextResponse.next()
 }
 
 export const config = {
