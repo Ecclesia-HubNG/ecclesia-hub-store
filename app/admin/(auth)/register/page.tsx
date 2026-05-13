@@ -4,6 +4,7 @@ import { useFormState, useFormStatus } from 'react-dom'
 import Link from 'next/link'
 import { signUp } from '@/lib/actions/auth'
 import { AuthLayout } from '@/components/admin/AuthLayout'
+import { PasswordInput } from '@/components/admin/PasswordInput'
 
 function SubmitButton() {
   const { pending } = useFormStatus()
@@ -118,16 +119,12 @@ export default function AdminRegisterPage() {
           <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
             Password
           </label>
-          <input
+          <PasswordInput
             name="password"
-            type="password"
             autoComplete="new-password"
-            required
             placeholder="Min. 8 characters"
-            minLength={8}
-            className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-white/10 bg-gray-50 dark:bg-white/5 text-sm text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-600 focus:outline-none focus:ring-2 focus:ring-[#6B1A2A] focus:border-transparent transition-shadow"
+            showRules
           />
-          <p className="text-xs text-gray-400 dark:text-gray-600">Must be at least 8 characters.</p>
         </div>
 
         <div className="pt-1">

@@ -4,6 +4,7 @@ import { useFormState, useFormStatus } from 'react-dom'
 import Link from 'next/link'
 import { signIn } from '@/lib/actions/auth'
 import { AuthLayout } from '@/components/admin/AuthLayout'
+import { PasswordInput } from '@/components/admin/PasswordInput'
 
 function SubmitButton() {
   const { pending } = useFormStatus()
@@ -68,14 +69,7 @@ export default function AdminLoginPage() {
               Forgot password?
             </Link>
           </div>
-          <input
-            name="password"
-            type="password"
-            autoComplete="current-password"
-            required
-            placeholder="••••••••"
-            className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-white/10 bg-gray-50 dark:bg-white/5 text-sm text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-600 focus:outline-none focus:ring-2 focus:ring-[#6B1A2A] focus:border-transparent transition-shadow"
-          />
+          <PasswordInput name="password" autoComplete="current-password" />
         </div>
 
         <div className="pt-1">
