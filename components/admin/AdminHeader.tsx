@@ -1,5 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import { AdminSearchBar } from './AdminSearchBar'
+import { ThemeToggle } from './ThemeToggle'
 
 function getInitials(name: string) {
   return name
@@ -34,6 +35,9 @@ export async function AdminHeader() {
 
       {/* Right — actions */}
       <div className="flex items-center gap-1 shrink-0">
+        {/* Theme toggle */}
+        <ThemeToggle />
+
         {/* Messages */}
         <button className="relative w-9 h-9 flex items-center justify-center rounded-xl text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-white/10 transition-colors">
           <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
