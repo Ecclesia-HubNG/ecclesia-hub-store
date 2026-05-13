@@ -54,8 +54,8 @@ export default function AdminSidebar() {
     <aside className="w-60 bg-gray-900 flex flex-col h-full shrink-0">
       {/* Brand */}
       <div className="px-5 py-5 border-b border-white/10">
-        <p className="text-white font-semibold tracking-tight text-sm">Ecclesia Hub</p>
-        <p className="text-gray-500 text-xs mt-0.5">Admin Dashboard</p>
+        <img src="/logo.svg" alt="Ecclesia Hub" className="h-7 w-auto mb-1" />
+        <p className="text-gray-500 text-xs mt-1">Admin Dashboard</p>
       </div>
 
       {/* Nav */}
