@@ -115,13 +115,14 @@ export default async function AdminDashboardPage() {
 
   const [
     { data: orders },
-    { count: customerCount },
     { data: products },
   ] = await Promise.all([
     supabase.from('orders').select('*').order('created_at', { ascending: false }),
-    supabase.from('customers').select('*', { count: 'exact', head: true }),
     supabase.from('products').select('id, name, stock, is_active, thumbnail, price'),
   ])
+
+  // Only count users who have placed at least one order
+  const customerCount = new Set(orders?.map(o => o.customer_id).filter(Boolean)).size
 
   // ── aggregates ──────────────────────────────────────────────────────────
   const revenueStatuses = ['paid', 'processing', 'shipped', 'delivered']
@@ -181,7 +182,7 @@ export default async function AdminDashboardPage() {
         <StatCard
           label="Customers"
           value={(customerCount ?? 0).toString()}
-          sub="Registered accounts"
+          sub="With at least 1 order"
           icon={icons.customers()}
         />
         <StatCard
