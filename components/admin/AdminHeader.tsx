@@ -25,7 +25,6 @@ export async function AdminHeader() {
         <p className="text-sm font-semibold text-gray-900 dark:text-white truncate">
           Welcome back, {firstName} 👋
         </p>
-        <p className="text-xs text-gray-400 mt-0.5">Here&apos;s what&apos;s happening today</p>
       </div>
 
       {/* Middle — search */}
