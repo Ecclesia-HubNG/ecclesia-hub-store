@@ -18,7 +18,16 @@ function Icon({ d }: { d: string }) {
   )
 }
 
-const navItems = [
+type NavChild = { label: string; href: string; exact?: boolean }
+type NavItem = {
+  label: string
+  href: string
+  icon: string
+  exact?: boolean
+  children?: NavChild[]
+}
+
+const navItems: NavItem[] = [
   {
     label: 'Dashboard',
     href: '/admin',
@@ -29,11 +38,14 @@ const navItems = [
     label: 'Products',
     href: '/admin/products',
     icon: 'M15.75 10.5V6a3.75 3.75 0 1 0-7.5 0v4.5m11.356-1.993 1.263 12c.07.665-.45 1.243-1.119 1.243H4.25a1.125 1.125 0 0 1-1.12-1.243l1.264-12A1.125 1.125 0 0 1 5.513 7.5h12.974c.576 0 1.059.435 1.119 1.007ZM8.625 10.5a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm7.5 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Z',
-  },
-  {
-    label: 'Categories',
-    href: '/admin/categories',
-    icon: 'M3.75 9.776c.112-.017.227-.026.344-.026h15.812c.117 0 .232.009.344.026m-16.5 0a2.25 2.25 0 0 0-1.883 2.542l.857 6a2.25 2.25 0 0 0 2.227 1.932H19.05a2.25 2.25 0 0 0 2.227-1.932l.857-6a2.25 2.25 0 0 0-1.883-2.542m-16.5 0V6A2.25 2.25 0 0 1 6 3.75h3.879a1.5 1.5 0 0 1 1.06.44l2.122 2.12a1.5 1.5 0 0 0 1.06.44H18A2.25 2.25 0 0 1 20.25 9v.776',
+    children: [
+      { label: 'All Products', href: '/admin/products', exact: true },
+      { label: 'Add New Product', href: '/admin/products/new' },
+      { label: 'Categories', href: '/admin/categories' },
+      { label: 'Brands', href: '/admin/brands' },
+      { label: 'Featured', href: '/admin/featured' },
+      { label: 'Coupons', href: '/admin/coupons' },
+    ],
   },
   {
     label: 'Orders',
@@ -57,8 +69,11 @@ const navItems = [
   },
 ]
 
+const productSubPaths = ['/admin/products', '/admin/categories', '/admin/brands', '/admin/featured', '/admin/coupons']
+
 export default function AdminSidebar() {
   const pathname = usePathname()
+  const isProductsOpen = productSubPaths.some(p => pathname.startsWith(p))
 
   return (
     <aside className="w-60 bg-gray-900 flex flex-col h-full shrink-0">
@@ -70,21 +85,58 @@ export default function AdminSidebar() {
 
       {/* Nav */}
       <nav className="flex-1 px-3 py-4 space-y-0.5 overflow-y-auto">
-        {navItems.map(({ label, href, icon, exact }) => {
+        {navItems.map(({ label, href, icon, exact, children }) => {
           const isActive = exact ? pathname === href : pathname.startsWith(href)
+          const isOpen = children ? isProductsOpen : false
+
           return (
-            <Link
-              key={href}
-              href={href}
-              className={`flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors ${
-                isActive
-                  ? 'bg-white/10 text-white font-medium'
-                  : 'text-gray-400 hover:bg-white/5 hover:text-gray-200'
-              }`}
-            >
-              <Icon d={icon} />
-              {label}
-            </Link>
+            <div key={href}>
+              <Link
+                href={href}
+                className={`flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors ${
+                  isActive && !children
+                    ? 'bg-white/10 text-white font-medium'
+                    : isOpen
+                    ? 'text-white font-medium'
+                    : 'text-gray-400 hover:bg-white/5 hover:text-gray-200'
+                }`}
+              >
+                <Icon d={icon} />
+                <span className="flex-1">{label}</span>
+                {children && (
+                  <svg
+                    className={`w-3.5 h-3.5 transition-transform ${isOpen ? 'rotate-180' : ''}`}
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    strokeWidth={2}
+                    stroke="currentColor"
+                  >
+                    <path strokeLinecap="round" strokeLinejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
+                  </svg>
+                )}
+              </Link>
+
+              {children && isOpen && (
+                <div className="mt-0.5 ml-3 pl-4 border-l border-white/10 space-y-0.5">
+                  {children.map(child => {
+                    const childActive = child.exact ? pathname === child.href : pathname.startsWith(child.href)
+                    return (
+                      <Link
+                        key={child.href}
+                        href={child.href}
+                        className={`flex items-center px-3 py-1.5 rounded-lg text-sm transition-colors ${
+                          childActive
+                            ? 'text-white font-medium bg-white/10'
+                            : 'text-gray-400 hover:bg-white/5 hover:text-gray-200'
+                        }`}
+                      >
+                        {child.label}
+                      </Link>
+                    )
+                  })}
+                </div>
+              )}
+            </div>
           )
         })}
       </nav>
