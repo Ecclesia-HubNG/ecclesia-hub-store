@@ -40,3 +40,19 @@ export async function deleteCategory(formData: FormData) {
   await supabase.from('categories').delete().eq('id', formData.get('id') as string)
   revalidatePath('/admin/categories')
 }
+
+export async function createCategoryInline(
+  name: string
+): Promise<{ id: string; name: string } | { error: string }> {
+  const supabase = createClient()
+  const base = slugify(name)
+  const slug = `${base}-${Date.now()}`
+  const { data, error } = await supabase
+    .from('categories')
+    .insert({ name: name.trim(), slug })
+    .select('id, name')
+    .single()
+  if (error) return { error: error.message }
+  revalidatePath('/admin/categories')
+  return data
+}

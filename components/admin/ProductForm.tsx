@@ -5,6 +5,7 @@ import { useEffect, useRef, useState, startTransition } from 'react'
 import type { DragEvent, ChangeEvent, KeyboardEvent, FormEvent } from 'react'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
+import { createCategoryInline } from '@/lib/actions/categories'
 
 // ─── Types ────────────────────────────────────────────────
 
@@ -25,7 +26,7 @@ type Product = {
   is_featured: boolean
   is_active: boolean
   tags: string[] | null
-  variants: Array<{ name: string; values: string[] }> | null
+  variants: Array<{ name: string; values: string[]; price?: number | null }> | null
   attributes: Array<{ key: string; value: string }> | null
   shipping_type: string | null
 }
@@ -43,7 +44,7 @@ type ImageItem = {
   uploadedUrl?: string
 }
 
-type VariantRow = { id: string; name: string; values: string }
+type VariantRow = { id: string; name: string; values: string; price: string }
 type AttributeRow = { id: string; key: string; value: string }
 
 // ─── Helpers ──────────────────────────────────────────────
@@ -151,6 +152,7 @@ export default function ProductForm({
       id: genId(),
       name: v.name,
       values: v.values.join(', '),
+      price: v.price != null ? String(v.price) : '',
     }))
   )
 
@@ -162,6 +164,14 @@ export default function ProductForm({
   // Tags
   const [tags, setTags] = useState<string[]>(product?.tags ?? [])
   const [tagInput, setTagInput] = useState('')
+
+  // Category (local copy so we can add inline)
+  const [localCategories, setLocalCategories] = useState<Category[]>(categories)
+  const [selectedCategoryId, setSelectedCategoryId] = useState(product?.category_id ?? '')
+  const [showNewCategory, setShowNewCategory] = useState(false)
+  const [newCategoryName, setNewCategoryName] = useState('')
+  const [addingCategory, setAddingCategory] = useState(false)
+  const [categoryError, setCategoryError] = useState('')
 
   // Submitting
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -254,9 +264,9 @@ export default function ProductForm({
   // ── Variants ────────────────────────────────────────────
 
   const addVariant = () =>
-    setVariants((prev) => [...prev, { id: genId(), name: '', values: '' }])
+    setVariants((prev) => [...prev, { id: genId(), name: '', values: '', price: '' }])
 
-  const updateVariant = (id: string, field: 'name' | 'values', value: string) =>
+  const updateVariant = (id: string, field: 'name' | 'values' | 'price', value: string) =>
     setVariants((prev) => prev.map((v) => (v.id === id ? { ...v, [field]: value } : v)))
 
   const removeVariant = (id: string) =>
@@ -272,6 +282,27 @@ export default function ProductForm({
 
   const removeAttribute = (id: string) =>
     setAttributes((prev) => prev.filter((a) => a.id !== id))
+
+  // ── Inline category creation ────────────────────────────
+
+  const handleAddCategory = async () => {
+    const trimmed = newCategoryName.trim()
+    if (!trimmed) return
+    setAddingCategory(true)
+    setCategoryError('')
+    const result = await createCategoryInline(trimmed)
+    if ('error' in result) {
+      setCategoryError(result.error)
+    } else {
+      setLocalCategories((prev) =>
+        [...prev, result].sort((a, b) => a.name.localeCompare(b.name))
+      )
+      setSelectedCategoryId(result.id)
+      setNewCategoryName('')
+      setShowNewCategory(false)
+    }
+    setAddingCategory(false)
+  }
 
   // ── Submit ──────────────────────────────────────────────
 
@@ -294,6 +325,7 @@ export default function ProductForm({
           .map((v) => ({
             name: v.name.trim(),
             values: v.values.split(',').map((s) => s.trim()).filter(Boolean),
+            price: v.price ? parseFloat(v.price) : null,
           }))
       )
     )
@@ -470,19 +502,35 @@ export default function ProductForm({
             </p>
             <div className="space-y-2">
               {variants.map((v) => (
-                <div key={v.id} className="flex gap-2 items-center">
-                  <input
-                    value={v.name}
-                    onChange={(e) => updateVariant(v.id, 'name', e.target.value)}
-                    placeholder="Name (e.g. Size)"
-                    className={`${inputCls} max-w-[140px]`}
-                  />
-                  <input
-                    value={v.values}
-                    onChange={(e) => updateVariant(v.id, 'values', e.target.value)}
-                    placeholder="Values, comma-separated"
-                    className={inputCls}
-                  />
+                <div key={v.id} className="flex gap-2 items-start">
+                  <div className="flex flex-col gap-1.5 flex-1">
+                    <div className="flex gap-2">
+                      <input
+                        value={v.name}
+                        onChange={(e) => updateVariant(v.id, 'name', e.target.value)}
+                        placeholder="Name (e.g. Size)"
+                        className={`${inputCls} w-[130px] shrink-0`}
+                      />
+                      <input
+                        value={v.values}
+                        onChange={(e) => updateVariant(v.id, 'values', e.target.value)}
+                        placeholder="Values, comma-separated"
+                        className={inputCls}
+                      />
+                    </div>
+                    <div className="flex items-center gap-2 pl-[146px]">
+                      <span className="text-xs text-gray-400 shrink-0">Price add-on (₦)</span>
+                      <input
+                        value={v.price}
+                        onChange={(e) => updateVariant(v.id, 'price', e.target.value)}
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        placeholder="0.00 (optional)"
+                        className={`${inputCls} max-w-[160px]`}
+                      />
+                    </div>
+                  </div>
                   <RemoveBtn onClick={() => removeVariant(v.id)} />
                 </div>
               ))}
@@ -614,16 +662,57 @@ export default function ProductForm({
               <FieldLabel>Category</FieldLabel>
               <select
                 name="category_id"
-                defaultValue={product?.category_id ?? ''}
+                value={selectedCategoryId}
+                onChange={(e) => setSelectedCategoryId(e.target.value)}
                 className={selectCls}
               >
                 <option value="">No category</option>
-                {categories.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.name}
-                  </option>
+                {localCategories.map((c) => (
+                  <option key={c.id} value={c.id}>{c.name}</option>
                 ))}
               </select>
+
+              {showNewCategory ? (
+                <div className="mt-2 space-y-1.5">
+                  <div className="flex gap-2">
+                    <input
+                      value={newCategoryName}
+                      onChange={(e) => setNewCategoryName(e.target.value)}
+                      onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleAddCategory() } if (e.key === 'Escape') setShowNewCategory(false) }}
+                      placeholder="Category name"
+                      autoFocus
+                      className={`${inputCls} flex-1`}
+                    />
+                    <button
+                      type="button"
+                      onClick={handleAddCategory}
+                      disabled={addingCategory || !newCategoryName.trim()}
+                      className="px-3 py-2 bg-gray-900 text-white text-sm rounded-lg hover:bg-gray-700 transition-colors disabled:opacity-50"
+                    >
+                      {addingCategory ? '…' : 'Add'}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => { setShowNewCategory(false); setCategoryError('') }}
+                      className="px-3 py-2 text-sm text-gray-500 hover:text-gray-900 transition-colors"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                  {categoryError && <p className="text-xs text-red-500">{categoryError}</p>}
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => setShowNewCategory(true)}
+                  className="mt-2 flex items-center gap-1 text-xs text-gray-500 hover:text-gray-900 transition-colors"
+                >
+                  <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+                  </svg>
+                  Add new category
+                </button>
+              )}
             </div>
           </Card>
 
