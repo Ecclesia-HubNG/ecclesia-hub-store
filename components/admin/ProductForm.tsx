@@ -769,6 +769,17 @@ export default function ProductForm({
 
         </div>
       </div>
+
+      {/* Bottom actions */}
+      <div className="flex items-center gap-3 pt-5 mt-1 border-t border-gray-200">
+        <SubmitButton label={anyUploading ? 'Uploading images…' : submitLabel} />
+        <Link
+          href="/admin/products"
+          className="px-5 py-2.5 text-sm text-gray-500 hover:text-gray-900 transition-colors"
+        >
+          Cancel
+        </Link>
+      </div>
     </form>
   )
 }
