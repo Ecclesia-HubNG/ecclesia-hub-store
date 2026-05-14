@@ -17,7 +17,7 @@ export default async function EditProductPage({ params }: { params: { id: string
   const boundAction = updateProduct.bind(null, product.id)
 
   return (
-    <div className="p-8 max-w-2xl">
+    <div className="p-6 max-w-6xl">
       <div className="mb-6">
         <Link href="/admin/products" className="text-sm text-gray-400 hover:text-gray-600 transition-colors">
           ← Products

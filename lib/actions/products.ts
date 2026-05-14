@@ -9,23 +9,32 @@ function slugify(s: string) {
 }
 
 function parseForm(formData: FormData) {
-  const imagesRaw = (formData.get('images') as string) || ''
   const slug = ((formData.get('slug') as string) || '').trim()
   const name = formData.get('name') as string
+
+  const imageUrlsRaw = (formData.get('image_urls') as string) || '[]'
+  const images: string[] = JSON.parse(imageUrlsRaw)
+  const thumbnail = images[0] ?? null
+
   return {
     name,
     slug: slug || slugify(name),
+    short_description: (formData.get('short_description') as string) || null,
     description: (formData.get('description') as string) || null,
     price: parseFloat(formData.get('price') as string),
     compare_at_price: formData.get('compare_at_price')
       ? parseFloat(formData.get('compare_at_price') as string)
       : null,
     category_id: (formData.get('category_id') as string) || null,
-    thumbnail: (formData.get('thumbnail') as string) || null,
-    images: imagesRaw.split('\n').map((s: string) => s.trim()).filter(Boolean),
+    thumbnail,
+    images,
     stock: parseInt(formData.get('stock') as string) || 0,
     is_featured: formData.get('is_featured') === 'on',
     is_active: formData.get('is_active') === 'on',
+    tags: JSON.parse((formData.get('tags') as string) || '[]'),
+    variants: JSON.parse((formData.get('variants') as string) || '[]'),
+    attributes: JSON.parse((formData.get('attributes') as string) || '[]'),
+    shipping_type: (formData.get('shipping_type') as string) || 'standard',
   }
 }
 
