@@ -349,10 +349,10 @@ export default function ProductForm({
         </div>
       )}
 
-      <div className="grid grid-cols-1 xl:grid-cols-[1fr_320px] gap-5">
+      <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_320px] gap-5">
 
         {/* ── Left column ── */}
-        <div className="space-y-5">
+        <div className="space-y-5 min-w-0">
 
           {/* Images */}
           <Card title="Product Images">
@@ -497,12 +497,12 @@ export default function ProductForm({
             </p>
             <div className="space-y-2">
               {variants.map((v) => (
-                <div key={v.id} className="flex gap-2 items-center">
+                <div key={v.id} className="grid grid-cols-[120px_minmax(0,1fr)_100px_28px] gap-2 items-center">
                   <input
                     value={v.name}
                     onChange={(e) => updateVariant(v.id, 'name', e.target.value)}
-                    placeholder="Name (e.g. Size)"
-                    className={`${inputCls} w-[120px] shrink-0`}
+                    placeholder="Name"
+                    className={inputCls}
                   />
                   <input
                     value={v.values}
@@ -517,7 +517,7 @@ export default function ProductForm({
                     min="0"
                     step="0.01"
                     placeholder="₦ add-on"
-                    className={`${inputCls} w-[110px] shrink-0`}
+                    className={inputCls}
                   />
                   <RemoveBtn onClick={() => removeVariant(v.id)} />
                 </div>
@@ -573,7 +573,7 @@ export default function ProductForm({
         </div>
 
         {/* ── Right column ── */}
-        <div className="space-y-5 xl:sticky xl:top-6 xl:self-start">
+        <div className="space-y-5 xl:sticky xl:top-6 xl:self-start min-w-0">
 
           {/* Publish */}
           <Card title="Publish">
