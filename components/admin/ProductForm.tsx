@@ -4,7 +4,6 @@ import { useFormState, useFormStatus } from 'react-dom'
 import { useEffect, useRef, useState, startTransition } from 'react'
 import type { DragEvent, ChangeEvent, KeyboardEvent, FormEvent } from 'react'
 import Link from 'next/link'
-import { createClient } from '@/lib/supabase/client'
 import { createCategoryInline } from '@/lib/actions/categories'
 
 // ─── Types ────────────────────────────────────────────────
@@ -184,29 +183,26 @@ export default function ProductForm({
 
   const uploadImage = async (item: ImageItem) => {
     if (!item.file) return
-    const supabase = createClient()
-    const ext = item.file.name.split('.').pop() ?? 'jpg'
-    const path = `products/${Date.now()}-${genId()}.${ext}`
 
-    const { data, error } = await supabase.storage
-      .from('product-images')
-      .upload(path, item.file)
+    const fd = new FormData()
+    fd.append('file', item.file)
 
-    if (error) {
+    const res = await fetch('/api/upload', { method: 'POST', body: fd })
+    const json = await res.json()
+
+    if (!res.ok) {
       setImages((prev) =>
-        prev.map((i) => (i.id === item.id ? { ...i, uploading: false, error: error.message } : i))
+        prev.map((i) =>
+          i.id === item.id ? { ...i, uploading: false, error: json.error ?? 'Upload failed' } : i
+        )
       )
       return
     }
 
-    const { data: { publicUrl } } = supabase.storage
-      .from('product-images')
-      .getPublicUrl(data.path)
-
     setImages((prev) =>
       prev.map((i) =>
         i.id === item.id
-          ? { ...i, uploading: false, uploaded: true, uploadedUrl: publicUrl, preview: publicUrl }
+          ? { ...i, uploading: false, uploaded: true, uploadedUrl: json.url, preview: json.url }
           : i
       )
     )
