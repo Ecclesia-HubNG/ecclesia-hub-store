@@ -8,9 +8,10 @@ import SuccessToast from '@/components/admin/SuccessToast'
 export default async function EditProductPage({ params }: { params: { id: string } }) {
   const supabase = createAdminClient()
 
-  const [{ data: product }, { data: categories }] = await Promise.all([
+  const [{ data: product }, { data: categories }, { data: allProducts }] = await Promise.all([
     supabase.from('products').select('*').eq('id', params.id).single(),
     supabase.from('categories').select('id, name').order('name'),
+    supabase.from('products').select('id, name, thumbnail').neq('id', params.id).order('name'),
   ])
 
   if (!product) notFound()
@@ -47,6 +48,7 @@ export default async function EditProductPage({ params }: { params: { id: string
         action={boundAction}
         product={product}
         categories={categories ?? []}
+        allProducts={allProducts ?? []}
         submitLabel="Save changes"
       />
 

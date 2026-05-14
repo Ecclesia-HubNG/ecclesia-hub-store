@@ -1,14 +1,14 @@
-import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 import Link from 'next/link'
 import { createProduct } from '@/lib/actions/products'
 import ProductForm from '@/components/admin/ProductForm'
 
 export default async function NewProductPage() {
-  const supabase = createClient()
-  const { data: categories } = await supabase
-    .from('categories')
-    .select('id, name')
-    .order('name')
+  const supabase = createAdminClient()
+  const [{ data: categories }, { data: allProducts }] = await Promise.all([
+    supabase.from('categories').select('id, name').order('name'),
+    supabase.from('products').select('id, name, thumbnail').order('name'),
+  ])
 
   return (
     <div className="p-6">
@@ -21,6 +21,7 @@ export default async function NewProductPage() {
       <ProductForm
         action={createProduct}
         categories={categories ?? []}
+        allProducts={allProducts ?? []}
         submitLabel="Create product"
       />
     </div>
