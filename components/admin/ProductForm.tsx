@@ -1,7 +1,7 @@
 'use client'
 
-import { useFormState, useFormStatus } from 'react-dom'
-import { useEffect, useRef, useState, startTransition } from 'react'
+import { useFormState } from 'react-dom'
+import { useEffect, useRef, useState, useTransition } from 'react'
 import type { DragEvent, ChangeEvent, KeyboardEvent, FormEvent } from 'react'
 import Link from 'next/link'
 import { createCategoryInline } from '@/lib/actions/categories'
@@ -74,12 +74,19 @@ const selectCls = 'w-full px-3.5 py-2.5 border border-gray-200 rounded-lg text-s
 
 // ─── Sub-components ───────────────────────────────────────
 
-function SubmitButton({ label }: { label: string }) {
-  const { pending } = useFormStatus()
+function SubmitButton({ label, pending }: { label: string; pending: boolean }) {
   return (
     <button type="submit" disabled={pending}
       className="w-full py-2.5 bg-gray-900 text-white text-sm font-medium rounded-lg hover:bg-gray-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
-      {pending ? 'Saving…' : label}
+      {pending ? (
+        <span className="flex items-center justify-center gap-2">
+          <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+          </svg>
+          Saving…
+        </span>
+      ) : label}
     </button>
   )
 }
@@ -133,6 +140,7 @@ export default function ProductForm({
   submitLabel?: string
 }) {
   const [state, formAction] = useFormState(action, null)
+  const [isPending, startTransition] = useTransition()
   const formRef = useRef<HTMLFormElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
@@ -298,7 +306,7 @@ export default function ProductForm({
 
   // ── Submit ────────────────────────────────────────────────
 
-  const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
+  const handleSubmit = (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault()
     if (images.some(i => i.uploading)) return
     const fd = new FormData(formRef.current!)
@@ -315,15 +323,21 @@ export default function ProductForm({
       width:  dims.width  ? parseFloat(dims.width)  : null,
       height: dims.height ? parseFloat(dims.height) : null,
     }))
-    startTransition(() => formAction(fd))
+    startTransition(() => { formAction(fd) })
   }
 
   const anyUploading = images.some(i => i.uploading)
+  const saving = isPending
 
   // ── Render ────────────────────────────────────────────────
 
   return (
     <form ref={formRef} onSubmit={handleSubmit}>
+      {/* Top progress bar */}
+      <div className={`fixed top-0 left-0 right-0 z-50 h-0.5 bg-transparent transition-opacity duration-300 ${saving ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}>
+        <div className={`h-full bg-gray-900 transition-all duration-[2000ms] ease-out ${saving ? 'w-4/5' : 'w-0'}`} />
+      </div>
+
       {state?.error && (
         <div className="mb-5 bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg px-4 py-3">{state.error}</div>
       )}
@@ -546,7 +560,7 @@ export default function ProductForm({
                 <div><p className="text-sm font-medium text-gray-700">Featured</p><p className="text-xs text-gray-400">Show on homepage</p></div>
               </label>
             </div>
-            <SubmitButton label={anyUploading ? 'Uploading images…' : submitLabel} />
+            <SubmitButton label={anyUploading ? 'Uploading images…' : submitLabel} pending={saving || anyUploading} />
             <Link href="/admin/products" className="block text-center mt-2.5 text-sm text-gray-400 hover:text-gray-700 transition-colors">Cancel</Link>
           </Card>
 
@@ -688,7 +702,7 @@ export default function ProductForm({
 
       {/* Bottom save */}
       <div className="flex items-center gap-3 pt-5 mt-1 border-t border-gray-200">
-        <SubmitButton label={anyUploading ? 'Uploading images…' : submitLabel} />
+        <SubmitButton label={anyUploading ? 'Uploading images…' : submitLabel} pending={saving || anyUploading} />
         <Link href="/admin/products" className="px-5 py-2.5 text-sm text-gray-500 hover:text-gray-900 transition-colors">Cancel</Link>
       </div>
     </form>

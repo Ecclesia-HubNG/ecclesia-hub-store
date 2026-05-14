@@ -22,8 +22,8 @@ export default function SuccessToast({ message }: { message: string }) {
 
   return (
     <div
-      className={`fixed bottom-6 right-6 z-50 flex items-center gap-3 px-4 py-3 bg-gray-900 text-white text-sm rounded-xl shadow-xl transition-all duration-300 ease-out ${
-        show ? 'translate-y-0 opacity-100' : 'translate-y-3 opacity-0 pointer-events-none'
+      className={`fixed top-5 left-1/2 -translate-x-1/2 z-50 flex items-center gap-3 px-4 py-3 bg-gray-900 text-white text-sm rounded-xl shadow-xl transition-all duration-300 ease-out whitespace-nowrap ${
+        show ? 'translate-y-0 opacity-100' : '-translate-y-4 opacity-0 pointer-events-none'
       }`}
     >
       <span className="flex items-center justify-center w-5 h-5 bg-green-500 rounded-full shrink-0">
