@@ -531,7 +531,7 @@ export default function ProductForm({
                     {v.options.map(o => (
                       <div key={o.id} className="grid grid-cols-[minmax(0,1fr)_130px_28px] gap-2 items-center">
                         <input value={o.value} onChange={e => updateOption(v.id, o.id, 'value', e.target.value)} placeholder="e.g. 100ml" className={inputCls} />
-                        <input value={o.price} onChange={e => updateOption(v.id, o.id, 'price', e.target.value)} type="number" min="0" step="0.01" placeholder="0.00" className={inputCls} />
+                        <input value={o.price} onChange={e => updateOption(v.id, o.id, 'price', e.target.value)} type="number" min="0" step="any" placeholder="0.00" className={inputCls} />
                         <RemoveBtn onClick={() => removeOption(v.id, o.id)} />
                       </div>
                     ))}
@@ -589,16 +589,16 @@ export default function ProductForm({
             <div className="space-y-3">
               <div>
                 <FieldLabel>Price (₦)</FieldLabel>
-                <input name="price" type="number" step="0.01" min="0" defaultValue={product?.price ?? ''} required placeholder="0.00" className={inputCls} />
+                <input name="price" type="number" step="any" min="0" defaultValue={product?.price ?? ''} required placeholder="0.00" className={inputCls} />
               </div>
               <div>
                 <FieldLabel optional>Compare-at Price (₦)</FieldLabel>
-                <input name="compare_at_price" type="number" step="0.01" min="0" defaultValue={product?.compare_at_price ?? ''} placeholder="0.00" className={inputCls} />
+                <input name="compare_at_price" type="number" step="any" min="0" defaultValue={product?.compare_at_price ?? ''} placeholder="0.00" className={inputCls} />
                 <p className="text-xs text-gray-400 mt-1">Shows as a strikethrough "was" price.</p>
               </div>
               <div className="pt-1 border-t border-gray-100">
                 <FieldLabel optional>Sale Price (₦)</FieldLabel>
-                <input name="sale_price" type="number" step="0.01" min="0" defaultValue={product?.sale_price ?? ''} placeholder="0.00" className={inputCls} />
+                <input name="sale_price" type="number" step="any" min="0" defaultValue={product?.sale_price ?? ''} placeholder="0.00" className={inputCls} />
               </div>
               <div className="grid grid-cols-2 gap-2">
                 <div>
@@ -704,7 +704,7 @@ export default function ProductForm({
               </div>
               <div>
                 <FieldLabel optional>Weight (kg)</FieldLabel>
-                <input name="weight" type="number" step="0.01" min="0" defaultValue={product?.weight ?? ''} placeholder="0.00" className={inputCls} />
+                <input name="weight" type="number" step="any" min="0" defaultValue={product?.weight ?? ''} placeholder="0.00" className={inputCls} />
               </div>
               <div>
                 <FieldLabel optional>Dimensions (cm)</FieldLabel>
