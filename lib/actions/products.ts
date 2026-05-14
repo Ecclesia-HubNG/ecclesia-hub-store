@@ -40,10 +40,14 @@ function parseForm(formData: FormData) {
 
 export async function createProduct(_: unknown, formData: FormData) {
   const supabase = createAdminClient()
-  const { error } = await supabase.from('products').insert(parseForm(formData))
+  const { data, error } = await supabase
+    .from('products')
+    .insert(parseForm(formData))
+    .select('id')
+    .single()
   if (error) return { error: error.message }
   revalidatePath('/admin/products')
-  redirect('/admin/products')
+  redirect(`/admin/products/${data.id}/edit?saved=1`)
 }
 
 export async function updateProduct(id: string, _: unknown, formData: FormData) {
@@ -51,7 +55,7 @@ export async function updateProduct(id: string, _: unknown, formData: FormData) 
   const { error } = await supabase.from('products').update(parseForm(formData)).eq('id', id)
   if (error) return { error: error.message }
   revalidatePath('/admin/products')
-  redirect('/admin/products')
+  redirect(`/admin/products/${id}/edit?saved=1`)
 }
 
 export async function deleteProduct(formData: FormData) {

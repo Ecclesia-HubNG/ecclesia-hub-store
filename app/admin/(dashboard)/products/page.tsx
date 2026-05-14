@@ -1,4 +1,4 @@
-import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 import Link from 'next/link'
 import { deleteProduct } from '@/lib/actions/products'
 import { DeleteButton } from '@/components/admin/DeleteButton'
@@ -24,7 +24,7 @@ function StockBadge({ stock }: { stock: number }) {
 }
 
 export default async function AdminProductsPage() {
-  const supabase = createClient()
+  const supabase = createAdminClient()
   const { data: products } = await supabase
     .from('products')
     .select('*, categories(name)')
