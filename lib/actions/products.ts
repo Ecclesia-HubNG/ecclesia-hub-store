@@ -1,6 +1,6 @@
 'use server'
 
-import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
 
@@ -39,7 +39,7 @@ function parseForm(formData: FormData) {
 }
 
 export async function createProduct(_: unknown, formData: FormData) {
-  const supabase = createClient()
+  const supabase = createAdminClient()
   const { error } = await supabase.from('products').insert(parseForm(formData))
   if (error) return { error: error.message }
   revalidatePath('/admin/products')
@@ -47,7 +47,7 @@ export async function createProduct(_: unknown, formData: FormData) {
 }
 
 export async function updateProduct(id: string, _: unknown, formData: FormData) {
-  const supabase = createClient()
+  const supabase = createAdminClient()
   const { error } = await supabase.from('products').update(parseForm(formData)).eq('id', id)
   if (error) return { error: error.message }
   revalidatePath('/admin/products')
@@ -55,7 +55,7 @@ export async function updateProduct(id: string, _: unknown, formData: FormData) 
 }
 
 export async function deleteProduct(formData: FormData) {
-  const supabase = createClient()
+  const supabase = createAdminClient()
   await supabase.from('products').delete().eq('id', formData.get('id') as string)
   revalidatePath('/admin/products')
 }
