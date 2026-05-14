@@ -58,7 +58,8 @@ export async function updateProduct(id: string, _: unknown, formData: FormData) 
   const { error } = await supabase.from('products').update(parseForm(formData)).eq('id', id)
   if (error) return { error: error.message }
   revalidatePath('/admin/products')
-  redirect(`/admin/products/${id}/edit?saved=1`)
+  revalidatePath(`/admin/products/${id}/edit`)
+  return { success: true as const }
 }
 
 export async function deleteProduct(formData: FormData) {

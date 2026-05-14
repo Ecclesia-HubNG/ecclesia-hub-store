@@ -3,7 +3,6 @@ import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { updateProduct } from '@/lib/actions/products'
 import ProductForm from '@/components/admin/ProductForm'
-import SuccessToast from '@/components/admin/SuccessToast'
 
 export default async function EditProductPage({ params }: { params: { id: string } }) {
   const supabase = createAdminClient()
@@ -52,7 +51,6 @@ export default async function EditProductPage({ params }: { params: { id: string
         submitLabel="Save changes"
       />
 
-      <SuccessToast message="Product saved successfully" />
     </div>
   )
 }

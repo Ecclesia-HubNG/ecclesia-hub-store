@@ -43,7 +43,7 @@ type Product = {
   meta_description: string | null
 }
 
-type ActionResult = { error: string } | undefined | null
+type ActionResult = { error: string } | { success: true } | undefined | null
 type ActionFn = (state: ActionResult, formData: FormData) => Promise<ActionResult>
 
 type ImageItem = {
@@ -141,8 +141,17 @@ export default function ProductForm({
 }) {
   const [state, formAction] = useFormState(action, null)
   const [isPending, startTransition] = useTransition()
+  const [toast, setToast] = useState(false)
   const formRef = useRef<HTMLFormElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
+
+  useEffect(() => {
+    if (state && 'success' in state) {
+      setToast(true)
+      const t = setTimeout(() => setToast(false), 4000)
+      return () => clearTimeout(t)
+    }
+  }, [state])
 
   // Name / Slug
   const [name, setName] = useState(product?.name ?? '')
@@ -338,7 +347,18 @@ export default function ProductForm({
         <div className={`h-full bg-gray-900 transition-all duration-[2000ms] ease-out ${saving ? 'w-4/5' : 'w-0'}`} />
       </div>
 
-      {state?.error && (
+      {/* Inline success toast */}
+      <div className={`fixed top-5 left-1/2 -translate-x-1/2 z-50 flex items-center gap-3 px-4 py-3 bg-gray-900 text-white text-sm rounded-xl shadow-xl transition-all duration-300 ease-out whitespace-nowrap ${toast ? 'translate-y-0 opacity-100' : '-translate-y-4 opacity-0 pointer-events-none'}`}>
+        <span className="flex items-center justify-center w-5 h-5 bg-green-500 rounded-full shrink-0">
+          <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" strokeWidth={3} stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" d="m4.5 12.75 6 6 9-13.5" />
+          </svg>
+        </span>
+        Product saved
+        <button type="button" onClick={() => setToast(false)} className="ml-1 text-white/40 hover:text-white transition-colors leading-none text-base">×</button>
+      </div>
+
+      {state && 'error' in state && (
         <div className="mb-5 bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg px-4 py-3">{state.error}</div>
       )}
 
