@@ -56,8 +56,8 @@ export default async function ProductPage({ params }: { params: { slug: string }
     <div className="max-w-6xl mx-auto px-6 py-12">
 
       {/* Breadcrumb */}
-      <nav className="flex items-center gap-1.5 text-sm text-gray-400 mb-10">
-        <Link href="/shop" className="hover:text-gray-700 transition-colors">Shop</Link>
+      <nav className="flex items-center gap-1.5 text-sm text-gray-400 dark:text-gray-500 mb-10">
+        <Link href="/shop" className="hover:text-gray-700 dark:hover:text-gray-300 transition-colors">Shop</Link>
         {category && (
           <>
             <span>/</span>
@@ -65,7 +65,7 @@ export default async function ProductPage({ params }: { params: { slug: string }
           </>
         )}
         <span>/</span>
-        <span className="text-gray-700 truncate max-w-[200px]">{product.name}</span>
+        <span className="text-gray-700 dark:text-gray-300 truncate max-w-[200px]">{product.name}</span>
       </nav>
 
       {/* Product grid */}
@@ -77,34 +77,34 @@ export default async function ProductPage({ params }: { params: { slug: string }
         {/* Right — info */}
         <div>
           {category && (
-            <p className="text-xs font-semibold text-gray-400 uppercase tracking-widest mb-2">
+            <p className="text-xs font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-widest mb-2">
               {category.name}
             </p>
           )}
 
-          <h1 className="text-3xl font-bold text-gray-900 leading-tight mb-1">
+          <h1 className="text-3xl font-bold text-gray-900 dark:text-white leading-tight mb-1">
             {product.name}
           </h1>
 
           {product.brand && (
-            <p className="text-sm text-gray-400 mb-4">by {product.brand}</p>
+            <p className="text-sm text-gray-400 dark:text-gray-500 mb-4">by {product.brand}</p>
           )}
 
           {/* Price row */}
           <div className="flex items-baseline gap-3 mb-5">
-            <span className="text-2xl font-bold text-gray-900">{fmt(displayPrice)}</span>
+            <span className="text-2xl font-bold text-gray-900 dark:text-white">{fmt(displayPrice)}</span>
             {comparePrice && comparePrice > displayPrice && (
-              <span className="text-base text-gray-400 line-through">{fmt(comparePrice)}</span>
+              <span className="text-base text-gray-400 dark:text-gray-600 line-through">{fmt(comparePrice)}</span>
             )}
             {discountPct && (
-              <span className="px-2 py-0.5 bg-red-50 text-red-600 text-xs font-semibold rounded-full">
+              <span className="px-2 py-0.5 bg-red-50 dark:bg-red-950 text-red-600 dark:text-red-400 text-xs font-semibold rounded-full">
                 {discountPct}% off
               </span>
             )}
           </div>
 
           {product.short_description && (
-            <p className="text-gray-500 text-sm leading-relaxed mb-6">
+            <p className="text-gray-500 dark:text-gray-400 text-sm leading-relaxed mb-6">
               {product.short_description}
             </p>
           )}
@@ -115,29 +115,29 @@ export default async function ProductPage({ params }: { params: { slug: string }
           {/* Stock status */}
           <p className="text-sm mb-5">
             {product.stock > 5 ? (
-              <span className="text-green-600 font-medium">In stock</span>
+              <span className="text-green-600 dark:text-green-400 font-medium">In stock</span>
             ) : product.stock > 0 ? (
-              <span className="text-amber-500 font-medium">Only {product.stock} left</span>
+              <span className="text-amber-500 dark:text-amber-400 font-medium">Only {product.stock} left</span>
             ) : (
-              <span className="text-red-500 font-medium">Out of stock</span>
+              <span className="text-red-500 dark:text-red-400 font-medium">Out of stock</span>
             )}
           </p>
 
           {/* CTA */}
           <button
             disabled={product.stock === 0}
-            className="w-full py-3.5 bg-gray-900 text-white text-sm font-semibold rounded-full hover:bg-gray-700 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+            className="w-full py-3.5 bg-gray-900 dark:bg-white text-white dark:text-gray-900 text-sm font-semibold rounded-full hover:bg-gray-700 dark:hover:bg-gray-100 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
           >
             {product.stock === 0 ? 'Out of stock' : 'Add to cart'}
           </button>
 
           {/* Attributes */}
           {attributes.length > 0 && (
-            <div className="mt-8 pt-6 border-t border-gray-100 space-y-2.5">
+            <div className="mt-8 pt-6 border-t border-gray-100 dark:border-gray-800 space-y-2.5">
               {attributes.map(attr => (
                 <div key={attr.key} className="flex gap-4 text-sm">
-                  <span className="text-gray-400 w-28 shrink-0">{attr.key}</span>
-                  <span className="text-gray-700">{attr.value}</span>
+                  <span className="text-gray-400 dark:text-gray-500 w-28 shrink-0">{attr.key}</span>
+                  <span className="text-gray-700 dark:text-gray-300">{attr.value}</span>
                 </div>
               ))}
             </div>
@@ -147,10 +147,14 @@ export default async function ProductPage({ params }: { params: { slug: string }
           {(product.sku || product.barcode) && (
             <div className="mt-4 space-y-1.5">
               {product.sku && (
-                <p className="text-xs text-gray-400">SKU: <span className="font-mono">{product.sku}</span></p>
+                <p className="text-xs text-gray-400 dark:text-gray-600">
+                  SKU: <span className="font-mono">{product.sku}</span>
+                </p>
               )}
               {product.barcode && (
-                <p className="text-xs text-gray-400">Barcode: <span className="font-mono">{product.barcode}</span></p>
+                <p className="text-xs text-gray-400 dark:text-gray-600">
+                  Barcode: <span className="font-mono">{product.barcode}</span>
+                </p>
               )}
             </div>
           )}
@@ -160,8 +164,8 @@ export default async function ProductPage({ params }: { params: { slug: string }
       {/* Description */}
       {product.description && (
         <div className="max-w-2xl mb-20">
-          <h2 className="text-lg font-semibold text-gray-900 mb-4">About this product</h2>
-          <div className="text-gray-500 text-sm leading-7 whitespace-pre-line">
+          <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">About this product</h2>
+          <div className="text-gray-500 dark:text-gray-400 text-sm leading-7 whitespace-pre-line">
             {product.description}
           </div>
         </div>
@@ -170,11 +174,11 @@ export default async function ProductPage({ params }: { params: { slug: string }
       {/* Related products */}
       {!!related?.length && (
         <div>
-          <h2 className="text-lg font-semibold text-gray-900 mb-6">You may also like</h2>
+          <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-6">You may also like</h2>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
             {related.map(p => (
               <Link key={p.id} href={`/product/${p.slug}`} className="group">
-                <div className="aspect-square bg-gray-100 rounded-xl overflow-hidden mb-3">
+                <div className="aspect-square bg-gray-100 dark:bg-gray-900 rounded-xl overflow-hidden mb-3">
                   {p.thumbnail ? (
                     <img
                       src={p.thumbnail}
@@ -183,16 +187,16 @@ export default async function ProductPage({ params }: { params: { slug: string }
                     />
                   ) : (
                     <div className="w-full h-full flex items-center justify-center">
-                      <svg className="w-8 h-8 text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1}>
+                      <svg className="w-8 h-8 text-gray-300 dark:text-gray-700" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1}>
                         <path strokeLinecap="round" strokeLinejoin="round" d="m2.25 15.75 5.159-5.159a2.25 2.25 0 0 1 3.182 0l5.159 5.159m-1.5-1.5 1.409-1.409a2.25 2.25 0 0 1 3.182 0l2.909 2.909" />
                       </svg>
                     </div>
                   )}
                 </div>
-                <p className="text-sm font-medium text-gray-900 group-hover:text-gray-600 transition-colors leading-snug">
+                <p className="text-sm font-medium text-gray-900 dark:text-white group-hover:text-gray-600 dark:group-hover:text-gray-300 transition-colors leading-snug">
                   {p.name}
                 </p>
-                <p className="text-sm text-gray-500 mt-0.5">{fmt(p.price)}</p>
+                <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">{fmt(p.price)}</p>
               </Link>
             ))}
           </div>
