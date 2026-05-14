@@ -25,7 +25,7 @@ type Product = {
   is_featured: boolean
   is_active: boolean
   tags: string[] | null
-  variants: Array<{ name: string; values: string[]; price?: number | null }> | null
+  variants: Array<{ name: string; options: Array<{ value: string; price?: number | null }> }> | null
   attributes: Array<{ key: string; value: string }> | null
   shipping_type: string | null
 }
@@ -43,7 +43,8 @@ type ImageItem = {
   uploadedUrl?: string
 }
 
-type VariantRow = { id: string; name: string; values: string; price: string }
+type VariantOption = { id: string; value: string; price: string }
+type VariantRow = { id: string; name: string; options: VariantOption[] }
 type AttributeRow = { id: string; key: string; value: string }
 
 // ─── Helpers ──────────────────────────────────────────────
@@ -150,8 +151,11 @@ export default function ProductForm({
     (product?.variants ?? []).map((v) => ({
       id: genId(),
       name: v.name,
-      values: v.values.join(', '),
-      price: v.price != null ? String(v.price) : '',
+      options: (v.options ?? []).map((o) => ({
+        id: genId(),
+        value: o.value,
+        price: o.price != null ? String(o.price) : '',
+      })),
     }))
   )
 
@@ -259,13 +263,38 @@ export default function ProductForm({
   // ── Variants ────────────────────────────────────────────
 
   const addVariant = () =>
-    setVariants((prev) => [...prev, { id: genId(), name: '', values: '', price: '' }])
-
-  const updateVariant = (id: string, field: 'name' | 'values' | 'price', value: string) =>
-    setVariants((prev) => prev.map((v) => (v.id === id ? { ...v, [field]: value } : v)))
+    setVariants((prev) => [...prev, { id: genId(), name: '', options: [{ id: genId(), value: '', price: '' }] }])
 
   const removeVariant = (id: string) =>
     setVariants((prev) => prev.filter((v) => v.id !== id))
+
+  const updateVariantName = (id: string, name: string) =>
+    setVariants((prev) => prev.map((v) => (v.id === id ? { ...v, name } : v)))
+
+  const addOption = (variantId: string) =>
+    setVariants((prev) =>
+      prev.map((v) =>
+        v.id === variantId
+          ? { ...v, options: [...v.options, { id: genId(), value: '', price: '' }] }
+          : v
+      )
+    )
+
+  const updateOption = (variantId: string, optionId: string, field: 'value' | 'price', val: string) =>
+    setVariants((prev) =>
+      prev.map((v) =>
+        v.id === variantId
+          ? { ...v, options: v.options.map((o) => (o.id === optionId ? { ...o, [field]: val } : o)) }
+          : v
+      )
+    )
+
+  const removeOption = (variantId: string, optionId: string) =>
+    setVariants((prev) =>
+      prev.map((v) =>
+        v.id === variantId ? { ...v, options: v.options.filter((o) => o.id !== optionId) } : v
+      )
+    )
 
   // ── Attributes ──────────────────────────────────────────
 
@@ -319,8 +348,12 @@ export default function ProductForm({
           .filter((v) => v.name.trim())
           .map((v) => ({
             name: v.name.trim(),
-            values: v.values.split(',').map((s) => s.trim()).filter(Boolean),
-            price: v.price ? parseFloat(v.price) : null,
+            options: v.options
+              .filter((o) => o.value.trim())
+              .map((o) => ({
+                value: o.value.trim(),
+                price: o.price ? parseFloat(o.price) : null,
+              })),
           }))
       )
     )
@@ -493,33 +526,59 @@ export default function ProductForm({
           {/* Variants */}
           <Card title="Variants">
             <p className="text-xs text-gray-400 mb-3">
-              e.g. Size: S, M, L, XL — or Format: Hardcover, Paperback
+              Each variant (e.g. ML, Size) has individual values with their own price.
             </p>
-            <div className="space-y-2">
+            <div className="space-y-3">
               {variants.map((v) => (
-                <div key={v.id} className="grid grid-cols-[120px_minmax(0,1fr)_100px_28px] gap-2 items-center">
-                  <input
-                    value={v.name}
-                    onChange={(e) => updateVariant(v.id, 'name', e.target.value)}
-                    placeholder="Name"
-                    className={inputCls}
-                  />
-                  <input
-                    value={v.values}
-                    onChange={(e) => updateVariant(v.id, 'values', e.target.value)}
-                    placeholder="Values, comma-separated"
-                    className={inputCls}
-                  />
-                  <input
-                    value={v.price}
-                    onChange={(e) => updateVariant(v.id, 'price', e.target.value)}
-                    type="number"
-                    min="0"
-                    step="0.01"
-                    placeholder="₦ add-on"
-                    className={inputCls}
-                  />
-                  <RemoveBtn onClick={() => removeVariant(v.id)} />
+                <div key={v.id} className="border border-gray-200 rounded-lg p-3 space-y-2">
+                  {/* Variant name */}
+                  <div className="flex gap-2 items-center">
+                    <input
+                      value={v.name}
+                      onChange={(e) => updateVariantName(v.id, e.target.value)}
+                      placeholder="Variant name (e.g. ML, Size, Color)"
+                      className={`${inputCls} font-medium`}
+                    />
+                    <RemoveBtn onClick={() => removeVariant(v.id)} />
+                  </div>
+
+                  {/* Options */}
+                  <div className="space-y-1.5 pl-3 border-l-2 border-gray-100">
+                    <div className="grid grid-cols-[minmax(0,1fr)_130px] gap-2 mb-1">
+                      <span className="text-xs text-gray-400 px-1">Value</span>
+                      <span className="text-xs text-gray-400 px-1">Price (₦)</span>
+                    </div>
+                    {v.options.map((o) => (
+                      <div key={o.id} className="grid grid-cols-[minmax(0,1fr)_130px_28px] gap-2 items-center">
+                        <input
+                          value={o.value}
+                          onChange={(e) => updateOption(v.id, o.id, 'value', e.target.value)}
+                          placeholder="e.g. 100ml"
+                          className={inputCls}
+                        />
+                        <input
+                          value={o.price}
+                          onChange={(e) => updateOption(v.id, o.id, 'price', e.target.value)}
+                          type="number"
+                          min="0"
+                          step="0.01"
+                          placeholder="0.00"
+                          className={inputCls}
+                        />
+                        <RemoveBtn onClick={() => removeOption(v.id, o.id)} />
+                      </div>
+                    ))}
+                    <button
+                      type="button"
+                      onClick={() => addOption(v.id)}
+                      className="mt-1 flex items-center gap-1 text-xs text-gray-500 hover:text-gray-900 transition-colors"
+                    >
+                      <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+                      </svg>
+                      Add value
+                    </button>
+                  </div>
                 </div>
               ))}
             </div>
