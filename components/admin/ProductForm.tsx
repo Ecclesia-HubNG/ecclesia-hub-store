@@ -497,35 +497,28 @@ export default function ProductForm({
             </p>
             <div className="space-y-2">
               {variants.map((v) => (
-                <div key={v.id} className="flex gap-2 items-start">
-                  <div className="flex flex-col gap-1.5 flex-1">
-                    <div className="flex gap-2">
-                      <input
-                        value={v.name}
-                        onChange={(e) => updateVariant(v.id, 'name', e.target.value)}
-                        placeholder="Name (e.g. Size)"
-                        className={`${inputCls} w-[130px] shrink-0`}
-                      />
-                      <input
-                        value={v.values}
-                        onChange={(e) => updateVariant(v.id, 'values', e.target.value)}
-                        placeholder="Values, comma-separated"
-                        className={inputCls}
-                      />
-                    </div>
-                    <div className="flex items-center gap-2 pl-[146px]">
-                      <span className="text-xs text-gray-400 shrink-0">Price add-on (₦)</span>
-                      <input
-                        value={v.price}
-                        onChange={(e) => updateVariant(v.id, 'price', e.target.value)}
-                        type="number"
-                        min="0"
-                        step="0.01"
-                        placeholder="0.00 (optional)"
-                        className={`${inputCls} max-w-[160px]`}
-                      />
-                    </div>
-                  </div>
+                <div key={v.id} className="flex gap-2 items-center">
+                  <input
+                    value={v.name}
+                    onChange={(e) => updateVariant(v.id, 'name', e.target.value)}
+                    placeholder="Name (e.g. Size)"
+                    className={`${inputCls} w-[120px] shrink-0`}
+                  />
+                  <input
+                    value={v.values}
+                    onChange={(e) => updateVariant(v.id, 'values', e.target.value)}
+                    placeholder="Values, comma-separated"
+                    className={inputCls}
+                  />
+                  <input
+                    value={v.price}
+                    onChange={(e) => updateVariant(v.id, 'price', e.target.value)}
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    placeholder="₦ add-on"
+                    className={`${inputCls} w-[110px] shrink-0`}
+                  />
                   <RemoveBtn onClick={() => removeVariant(v.id)} />
                 </div>
               ))}

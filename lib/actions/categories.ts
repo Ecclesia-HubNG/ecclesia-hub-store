@@ -1,6 +1,7 @@
 'use server'
 
 import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
 
@@ -44,7 +45,7 @@ export async function deleteCategory(formData: FormData) {
 export async function createCategoryInline(
   name: string
 ): Promise<{ id: string; name: string } | { error: string }> {
-  const supabase = createClient()
+  const supabase = createAdminClient()
   const base = slugify(name)
   const slug = `${base}-${Date.now()}`
   const { data, error } = await supabase
