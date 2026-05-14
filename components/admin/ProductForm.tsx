@@ -69,15 +69,15 @@ function genId() { return Math.random().toString(36).slice(2) }
 
 // ─── Styles ───────────────────────────────────────────────
 
-const inputCls = 'w-full px-3.5 py-2.5 border border-gray-200 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-gray-900/10 focus:border-gray-400 transition-colors placeholder:text-gray-400'
-const selectCls = 'w-full px-3.5 py-2.5 border border-gray-200 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-gray-900/10 focus:border-gray-400 transition-colors'
+const inputCls = 'w-full px-3.5 py-2.5 border border-gray-200 dark:border-gray-700 rounded-lg text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-gray-900/10 dark:focus:ring-white/10 focus:border-gray-400 dark:focus:border-gray-500 transition-colors placeholder:text-gray-400 dark:placeholder:text-gray-600'
+const selectCls = 'w-full px-3.5 py-2.5 border border-gray-200 dark:border-gray-700 rounded-lg text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-gray-900/10 dark:focus:ring-white/10 focus:border-gray-400 dark:focus:border-gray-500 transition-colors'
 
 // ─── Sub-components ───────────────────────────────────────
 
 function SubmitButton({ label, pending }: { label: string; pending: boolean }) {
   return (
     <button type="submit" disabled={pending}
-      className="w-full py-2.5 bg-gray-900 text-white text-sm font-medium rounded-lg hover:bg-gray-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
+      className="w-full py-2.5 bg-gray-900 dark:bg-white text-white dark:text-gray-900 text-sm font-medium rounded-lg hover:bg-gray-700 dark:hover:bg-gray-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
       {pending ? (
         <span className="flex items-center justify-center gap-2">
           <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
@@ -93,8 +93,8 @@ function SubmitButton({ label, pending }: { label: string; pending: boolean }) {
 
 function Card({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <div className="bg-white border border-gray-200 rounded-xl p-5">
-      <h2 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-4">{title}</h2>
+    <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-5">
+      <h2 className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-4">{title}</h2>
       {children}
     </div>
   )
@@ -102,9 +102,9 @@ function Card({ title, children }: { title: string; children: React.ReactNode })
 
 function FieldLabel({ children, optional }: { children: React.ReactNode; optional?: boolean }) {
   return (
-    <label className="block text-sm font-medium text-gray-700 mb-1.5">
+    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
       {children}
-      {optional && <span className="text-gray-400 font-normal ml-1 text-xs">(optional)</span>}
+      {optional && <span className="text-gray-400 dark:text-gray-600 font-normal ml-1 text-xs">(optional)</span>}
     </label>
   )
 }
@@ -112,7 +112,7 @@ function FieldLabel({ children, optional }: { children: React.ReactNode; optiona
 function RemoveBtn({ onClick }: { onClick: () => void }) {
   return (
     <button type="button" onClick={onClick}
-      className="w-7 h-7 flex items-center justify-center rounded-md text-gray-400 hover:text-red-500 hover:bg-red-50 transition-colors shrink-0">
+      className="w-7 h-7 flex items-center justify-center rounded-md text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950 transition-colors shrink-0">
       <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
         <path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" />
       </svg>
@@ -359,7 +359,7 @@ export default function ProductForm({
       </div>
 
       {state && 'error' in state && (
-        <div className="mb-5 bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg px-4 py-3">{state.error}</div>
+        <div className="mb-5 bg-red-50 dark:bg-red-950 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-400 text-sm rounded-lg px-4 py-3">{state.error}</div>
       )}
 
       <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_320px] gap-5">
@@ -374,14 +374,14 @@ export default function ProductForm({
               onDragLeave={() => setDragOver(false)}
               onDrop={handleDrop}
               onClick={() => fileInputRef.current?.click()}
-              className={`flex flex-col items-center justify-center gap-2 border-2 border-dashed rounded-xl p-8 cursor-pointer transition-colors ${dragOver ? 'border-gray-400 bg-gray-100' : 'border-gray-200 bg-gray-50 hover:border-gray-300 hover:bg-gray-100'}`}
+              className={`flex flex-col items-center justify-center gap-2 border-2 border-dashed rounded-xl p-8 cursor-pointer transition-colors ${dragOver ? 'border-gray-400 bg-gray-100 dark:bg-gray-800' : 'border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50 hover:border-gray-300 dark:hover:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-800'}`}
             >
-              <svg className="w-10 h-10 text-gray-300" fill="none" viewBox="0 0 24 24" strokeWidth={1} stroke="currentColor">
+              <svg className="w-10 h-10 text-gray-300 dark:text-gray-600" fill="none" viewBox="0 0 24 24" strokeWidth={1} stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" d="m2.25 15.75 5.159-5.159a2.25 2.25 0 0 1 3.182 0l5.159 5.159m-1.5-1.5 1.409-1.409a2.25 2.25 0 0 1 3.182 0l2.909 2.909m-18 3.75h16.5a1.5 1.5 0 0 0 1.5-1.5V6a1.5 1.5 0 0 0-1.5-1.5H3.75A1.5 1.5 0 0 0 2.25 6v12a1.5 1.5 0 0 0 1.5 1.5Zm10.5-11.25h.008v.008h-.008V8.25Zm.375 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Z" />
               </svg>
               <div className="text-center">
-                <p className="text-sm font-medium text-gray-600">Drop images here, or <span className="text-gray-900 underline underline-offset-2">browse</span></p>
-                <p className="text-xs text-gray-400 mt-0.5">PNG, JPG, WebP up to 10 MB · Drag to reorder</p>
+                <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Drop images here, or <span className="text-gray-900 dark:text-white underline underline-offset-2">browse</span></p>
+                <p className="text-xs text-gray-400 dark:text-gray-600 mt-0.5">PNG, JPG, WebP up to 10 MB · Drag to reorder</p>
               </div>
               <input ref={fileInputRef} type="file" accept="image/*" multiple onChange={handleFileInput} className="hidden" />
             </div>
@@ -395,7 +395,7 @@ export default function ProductForm({
                     onDragOver={e => e.preventDefault()}
                     onDrop={e => handleImageDropReorder(e, i)}
                     onDragEnd={() => setDragImageIndex(null)}
-                    className={`relative aspect-square rounded-lg overflow-hidden bg-gray-100 group border cursor-move transition-opacity ${dragImageIndex === i ? 'opacity-40' : 'border-gray-200'}`}
+                    className={`relative aspect-square rounded-lg overflow-hidden bg-gray-100 dark:bg-gray-800 group border cursor-move transition-opacity ${dragImageIndex === i ? 'opacity-40' : 'border-gray-200 dark:border-gray-700'}`}
                   >
                     <img src={img.preview} alt="" className="w-full h-full object-cover" />
                     {img.uploading && (
@@ -420,12 +420,12 @@ export default function ProductForm({
                 ))}
               </div>
             )}
-            {anyUploading && <p className="text-xs text-gray-400 mt-2">Uploading images…</p>}
+            {anyUploading && <p className="text-xs text-gray-400 dark:text-gray-500 mt-2">Uploading images…</p>}
 
             <div className="mt-4">
               <FieldLabel optional>Product Video URL</FieldLabel>
               <input name="video_url" type="url" defaultValue={product?.video_url ?? ''} placeholder="https://youtube.com/watch?v=..." className={inputCls} />
-              <p className="text-xs text-gray-400 mt-1">YouTube or Vimeo link shown on the product page.</p>
+              <p className="text-xs text-gray-400 dark:text-gray-600 mt-1">YouTube or Vimeo link shown on the product page.</p>
             </div>
           </Card>
 
@@ -439,7 +439,7 @@ export default function ProductForm({
               <div>
                 <FieldLabel optional>URL Slug</FieldLabel>
                 <input name="slug" value={slug} onChange={e => { setSlug(e.target.value); setSlugEdited(true) }} placeholder="niv-study-bible" className={`${inputCls} font-mono`} />
-                <p className="text-xs text-gray-400 mt-1">Auto-generated from product name.</p>
+                <p className="text-xs text-gray-400 dark:text-gray-600 mt-1">Auto-generated from product name.</p>
               </div>
               <div>
                 <FieldLabel optional>Short Description</FieldLabel>
@@ -458,12 +458,12 @@ export default function ProductForm({
               <div>
                 <FieldLabel optional>Meta Title</FieldLabel>
                 <input name="meta_title" defaultValue={product?.meta_title ?? ''} placeholder={name || 'Product name for search engines'} className={inputCls} />
-                <p className="text-xs text-gray-400 mt-1">Recommended: 50–60 characters.</p>
+                <p className="text-xs text-gray-400 dark:text-gray-600 mt-1">Recommended: 50–60 characters.</p>
               </div>
               <div>
                 <FieldLabel optional>Meta Description</FieldLabel>
                 <textarea name="meta_description" defaultValue={product?.meta_description ?? ''} rows={3} placeholder="Brief description shown in Google search results…" className={`${inputCls} resize-none`} />
-                <p className="text-xs text-gray-400 mt-1">Recommended: 150–160 characters.</p>
+                <p className="text-xs text-gray-400 dark:text-gray-600 mt-1">Recommended: 150–160 characters.</p>
               </div>
             </div>
           </Card>
@@ -471,18 +471,18 @@ export default function ProductForm({
           {/* Related Products */}
           {allProducts.length > 0 && (
             <Card title="Related Products">
-              <p className="text-xs text-gray-400 mb-3">Shown as "You may also like" on the product page.</p>
+              <p className="text-xs text-gray-400 dark:text-gray-600 mb-3">Shown as "You may also like" on the product page.</p>
               {relatedIds.length > 0 && (
                 <div className="flex flex-wrap gap-2 mb-3">
                   {relatedIds.map(id => {
                     const p = allProducts.find(p => p.id === id)
                     if (!p) return null
                     return (
-                      <span key={id} className="flex items-center gap-1.5 pl-2 pr-1 py-1 bg-gray-100 rounded-full text-xs text-gray-700">
+                      <span key={id} className="flex items-center gap-1.5 pl-2 pr-1 py-1 bg-gray-100 dark:bg-gray-800 rounded-full text-xs text-gray-700 dark:text-gray-300">
                         {p.thumbnail && <img src={p.thumbnail} className="w-4 h-4 rounded-full object-cover" alt="" />}
                         {p.name}
                         <button type="button" onClick={() => setRelatedIds(prev => prev.filter(i => i !== id))}
-                          className="w-4 h-4 flex items-center justify-center text-gray-400 hover:text-gray-700">×</button>
+                          className="w-4 h-4 flex items-center justify-center text-gray-400 hover:text-gray-700 dark:hover:text-gray-200">×</button>
                       </span>
                     )
                   })}
@@ -498,11 +498,11 @@ export default function ProductForm({
                   className={inputCls}
                 />
                 {showProductDropdown && filteredProducts.length > 0 && (
-                  <div className="absolute z-10 top-full mt-1 left-0 right-0 bg-white border border-gray-200 rounded-lg shadow-lg max-h-48 overflow-y-auto">
+                  <div className="absolute z-10 top-full mt-1 left-0 right-0 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg max-h-48 overflow-y-auto">
                     {filteredProducts.slice(0, 8).map(p => (
                       <button key={p.id} type="button"
                         onMouseDown={() => { setRelatedIds(prev => [...prev, p.id]); setProductSearch('') }}
-                        className="flex items-center gap-3 w-full px-3 py-2 text-sm text-left hover:bg-gray-50 transition-colors">
+                        className="flex items-center gap-3 w-full px-3 py-2 text-sm text-left text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
                         {p.thumbnail ? <img src={p.thumbnail} className="w-7 h-7 rounded object-cover shrink-0" alt="" /> : <div className="w-7 h-7 rounded bg-gray-100 shrink-0" />}
                         {p.name}
                       </button>
@@ -515,18 +515,18 @@ export default function ProductForm({
 
           {/* Variants */}
           <Card title="Variants">
-            <p className="text-xs text-gray-400 mb-3">Each variant (e.g. ML, Size) has individual values with their own price.</p>
+            <p className="text-xs text-gray-400 dark:text-gray-600 mb-3">Each variant (e.g. ML, Size) has individual values with their own price.</p>
             <div className="space-y-3">
               {variants.map(v => (
-                <div key={v.id} className="border border-gray-200 rounded-lg p-3 space-y-2">
+                <div key={v.id} className="border border-gray-200 dark:border-gray-700 rounded-lg p-3 space-y-2">
                   <div className="flex gap-2 items-center">
                     <input value={v.name} onChange={e => updateVariantName(v.id, e.target.value)} placeholder="Variant name (e.g. ML, Size, Color)" className={`${inputCls} font-medium`} />
                     <RemoveBtn onClick={() => removeVariant(v.id)} />
                   </div>
-                  <div className="space-y-1.5 pl-3 border-l-2 border-gray-100">
+                  <div className="space-y-1.5 pl-3 border-l-2 border-gray-100 dark:border-gray-800">
                     <div className="grid grid-cols-[minmax(0,1fr)_130px] gap-2 mb-1">
-                      <span className="text-xs text-gray-400 px-1">Value</span>
-                      <span className="text-xs text-gray-400 px-1">Price (₦)</span>
+                      <span className="text-xs text-gray-400 dark:text-gray-600 px-1">Value</span>
+                      <span className="text-xs text-gray-400 dark:text-gray-600 px-1">Price (₦)</span>
                     </div>
                     {v.options.map(o => (
                       <div key={o.id} className="grid grid-cols-[minmax(0,1fr)_130px_28px] gap-2 items-center">
@@ -535,21 +535,21 @@ export default function ProductForm({
                         <RemoveBtn onClick={() => removeOption(v.id, o.id)} />
                       </div>
                     ))}
-                    <button type="button" onClick={() => addOption(v.id)} className="mt-1 flex items-center gap-1 text-xs text-gray-500 hover:text-gray-900 transition-colors">
+                    <button type="button" onClick={() => addOption(v.id)} className="mt-1 flex items-center gap-1 text-xs text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors">
                       <PlusIcon className="w-3.5 h-3.5" /> Add value
                     </button>
                   </div>
                 </div>
               ))}
             </div>
-            <button type="button" onClick={addVariant} className="mt-3 flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-900 transition-colors">
+            <button type="button" onClick={addVariant} className="mt-3 flex items-center gap-1.5 text-sm text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors">
               <PlusIcon /> Add variant
             </button>
           </Card>
 
           {/* Attributes */}
           <Card title="Attributes">
-            <p className="text-xs text-gray-400 mb-3">e.g. Material: Leather, Language: English, Weight: 800g</p>
+            <p className="text-xs text-gray-400 dark:text-gray-600 mb-3">e.g. Material: Leather, Language: English, Weight: 800g</p>
             <div className="space-y-2">
               {attributes.map(a => (
                 <div key={a.id} className="grid grid-cols-[160px_minmax(0,1fr)_28px] gap-2 items-center">
@@ -559,7 +559,7 @@ export default function ProductForm({
                 </div>
               ))}
             </div>
-            <button type="button" onClick={addAttribute} className="mt-3 flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-900 transition-colors">
+            <button type="button" onClick={addAttribute} className="mt-3 flex items-center gap-1.5 text-sm text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors">
               <PlusIcon /> Add attribute
             </button>
           </Card>
@@ -573,15 +573,15 @@ export default function ProductForm({
             <div className="space-y-3 mb-4">
               <label className="flex items-center gap-3 cursor-pointer">
                 <input name="is_active" type="checkbox" defaultChecked={product ? product.is_active : true} className="w-4 h-4 rounded border-gray-300 accent-gray-900" />
-                <div><p className="text-sm font-medium text-gray-700">Active</p><p className="text-xs text-gray-400">Visible in the store</p></div>
+                <div><p className="text-sm font-medium text-gray-700 dark:text-gray-300">Active</p><p className="text-xs text-gray-400 dark:text-gray-600">Visible in the store</p></div>
               </label>
               <label className="flex items-center gap-3 cursor-pointer">
                 <input name="is_featured" type="checkbox" defaultChecked={product?.is_featured ?? false} className="w-4 h-4 rounded border-gray-300 accent-gray-900" />
-                <div><p className="text-sm font-medium text-gray-700">Featured</p><p className="text-xs text-gray-400">Show on homepage</p></div>
+                <div><p className="text-sm font-medium text-gray-700 dark:text-gray-300">Featured</p><p className="text-xs text-gray-400 dark:text-gray-600">Show on homepage</p></div>
               </label>
             </div>
             <SubmitButton label={anyUploading ? 'Uploading images…' : submitLabel} pending={saving || anyUploading} />
-            <Link href="/admin/products" className="block text-center mt-2.5 text-sm text-gray-400 hover:text-gray-700 transition-colors">Cancel</Link>
+            <Link href="/admin/products" className="block text-center mt-2.5 text-sm text-gray-400 dark:text-gray-600 hover:text-gray-700 dark:hover:text-gray-300 transition-colors">Cancel</Link>
           </Card>
 
           {/* Pricing */}
@@ -594,7 +594,7 @@ export default function ProductForm({
               <div>
                 <FieldLabel optional>Compare-at Price (₦)</FieldLabel>
                 <input name="compare_at_price" type="number" step="any" min="0" defaultValue={product?.compare_at_price ?? ''} placeholder="0.00" className={inputCls} />
-                <p className="text-xs text-gray-400 mt-1">Shows as a strikethrough "was" price.</p>
+                <p className="text-xs text-gray-400 dark:text-gray-600 mt-1">Shows as a strikethrough "was" price.</p>
               </div>
               <div className="pt-1 border-t border-gray-100">
                 <FieldLabel optional>Sale Price (₦)</FieldLabel>
@@ -633,13 +633,13 @@ export default function ProductForm({
                         {addingCategory ? '…' : 'Add'}
                       </button>
                       <button type="button" onClick={() => { setShowNewCategory(false); setCategoryError('') }}
-                        className="px-3 py-2 text-sm text-gray-500 hover:text-gray-900 transition-colors">Cancel</button>
+                        className="px-3 py-2 text-sm text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors">Cancel</button>
                     </div>
-                    {categoryError && <p className="text-xs text-red-500">{categoryError}</p>}
+                    {categoryError && <p className="text-xs text-red-500 dark:text-red-400">{categoryError}</p>}
                   </div>
                 ) : (
                   <button type="button" onClick={() => setShowNewCategory(true)}
-                    className="mt-2 flex items-center gap-1 text-xs text-gray-500 hover:text-gray-900 transition-colors">
+                    className="mt-2 flex items-center gap-1 text-xs text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors">
                     <PlusIcon className="w-3.5 h-3.5" /> Add new category
                   </button>
                 )}
@@ -653,10 +653,10 @@ export default function ProductForm({
 
           {/* Tags */}
           <Card title="Tags">
-            <div className="flex flex-wrap gap-1.5 p-3 border border-gray-200 rounded-lg min-h-[44px] cursor-text"
+            <div className="flex flex-wrap gap-1.5 p-3 border border-gray-200 dark:border-gray-700 rounded-lg min-h-[44px] cursor-text bg-white dark:bg-gray-800"
               onClick={() => document.getElementById('tag-input')?.focus()}>
               {tags.map(tag => (
-                <span key={tag} className="inline-flex items-center gap-1 px-2.5 py-1 bg-gray-100 text-gray-700 text-xs rounded-full">
+                <span key={tag} className="inline-flex items-center gap-1 px-2.5 py-1 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 text-xs rounded-full">
                   {tag}
                   <button type="button" onClick={() => setTags(prev => prev.filter(t => t !== tag))} className="text-gray-400 hover:text-gray-700">×</button>
                 </span>
@@ -664,9 +664,9 @@ export default function ProductForm({
               <input id="tag-input" value={tagInput} onChange={e => setTagInput(e.target.value)}
                 onKeyDown={handleTagKeyDown} onBlur={() => tagInput && addTag(tagInput)}
                 placeholder={tags.length === 0 ? 'Type and press Enter…' : ''}
-                className="flex-1 min-w-[80px] text-sm outline-none bg-transparent placeholder:text-gray-400" />
+                className="flex-1 min-w-[80px] text-sm outline-none bg-transparent text-gray-900 dark:text-gray-100 placeholder:text-gray-400 dark:placeholder:text-gray-600" />
             </div>
-            <p className="text-xs text-gray-400 mt-1.5">Press Enter or comma to add a tag.</p>
+            <p className="text-xs text-gray-400 dark:text-gray-600 mt-1.5">Press Enter or comma to add a tag.</p>
           </Card>
 
           {/* Inventory */}
@@ -721,9 +721,9 @@ export default function ProductForm({
       </div>
 
       {/* Bottom save */}
-      <div className="flex items-center gap-3 pt-5 mt-1 border-t border-gray-200">
+      <div className="flex items-center gap-3 pt-5 mt-1 border-t border-gray-200 dark:border-gray-800">
         <SubmitButton label={anyUploading ? 'Uploading images…' : submitLabel} pending={saving || anyUploading} />
-        <Link href="/admin/products" className="px-5 py-2.5 text-sm text-gray-500 hover:text-gray-900 transition-colors">Cancel</Link>
+        <Link href="/admin/products" className="px-5 py-2.5 text-sm text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors">Cancel</Link>
       </div>
     </form>
   )
