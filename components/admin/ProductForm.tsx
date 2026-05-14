@@ -201,9 +201,8 @@ export default function ProductForm({
 
     setImages((prev) =>
       prev.map((i) =>
-        i.id === item.id
-          ? { ...i, uploading: false, uploaded: true, uploadedUrl: json.url, preview: json.url }
-          : i
+        // Keep the blob: preview URL for display — only store the R2 URL in uploadedUrl for saving
+        i.id === item.id ? { ...i, uploading: false, uploaded: true, uploadedUrl: json.url } : i
       )
     )
   }
