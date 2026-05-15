@@ -11,6 +11,7 @@ type Category = {
   slug: string
   description: string | null
   image: string | null
+  is_featured?: boolean
 }
 
 type ActionResult = { error: string } | { success: true } | undefined | null
@@ -21,6 +22,90 @@ function slugify(s: string) {
 }
 
 const inputCls = 'w-full px-3.5 py-2.5 border border-gray-200 dark:border-gray-700 rounded-lg text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-gray-900/10 dark:focus:ring-white/10 focus:border-gray-400 dark:focus:border-gray-500 transition-colors placeholder:text-gray-400 dark:placeholder:text-gray-600'
+
+// ── Live preview ───────────────────────────────────────────
+
+function CategoryPreview({
+  name,
+  description,
+  image,
+  isFeatured,
+}: {
+  name: string
+  description: string
+  image: string | null
+  isFeatured: boolean
+}) {
+  return (
+    <div className="sticky top-6 space-y-3">
+      <div className="flex items-center justify-between mb-1">
+        <p className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Store preview</p>
+        {isFeatured && (
+          <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-purple-50 dark:bg-purple-950 text-purple-600 dark:text-purple-400">
+            Featured
+          </span>
+        )}
+      </div>
+
+      {/* Hero mock */}
+      <div className={`relative rounded-xl overflow-hidden ${image ? 'h-44' : 'h-32 bg-gray-100 dark:bg-gray-800'}`}>
+        {image ? (
+          <>
+            <img src={image} alt="" className="absolute inset-0 w-full h-full object-cover" />
+            <div className="absolute inset-0 bg-black/50" />
+          </>
+        ) : null}
+        <div className="relative h-full flex flex-col justify-end p-4">
+          {name ? (
+            <h3 className={`font-bold text-lg leading-tight ${image ? 'text-white' : 'text-gray-900 dark:text-white'}`}>
+              {name}
+            </h3>
+          ) : (
+            <div className="h-5 w-32 rounded bg-gray-200 dark:bg-gray-700" />
+          )}
+          {description ? (
+            <p className={`text-xs mt-1 line-clamp-2 leading-relaxed ${image ? 'text-white/80' : 'text-gray-500 dark:text-gray-400'}`}>
+              {description}
+            </p>
+          ) : (
+            <div className="h-3 w-48 rounded bg-gray-200 dark:bg-gray-700 mt-1.5" />
+          )}
+          <p className={`text-xs mt-2 font-medium uppercase tracking-widest ${image ? 'text-white/50' : 'text-gray-400 dark:text-gray-600'}`}>
+            0 products
+          </p>
+        </div>
+      </div>
+
+      {/* Product grid mock */}
+      <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-4">
+        <p className="text-xs text-gray-400 dark:text-gray-600 mb-3">Products will appear here</p>
+        <div className="grid grid-cols-3 gap-2">
+          {[...Array(6)].map((_, i) => (
+            <div key={i} className="aspect-square rounded-lg bg-gray-100 dark:bg-gray-800" />
+          ))}
+        </div>
+      </div>
+
+      {/* Category pill mock */}
+      <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-4">
+        <p className="text-xs text-gray-400 dark:text-gray-600 mb-3">Filter pill on shop page</p>
+        <div className="flex gap-2 items-center flex-wrap">
+          <span className="px-3 py-1 rounded-full text-xs bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400">All</span>
+          {name ? (
+            <span className="px-3 py-1 rounded-full text-xs bg-gray-900 dark:bg-white text-white dark:text-gray-900 font-medium">
+              {name}
+            </span>
+          ) : (
+            <span className="px-3 py-1 rounded-full text-xs bg-gray-200 dark:bg-gray-700 text-transparent">Category</span>
+          )}
+          <span className="px-3 py-1 rounded-full text-xs bg-gray-100 dark:bg-gray-800 text-gray-400 dark:text-gray-600">…</span>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ── Main form ──────────────────────────────────────────────
 
 export default function CategoryForm({
   action,
@@ -39,6 +124,8 @@ export default function CategoryForm({
   const [name, setName] = useState(category?.name ?? '')
   const [slug, setSlug] = useState(category?.slug ?? '')
   const [slugEdited, setSlugEdited] = useState(!!category)
+  const [description, setDescription] = useState(category?.description ?? '')
+  const [isFeatured, setIsFeatured] = useState(category?.is_featured ?? false)
 
   const [imagePreview, setImagePreview] = useState<string | null>(category?.image ?? null)
   const [imageUrl, setImageUrl] = useState<string | null>(category?.image ?? null)
@@ -71,8 +158,9 @@ export default function CategoryForm({
     const res = await fetch('/api/upload', { method: 'POST', body: fd })
     const json = await res.json()
     setUploading(false)
-    if (!res.ok) { setUploadError(json.error ?? 'Upload failed'); return }
+    if (!res.ok) { setUploadError(json.error ?? 'Upload failed'); setImagePreview(null); return }
     setImageUrl(json.url)
+    setImagePreview(json.url)
   }
 
   const handleDrop = (e: DragEvent<HTMLDivElement>) => {
@@ -96,9 +184,9 @@ export default function CategoryForm({
   }
 
   return (
-    <form ref={formRef} onSubmit={handleSubmit} className="space-y-5">
+    <form ref={formRef} onSubmit={handleSubmit}>
 
-      {/* Top progress bar */}
+      {/* Progress bar */}
       <div className={`fixed top-0 left-0 right-0 z-50 h-0.5 transition-opacity duration-300 ${isPending ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}>
         <div className={`h-full bg-gray-900 dark:bg-white transition-all duration-[2000ms] ease-out ${isPending ? 'w-4/5' : 'w-0'}`} />
       </div>
@@ -114,129 +202,135 @@ export default function CategoryForm({
         <button type="button" onClick={() => setToast(false)} className="ml-1 text-white/40 hover:text-white transition-colors text-base leading-none">×</button>
       </div>
 
-      {/* Error */}
       {state && 'error' in state && (
-        <div className="bg-red-50 dark:bg-red-950 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-400 text-sm rounded-lg px-4 py-3">
+        <div className="mb-5 bg-red-50 dark:bg-red-950 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-400 text-sm rounded-lg px-4 py-3">
           {state.error}
         </div>
       )}
 
-      {/* Image upload */}
-      <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-5">
-        <h2 className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-4">Category Image</h2>
+      {/* Two-column layout */}
+      <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_340px] gap-6">
 
-        {imagePreview ? (
-          <div className="relative group">
-            <div className="w-full h-48 rounded-xl overflow-hidden bg-gray-100 dark:bg-gray-800">
-              <img src={imagePreview} alt="" className="w-full h-full object-cover" />
-              {uploading && (
-                <div className="absolute inset-0 bg-black/50 flex items-center justify-center rounded-xl">
-                  <svg className="w-6 h-6 text-white animate-spin" fill="none" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-                  </svg>
+        {/* Left — form */}
+        <div className="space-y-5 min-w-0">
+
+          {/* Image */}
+          <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-5">
+            <h2 className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-4">Category Image</h2>
+
+            {imagePreview ? (
+              <div className="relative group">
+                <div className="w-full h-52 rounded-xl overflow-hidden bg-gray-100 dark:bg-gray-800">
+                  <img src={imagePreview} alt="" className="w-full h-full object-cover" />
+                  {uploading && (
+                    <div className="absolute inset-0 bg-black/50 flex items-center justify-center rounded-xl">
+                      <svg className="w-6 h-6 text-white animate-spin" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                      </svg>
+                    </div>
+                  )}
                 </div>
+                <div className="absolute top-2 right-2 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                  <button type="button" onClick={() => fileInputRef.current?.click()}
+                    className="px-3 py-1.5 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 text-xs font-medium rounded-lg shadow hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
+                    Replace
+                  </button>
+                  <button type="button" onClick={() => { setImagePreview(null); setImageUrl(null) }}
+                    className="px-3 py-1.5 bg-white dark:bg-gray-800 text-red-500 text-xs font-medium rounded-lg shadow hover:bg-red-50 dark:hover:bg-gray-700 transition-colors">
+                    Remove
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div
+                onDragOver={e => { e.preventDefault(); setDragOver(true) }}
+                onDragLeave={() => setDragOver(false)}
+                onDrop={handleDrop}
+                onClick={() => fileInputRef.current?.click()}
+                className={`flex flex-col items-center justify-center gap-2 border-2 border-dashed rounded-xl p-10 cursor-pointer transition-colors ${
+                  dragOver
+                    ? 'border-gray-400 bg-gray-100 dark:bg-gray-800'
+                    : 'border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50 hover:border-gray-300 dark:hover:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-800'
+                }`}
+              >
+                <svg className="w-10 h-10 text-gray-300 dark:text-gray-600" fill="none" viewBox="0 0 24 24" strokeWidth={1} stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="m2.25 15.75 5.159-5.159a2.25 2.25 0 0 1 3.182 0l5.159 5.159m-1.5-1.5 1.409-1.409a2.25 2.25 0 0 1 3.182 0l2.909 2.909m-18 3.75h16.5a1.5 1.5 0 0 0 1.5-1.5V6a1.5 1.5 0 0 0-1.5-1.5H3.75A1.5 1.5 0 0 0 2.25 6v12a1.5 1.5 0 0 0 1.5 1.5Zm10.5-11.25h.008v.008h-.008V8.25Zm.375 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Z" />
+                </svg>
+                <p className="text-sm font-medium text-gray-600 dark:text-gray-400">
+                  Drop image here, or <span className="text-gray-900 dark:text-white underline underline-offset-2">browse</span>
+                </p>
+                <p className="text-xs text-gray-400 dark:text-gray-600">PNG, JPG, WebP up to 10 MB</p>
+              </div>
+            )}
+            <input ref={fileInputRef} type="file" accept="image/*" onChange={handleFileInput} className="hidden" />
+            {uploadError && <p className="text-xs text-red-500 dark:text-red-400 mt-2">{uploadError}</p>}
+            <p className="text-xs text-gray-400 dark:text-gray-600 mt-2">Used as the hero image on the category page.</p>
+          </div>
+
+          {/* Details */}
+          <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-5 space-y-4">
+            <h2 className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Details</h2>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">Name</label>
+              <input name="name" value={name} onChange={e => setName(e.target.value)} required placeholder="e.g. Bibles" className={inputCls} />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">URL Slug</label>
+              <input name="slug" value={slug} onChange={e => { setSlug(e.target.value); setSlugEdited(true) }} required placeholder="bibles" className={`${inputCls} font-mono`} />
+              <p className="text-xs text-gray-400 dark:text-gray-600 mt-1">Auto-generated from name.</p>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
+                Description <span className="text-xs font-normal text-gray-400 dark:text-gray-600">(optional)</span>
+              </label>
+              <textarea name="description" value={description} onChange={e => setDescription(e.target.value)} rows={3} placeholder="A short description shown on the category page…" className={`${inputCls} resize-none`} />
+            </div>
+          </div>
+
+          {/* Marketing */}
+          <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-5">
+            <h2 className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-4">Marketing</h2>
+            <label className="flex items-center gap-3 cursor-pointer">
+              <input name="is_featured" type="checkbox" checked={isFeatured} onChange={e => setIsFeatured(e.target.checked)}
+                className="w-4 h-4 rounded border-gray-300 accent-gray-900" />
+              <div>
+                <p className="text-sm font-medium text-gray-700 dark:text-gray-300">Featured category</p>
+                <p className="text-xs text-gray-400 dark:text-gray-600">Highlight this category on the homepage and shop page</p>
+              </div>
+            </label>
+          </div>
+
+          {/* Actions */}
+          <div className="flex items-center gap-3 pb-8">
+            <button type="submit" disabled={isPending || uploading}
+              className="px-5 py-2.5 bg-gray-900 dark:bg-white text-white dark:text-gray-900 text-sm font-medium rounded-lg hover:bg-gray-700 dark:hover:bg-gray-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2">
+              {isPending && (
+                <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                </svg>
               )}
-            </div>
-            <div className="absolute top-2 right-2 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-              <button type="button" onClick={() => fileInputRef.current?.click()}
-                className="px-3 py-1.5 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 text-xs font-medium rounded-lg shadow hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
-                Replace
-              </button>
-              <button type="button" onClick={() => { setImagePreview(null); setImageUrl(null) }}
-                className="px-3 py-1.5 bg-white dark:bg-gray-800 text-red-500 text-xs font-medium rounded-lg shadow hover:bg-red-50 dark:hover:bg-gray-700 transition-colors">
-                Remove
-              </button>
-            </div>
+              {uploading ? 'Uploading image…' : isPending ? 'Saving…' : submitLabel}
+            </button>
+            <Link href="/admin/categories" className="px-5 py-2.5 text-sm text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors">
+              Cancel
+            </Link>
           </div>
-        ) : (
-          <div
-            onDragOver={e => { e.preventDefault(); setDragOver(true) }}
-            onDragLeave={() => setDragOver(false)}
-            onDrop={handleDrop}
-            onClick={() => fileInputRef.current?.click()}
-            className={`flex flex-col items-center justify-center gap-2 border-2 border-dashed rounded-xl p-10 cursor-pointer transition-colors ${
-              dragOver
-                ? 'border-gray-400 bg-gray-100 dark:bg-gray-800'
-                : 'border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50 hover:border-gray-300 dark:hover:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-800'
-            }`}
-          >
-            <svg className="w-10 h-10 text-gray-300 dark:text-gray-600" fill="none" viewBox="0 0 24 24" strokeWidth={1} stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" d="m2.25 15.75 5.159-5.159a2.25 2.25 0 0 1 3.182 0l5.159 5.159m-1.5-1.5 1.409-1.409a2.25 2.25 0 0 1 3.182 0l2.909 2.909m-18 3.75h16.5a1.5 1.5 0 0 0 1.5-1.5V6a1.5 1.5 0 0 0-1.5-1.5H3.75A1.5 1.5 0 0 0 2.25 6v12a1.5 1.5 0 0 0 1.5 1.5Zm10.5-11.25h.008v.008h-.008V8.25Zm.375 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Z" />
-            </svg>
-            <p className="text-sm font-medium text-gray-600 dark:text-gray-400">
-              Drop image here, or <span className="text-gray-900 dark:text-white underline underline-offset-2">browse</span>
-            </p>
-            <p className="text-xs text-gray-400 dark:text-gray-600">PNG, JPG, WebP up to 10 MB</p>
-          </div>
-        )}
-
-        <input ref={fileInputRef} type="file" accept="image/*" onChange={handleFileInput} className="hidden" />
-        {uploadError && <p className="text-xs text-red-500 dark:text-red-400 mt-2">{uploadError}</p>}
-        <p className="text-xs text-gray-400 dark:text-gray-600 mt-2">Used as the hero image on the category page.</p>
-      </div>
-
-      {/* Details */}
-      <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-5 space-y-4">
-        <h2 className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Details</h2>
-
-        <div>
-          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">Name</label>
-          <input
-            name="name"
-            value={name}
-            onChange={e => setName(e.target.value)}
-            required
-            placeholder="e.g. Bibles"
-            className={inputCls}
-          />
         </div>
 
-        <div>
-          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">URL Slug</label>
-          <input
-            name="slug"
-            value={slug}
-            onChange={e => { setSlug(e.target.value); setSlugEdited(true) }}
-            required
-            placeholder="bibles"
-            className={`${inputCls} font-mono`}
-          />
-          <p className="text-xs text-gray-400 dark:text-gray-600 mt-1">Auto-generated from name.</p>
-        </div>
-
-        <div>
-          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
-            Description <span className="text-xs font-normal text-gray-400 dark:text-gray-600">(optional)</span>
-          </label>
-          <textarea
-            name="description"
-            defaultValue={category?.description ?? ''}
-            rows={3}
-            placeholder="A short description shown on the category page…"
-            className={`${inputCls} resize-none`}
+        {/* Right — live preview */}
+        <div className="min-w-0">
+          <CategoryPreview
+            name={name}
+            description={description}
+            image={imagePreview}
+            isFeatured={isFeatured}
           />
         </div>
-      </div>
-
-      {/* Actions */}
-      <div className="flex items-center gap-3 pb-8">
-        <button
-          type="submit"
-          disabled={isPending || uploading}
-          className="px-5 py-2.5 bg-gray-900 dark:bg-white text-white dark:text-gray-900 text-sm font-medium rounded-lg hover:bg-gray-700 dark:hover:bg-gray-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
-        >
-          {isPending && (
-            <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
-              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-            </svg>
-          )}
-          {uploading ? 'Uploading image…' : isPending ? 'Saving…' : submitLabel}
-        </button>
-        <Link href="/admin/categories" className="px-5 py-2.5 text-sm text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors">
-          Cancel
-        </Link>
       </div>
     </form>
   )

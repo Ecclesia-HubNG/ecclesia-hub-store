@@ -16,6 +16,7 @@ function parseForm(formData: FormData) {
     slug: slug || slugify(name),
     description: (formData.get('description') as string) || null,
     image: (formData.get('image') as string) || null,
+    is_featured: formData.get('is_featured') === 'on',
   }
 }
 

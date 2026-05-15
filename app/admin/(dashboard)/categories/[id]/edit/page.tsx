@@ -18,7 +18,7 @@ export default async function EditCategoryPage({ params }: { params: { id: strin
   const boundAction = updateCategory.bind(null, category.id)
 
   return (
-    <div className="p-8 max-w-2xl">
+    <div className="p-6">
       <div className="mb-6">
         <Link href="/admin/categories" className="text-sm text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors">
           ← Categories
