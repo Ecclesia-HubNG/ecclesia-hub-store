@@ -1,8 +1,15 @@
+import { createAdminClient } from '@/lib/supabase/admin'
 import Link from 'next/link'
 import { createCategory } from '@/lib/actions/categories'
 import CategoryForm from '@/components/admin/CategoryForm'
 
-export default function NewCategoryPage() {
+export default async function NewCategoryPage() {
+  const supabase = createAdminClient()
+  const { data: categories } = await supabase
+    .from('categories')
+    .select('id, name, slug, description, image, is_featured')
+    .order('created_at', { ascending: false })
+
   return (
     <div className="p-6">
       <div className="mb-6">
@@ -11,7 +18,11 @@ export default function NewCategoryPage() {
         </Link>
         <h1 className="text-xl font-semibold text-gray-900 dark:text-white mt-2">New category</h1>
       </div>
-      <CategoryForm action={createCategory} submitLabel="Create category" />
+      <CategoryForm
+        action={createCategory}
+        submitLabel="Create category"
+        categories={categories ?? []}
+      />
     </div>
   )
 }

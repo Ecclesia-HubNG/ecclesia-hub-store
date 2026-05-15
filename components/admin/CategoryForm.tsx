@@ -4,6 +4,8 @@ import { useFormState } from 'react-dom'
 import { useEffect, useRef, useState, useTransition } from 'react'
 import type { DragEvent, ChangeEvent, FormEvent } from 'react'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
+import CategoriesSideList from '@/components/admin/CategoriesSideList'
 
 type Category = {
   id: string
@@ -11,10 +13,10 @@ type Category = {
   slug: string
   description: string | null
   image: string | null
-  is_featured?: boolean
+  is_featured: boolean
 }
 
-type ActionResult = { error: string } | { success: true } | undefined | null
+type ActionResult = { error: string } | { success: true; id?: string } | undefined | null
 type ActionFn = (state: ActionResult, formData: FormData) => Promise<ActionResult>
 
 function slugify(s: string) {
@@ -23,99 +25,18 @@ function slugify(s: string) {
 
 const inputCls = 'w-full px-3.5 py-2.5 border border-gray-200 dark:border-gray-700 rounded-lg text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-gray-900/10 dark:focus:ring-white/10 focus:border-gray-400 dark:focus:border-gray-500 transition-colors placeholder:text-gray-400 dark:placeholder:text-gray-600'
 
-// ── Live preview ───────────────────────────────────────────
-
-function CategoryPreview({
-  name,
-  description,
-  image,
-  isFeatured,
-}: {
-  name: string
-  description: string
-  image: string | null
-  isFeatured: boolean
-}) {
-  return (
-    <div className="sticky top-6 space-y-3">
-      <div className="flex items-center justify-between mb-1">
-        <p className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Store preview</p>
-        {isFeatured && (
-          <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-purple-50 dark:bg-purple-950 text-purple-600 dark:text-purple-400">
-            Featured
-          </span>
-        )}
-      </div>
-
-      {/* Hero mock */}
-      <div className={`relative rounded-xl overflow-hidden ${image ? 'h-44' : 'h-32 bg-gray-100 dark:bg-gray-800'}`}>
-        {image ? (
-          <>
-            <img src={image} alt="" className="absolute inset-0 w-full h-full object-cover" />
-            <div className="absolute inset-0 bg-black/50" />
-          </>
-        ) : null}
-        <div className="relative h-full flex flex-col justify-end p-4">
-          {name ? (
-            <h3 className={`font-bold text-lg leading-tight ${image ? 'text-white' : 'text-gray-900 dark:text-white'}`}>
-              {name}
-            </h3>
-          ) : (
-            <div className="h-5 w-32 rounded bg-gray-200 dark:bg-gray-700" />
-          )}
-          {description ? (
-            <p className={`text-xs mt-1 line-clamp-2 leading-relaxed ${image ? 'text-white/80' : 'text-gray-500 dark:text-gray-400'}`}>
-              {description}
-            </p>
-          ) : (
-            <div className="h-3 w-48 rounded bg-gray-200 dark:bg-gray-700 mt-1.5" />
-          )}
-          <p className={`text-xs mt-2 font-medium uppercase tracking-widest ${image ? 'text-white/50' : 'text-gray-400 dark:text-gray-600'}`}>
-            0 products
-          </p>
-        </div>
-      </div>
-
-      {/* Product grid mock */}
-      <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-4">
-        <p className="text-xs text-gray-400 dark:text-gray-600 mb-3">Products will appear here</p>
-        <div className="grid grid-cols-3 gap-2">
-          {[...Array(6)].map((_, i) => (
-            <div key={i} className="aspect-square rounded-lg bg-gray-100 dark:bg-gray-800" />
-          ))}
-        </div>
-      </div>
-
-      {/* Category pill mock */}
-      <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-4">
-        <p className="text-xs text-gray-400 dark:text-gray-600 mb-3">Filter pill on shop page</p>
-        <div className="flex gap-2 items-center flex-wrap">
-          <span className="px-3 py-1 rounded-full text-xs bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400">All</span>
-          {name ? (
-            <span className="px-3 py-1 rounded-full text-xs bg-gray-900 dark:bg-white text-white dark:text-gray-900 font-medium">
-              {name}
-            </span>
-          ) : (
-            <span className="px-3 py-1 rounded-full text-xs bg-gray-200 dark:bg-gray-700 text-transparent">Category</span>
-          )}
-          <span className="px-3 py-1 rounded-full text-xs bg-gray-100 dark:bg-gray-800 text-gray-400 dark:text-gray-600">…</span>
-        </div>
-      </div>
-    </div>
-  )
-}
-
-// ── Main form ──────────────────────────────────────────────
-
 export default function CategoryForm({
   action,
   category,
   submitLabel = 'Save category',
+  categories,
 }: {
   action: ActionFn
   category?: Category
   submitLabel?: string
+  categories?: Category[]
 }) {
+  const router = useRouter()
   const [state, formAction] = useFormState(action, null)
   const [isPending, startTransition] = useTransition()
   const formRef = useRef<HTMLFormElement>(null)
@@ -142,6 +63,17 @@ export default function CategoryForm({
   useEffect(() => {
     if (state && 'success' in state) {
       setToast(true)
+      router.refresh()
+      // Reset form when creating (not editing)
+      if (!category) {
+        setName('')
+        setSlug('')
+        setSlugEdited(false)
+        setDescription('')
+        setIsFeatured(false)
+        setImagePreview(null)
+        setImageUrl(null)
+      }
       const t = setTimeout(() => setToast(false), 4000)
       return () => clearTimeout(t)
     }
@@ -183,6 +115,8 @@ export default function CategoryForm({
     startTransition(() => { formAction(fd) })
   }
 
+  const hasRightCol = categories !== undefined
+
   return (
     <form ref={formRef} onSubmit={handleSubmit}>
 
@@ -208,10 +142,9 @@ export default function CategoryForm({
         </div>
       )}
 
-      {/* Two-column layout */}
-      <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_340px] gap-6">
+      <div className={`grid gap-6 ${hasRightCol ? 'grid-cols-1 xl:grid-cols-[minmax(0,1fr)_340px]' : 'grid-cols-1 max-w-2xl'}`}>
 
-        {/* Left — form */}
+        {/* Left — form fields */}
         <div className="space-y-5 min-w-0">
 
           {/* Image */}
@@ -322,15 +255,12 @@ export default function CategoryForm({
           </div>
         </div>
 
-        {/* Right — live preview */}
-        <div className="min-w-0">
-          <CategoryPreview
-            name={name}
-            description={description}
-            image={imagePreview}
-            isFeatured={isFeatured}
-          />
-        </div>
+        {/* Right — categories list (new page only) */}
+        {hasRightCol && (
+          <div className="min-w-0">
+            <CategoriesSideList categories={categories} />
+          </div>
+        )}
       </div>
     </form>
   )
