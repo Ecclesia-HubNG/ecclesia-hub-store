@@ -1,7 +1,8 @@
 'use client'
 
+import { useState, useEffect } from 'react'
 import Link from 'next/link'
-import { usePathname } from 'next/navigation'
+import { usePathname, useRouter } from 'next/navigation'
 import { signOut } from '@/lib/actions/auth'
 
 function Icon({ d }: { d: string }) {
@@ -73,7 +74,13 @@ const productSubPaths = ['/admin/products', '/admin/categories', '/admin/brands'
 
 export default function AdminSidebar() {
   const pathname = usePathname()
-  const isProductsOpen = productSubPaths.some(p => pathname.startsWith(p))
+  const router = useRouter()
+  const isOnProductsPath = productSubPaths.some(p => pathname.startsWith(p))
+  const [productsOpen, setProductsOpen] = useState(isOnProductsPath)
+
+  useEffect(() => {
+    if (isOnProductsPath) setProductsOpen(true)
+  }, [isOnProductsPath])
 
   return (
     <aside className="w-60 bg-gray-900 flex flex-col h-full shrink-0">
@@ -87,23 +94,27 @@ export default function AdminSidebar() {
       <nav className="flex-1 px-3 py-4 space-y-0.5 overflow-y-auto">
         {navItems.map(({ label, href, icon, exact, children }) => {
           const isActive = exact ? pathname === href : pathname.startsWith(href)
-          const isOpen = children ? isProductsOpen : false
+          const isOpen = children ? productsOpen : false
 
           return (
             <div key={href}>
-              <Link
-                href={href}
-                className={`flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors ${
-                  isActive && !children
-                    ? 'bg-white/10 text-white font-medium'
-                    : isOpen
-                    ? 'text-white font-medium'
-                    : 'text-gray-400 hover:bg-white/5 hover:text-gray-200'
-                }`}
-              >
-                <Icon d={icon} />
-                <span className="flex-1">{label}</span>
-                {children && (
+              {children ? (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setProductsOpen(prev => {
+                      if (!prev) router.push(href)
+                      return !prev
+                    })
+                  }}
+                  className={`flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors w-full text-left ${
+                    isOpen
+                      ? 'text-white font-medium'
+                      : 'text-gray-400 hover:bg-white/5 hover:text-gray-200'
+                  }`}
+                >
+                  <Icon d={icon} />
+                  <span className="flex-1">{label}</span>
                   <svg
                     className={`w-3.5 h-3.5 transition-transform ${isOpen ? 'rotate-180' : ''}`}
                     fill="none"
@@ -113,8 +124,20 @@ export default function AdminSidebar() {
                   >
                     <path strokeLinecap="round" strokeLinejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
                   </svg>
-                )}
-              </Link>
+                </button>
+              ) : (
+                <Link
+                  href={href}
+                  className={`flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors ${
+                    isActive
+                      ? 'bg-white/10 text-white font-medium'
+                      : 'text-gray-400 hover:bg-white/5 hover:text-gray-200'
+                  }`}
+                >
+                  <Icon d={icon} />
+                  <span className="flex-1">{label}</span>
+                </Link>
+              )}
 
               {children && isOpen && (
                 <div className="mt-0.5 ml-3 pl-4 border-l border-white/10 space-y-0.5">
