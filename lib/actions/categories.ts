@@ -25,7 +25,8 @@ export async function createCategory(_: unknown, formData: FormData) {
   const { data, error } = await supabase.from('categories').insert(parseForm(formData)).select('id').single()
   if (error) return { error: error.message }
   revalidatePath('/admin/categories')
-  redirect(`/admin/categories/${data.id}/edit?saved=1`)
+  revalidatePath('/admin/categories/new')
+  return { success: true as const, id: data.id }
 }
 
 export async function updateCategory(id: string, _: unknown, formData: FormData) {
