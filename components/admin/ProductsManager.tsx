@@ -295,7 +295,7 @@ export function ProductsManager({ products }: { products: Product[] }) {
           {showDatePicker && (
             <>
               <div className="fixed inset-0 z-10" onClick={() => setShowDatePicker(false)} />
-              <div className="absolute left-0 top-full mt-1.5 z-20 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl shadow-lg p-4 min-w-60">
+              <div className="absolute right-0 top-full mt-1.5 z-20 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl shadow-lg p-4 min-w-60">
                 <p className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-3">Filter by created date</p>
                 <div className="space-y-2.5">
                   <div>
