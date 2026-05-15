@@ -149,7 +149,7 @@ export default async function AdminProductsPage() {
 
                   {/* Actions */}
                   <td className="px-4 py-3">
-                    <div className="flex items-center gap-3 justify-end">
+                    <div className="flex items-center gap-5 justify-end">
                       <DuplicateButton id={product.id} action={duplicateProduct} />
                       <Link
                         href={`/admin/products/${product.id}/edit`}
