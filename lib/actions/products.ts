@@ -92,9 +92,15 @@ export async function bulkImportProducts(rows: Array<{
 }>) {
   if (!rows.length) return { success: true as const, count: 0 }
   const supabase = createAdminClient()
+  const now = Date.now()
   const toInsert = rows.map((r, i) => ({
-    ...r,
-    slug: `${slugify(r.name)}-${Date.now()}-${i}`,
+    name: r.name,
+    price: r.price,
+    compare_at_price: r.compare_at_price,
+    stock: r.stock,
+    is_active: r.is_active,
+    is_featured: r.is_featured,
+    slug: `${slugify(r.name)}-${now}-${i}`,
   }))
   const { error, data } = await supabase.from('products').insert(toInsert).select('id')
   if (error) return { error: error.message }
