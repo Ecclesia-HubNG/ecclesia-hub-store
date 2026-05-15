@@ -73,7 +73,7 @@ function genId() { return Math.random().toString(36).slice(2) }
 // ─── Styles ───────────────────────────────────────────────
 
 const inputCls = 'w-full px-3.5 py-2.5 border border-gray-200 dark:border-gray-700 rounded-lg text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-gray-900/10 dark:focus:ring-white/10 focus:border-gray-400 dark:focus:border-gray-500 transition-colors placeholder:text-gray-400 dark:placeholder:text-gray-600'
-const selectCls = 'w-full px-3.5 py-2.5 border border-gray-200 dark:border-gray-700 rounded-lg text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-gray-900/10 dark:focus:ring-white/10 focus:border-gray-400 dark:focus:border-gray-500 transition-colors'
+const selectCls = 'w-full pl-3.5 pr-10 py-2.5 border border-gray-200 dark:border-gray-700 rounded-lg text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-gray-900/10 dark:focus:ring-white/10 focus:border-gray-400 dark:focus:border-gray-500 transition-colors appearance-none'
 
 // ─── Sub-components ───────────────────────────────────────
 
@@ -120,6 +120,19 @@ function RemoveBtn({ onClick }: { onClick: () => void }) {
         <path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" />
       </svg>
     </button>
+  )
+}
+
+function SelectWrap({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="relative">
+      {children}
+      <div className="pointer-events-none absolute inset-y-0 right-3 flex items-center">
+        <svg className="w-4 h-4 text-gray-400 dark:text-gray-500" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
+        </svg>
+      </div>
+    </div>
   )
 }
 
@@ -647,10 +660,12 @@ export default function ProductForm({
             <div className="space-y-3">
               <div>
                 <FieldLabel>Category</FieldLabel>
-                <select name="category_id" value={selectedCategoryId} onChange={e => setSelectedCategoryId(e.target.value)} className={selectCls}>
-                  <option value="">No category</option>
-                  {localCategories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-                </select>
+                <SelectWrap>
+                  <select name="category_id" value={selectedCategoryId} onChange={e => setSelectedCategoryId(e.target.value)} className={selectCls}>
+                    <option value="">No category</option>
+                    {localCategories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                  </select>
+                </SelectWrap>
                 {showNewCategory ? (
                   <div className="mt-2 space-y-1.5">
                     <div className="flex gap-2">
@@ -675,10 +690,12 @@ export default function ProductForm({
               </div>
               <div>
                 <FieldLabel optional>Brand</FieldLabel>
-                <select name="brand_id" value={selectedBrandId} onChange={e => setSelectedBrandId(e.target.value)} className={selectCls}>
-                  <option value="">No brand</option>
-                  {localBrands.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
-                </select>
+                <SelectWrap>
+                  <select name="brand_id" value={selectedBrandId} onChange={e => setSelectedBrandId(e.target.value)} className={selectCls}>
+                    <option value="">No brand</option>
+                    {localBrands.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
+                  </select>
+                </SelectWrap>
                 {showNewBrand ? (
                   <div className="mt-2 space-y-1.5">
                     <div className="flex gap-2">
@@ -747,13 +764,13 @@ export default function ProductForm({
             <div className="space-y-3">
               <div>
                 <FieldLabel>Shipping Type</FieldLabel>
-                <select name="shipping_type" defaultValue={product?.shipping_type ?? 'standard'} className={selectCls}>
+                <SelectWrap><select name="shipping_type" defaultValue={product?.shipping_type ?? 'standard'} className={selectCls}>
                   <option value="standard">Standard Delivery</option>
                   <option value="express">Express Delivery</option>
                   <option value="free">Free Shipping</option>
                   <option value="pickup">Store Pickup</option>
                   <option value="digital">Digital / Download</option>
-                </select>
+                </select></SelectWrap>
               </div>
               <div>
                 <FieldLabel optional>Weight (kg)</FieldLabel>
