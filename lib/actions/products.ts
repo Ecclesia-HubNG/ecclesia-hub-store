@@ -69,6 +69,39 @@ export async function deleteProduct(formData: FormData) {
   revalidatePath('/admin/products')
 }
 
+export async function checkDuplicateProduct(name: string, excludeId?: string) {
+  if (name.trim().length < 2) return []
+  const supabase = createAdminClient()
+  let query = supabase
+    .from('products')
+    .select('id, name, slug, thumbnail')
+    .ilike('name', `%${name.trim()}%`)
+    .limit(5)
+  if (excludeId) query = query.neq('id', excludeId)
+  const { data } = await query
+  return data ?? []
+}
+
+export async function bulkImportProducts(rows: Array<{
+  name: string
+  price: number
+  compare_at_price: number | null
+  stock: number
+  is_active: boolean
+  is_featured: boolean
+}>) {
+  if (!rows.length) return { success: true as const, count: 0 }
+  const supabase = createAdminClient()
+  const toInsert = rows.map((r, i) => ({
+    ...r,
+    slug: `${slugify(r.name)}-${Date.now()}-${i}`,
+  }))
+  const { error, data } = await supabase.from('products').insert(toInsert).select('id')
+  if (error) return { error: error.message }
+  revalidatePath('/admin/products')
+  return { success: true as const, count: data?.length ?? 0 }
+}
+
 export async function quickUpdateProduct(id: string, data: {
   name: string
   price: number

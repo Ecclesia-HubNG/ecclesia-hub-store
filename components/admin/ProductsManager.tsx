@@ -3,7 +3,7 @@
 import { useState, useMemo, useTransition } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { deleteProduct, duplicateProduct, quickUpdateProduct } from '@/lib/actions/products'
+import { deleteProduct, duplicateProduct, quickUpdateProduct, bulkImportProducts } from '@/lib/actions/products'
 import { DeleteButton } from '@/components/admin/DeleteButton'
 import { DuplicateButton } from '@/components/admin/DuplicateButton'
 
@@ -65,6 +65,72 @@ function Toggle({ on, onChange }: { on: boolean; onChange: () => void }) {
       <span className={`inline-block h-3.5 w-3.5 rounded-full bg-white dark:bg-gray-900 shadow transform transition-transform duration-200 ${on ? 'translate-x-4' : 'translate-x-0.5'}`} />
     </button>
   )
+}
+
+function slugify(s: string) {
+  return s.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '')
+}
+
+function parseCSVLine(line: string): string[] {
+  const values: string[] = []
+  let current = ''
+  let inQuotes = false
+  for (let i = 0; i < line.length; i++) {
+    const ch = line[i]
+    if (ch === '"') {
+      if (inQuotes && line[i + 1] === '"') { current += '"'; i++ }
+      else inQuotes = !inQuotes
+    } else if (ch === ',' && !inQuotes) {
+      values.push(current); current = ''
+    } else {
+      current += ch
+    }
+  }
+  values.push(current)
+  return values
+}
+
+type ImportRow = {
+  name: string
+  price: number
+  compare_at_price: number | null
+  stock: number
+  is_active: boolean
+  is_featured: boolean
+  isDuplicate: boolean
+}
+
+function parseImportCSV(text: string, existing: Product[]): ImportRow[] {
+  const lines = text.trim().split('\n').filter(Boolean)
+  if (lines.length < 2) return []
+  const headers = parseCSVLine(lines[0]).map(h => h.toLowerCase().trim())
+  const nameIdx = headers.findIndex(h => h === 'name')
+  const priceIdx = headers.findIndex(h => h === 'price')
+  const compareIdx = headers.findIndex(h => h.includes('compare'))
+  const stockIdx = headers.findIndex(h => h === 'stock')
+  const statusIdx = headers.findIndex(h => h === 'status')
+  const featuredIdx = headers.findIndex(h => h === 'featured')
+  if (nameIdx === -1 || priceIdx === -1) return []
+
+  const existingNames = new Set(existing.map(p => p.name.toLowerCase().trim()))
+  const existingSlugs = new Set(existing.map(p => p.slug))
+
+  return lines.slice(1).map(line => {
+    const vals = parseCSVLine(line)
+    const name = vals[nameIdx]?.trim() ?? ''
+    const isDuplicate =
+      existingNames.has(name.toLowerCase()) ||
+      existingSlugs.has(slugify(name))
+    return {
+      name,
+      price: parseFloat(vals[priceIdx] ?? '0') || 0,
+      compare_at_price: compareIdx !== -1 && vals[compareIdx] ? parseFloat(vals[compareIdx]) || null : null,
+      stock: stockIdx !== -1 ? parseInt(vals[stockIdx] ?? '0') || 0 : 0,
+      is_active: statusIdx !== -1 ? vals[statusIdx]?.toLowerCase() === 'active' : true,
+      is_featured: featuredIdx !== -1 ? vals[featuredIdx]?.toLowerCase() === 'yes' : false,
+      isDuplicate,
+    }
+  }).filter(r => r.name.length > 0)
 }
 
 function exportToCSV(products: Product[]) {
@@ -129,6 +195,38 @@ export function ProductsManager({
   const [qFeatured, setQFeatured] = useState(false)
   const [saveError, setSaveError] = useState('')
   const [isSaving, startSave] = useTransition()
+
+  // CSV import
+  const [importRows, setImportRows] = useState<ImportRow[] | null>(null)
+  const [isImporting, startImport] = useTransition()
+  const [importDone, setImportDone] = useState('')
+
+  const handleImportFile = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    e.target.value = ''
+    const reader = new FileReader()
+    reader.onload = ev => {
+      const text = ev.target?.result as string
+      const rows = parseImportCSV(text, products)
+      setImportRows(rows)
+      setImportDone('')
+    }
+    reader.readAsText(file)
+  }
+
+  const handleConfirmImport = () => {
+    if (!importRows) return
+    const toImport = importRows.filter(r => !r.isDuplicate)
+    if (!toImport.length) { setImportRows(null); return }
+    startImport(async () => {
+      const result = await bulkImportProducts(toImport)
+      if ('error' in result) { setImportDone(`Error: ${result.error}`); return }
+      setImportDone(`${result.count} product${result.count !== 1 ? 's' : ''} imported successfully.`)
+      setImportRows(null)
+      router.refresh()
+    })
+  }
 
   const openQuickEdit = (p: Product) => {
     setEditingProduct(p)
@@ -239,7 +337,7 @@ export function ProductsManager({
                       <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5m-13.5-9L12 3m0 0 4.5 4.5M12 3v13.5" />
                     </svg>
                     Import CSV
-                    <input type="file" accept=".csv" className="hidden" onChange={() => setShowMoreActions(false)} />
+                    <input type="file" accept=".csv" className="hidden" onChange={e => { handleImportFile(e); setShowMoreActions(false) }} />
                   </label>
                 </div>
               </>
@@ -539,6 +637,100 @@ export function ProductsManager({
             </tbody>
           </table>
         </div>
+      )}
+
+      {/* Import result toast */}
+      {importDone && (
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 flex items-center gap-3 px-4 py-3 bg-gray-900 dark:bg-white text-white dark:text-gray-900 text-sm font-medium rounded-xl shadow-lg">
+          <svg className="w-4 h-4 text-green-400 dark:text-green-600 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="m4.5 12.75 6 6 9-13.5" />
+          </svg>
+          {importDone}
+          <button type="button" onClick={() => setImportDone('')} className="ml-2 opacity-60 hover:opacity-100">
+            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+      )}
+
+      {/* CSV Import modal */}
+      {importRows !== null && (
+        <>
+          <div className="fixed inset-0 z-40 bg-black/50 backdrop-blur-[2px]" onClick={() => setImportRows(null)} />
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-2xl w-full max-w-md overflow-hidden">
+              {/* Header */}
+              <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 dark:border-gray-800">
+                <div>
+                  <h2 className="font-semibold text-gray-900 dark:text-white">Import Products</h2>
+                  <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">{importRows.length} rows found in CSV</p>
+                </div>
+                <button type="button" onClick={() => setImportRows(null)}
+                  className="w-8 h-8 flex items-center justify-center rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+
+              {/* Summary */}
+              <div className="px-6 py-4 space-y-3">
+                <div className="grid grid-cols-3 gap-3">
+                  <div className="p-3 bg-gray-50 dark:bg-gray-800 rounded-xl text-center">
+                    <p className="text-xl font-bold text-gray-900 dark:text-white">{importRows.length}</p>
+                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">Total rows</p>
+                  </div>
+                  <div className="p-3 bg-green-50 dark:bg-green-950/40 rounded-xl text-center">
+                    <p className="text-xl font-bold text-green-700 dark:text-green-400">{importRows.filter(r => !r.isDuplicate).length}</p>
+                    <p className="text-xs text-green-600 dark:text-green-500 mt-0.5">Will import</p>
+                  </div>
+                  <div className="p-3 bg-amber-50 dark:bg-amber-950/40 rounded-xl text-center">
+                    <p className="text-xl font-bold text-amber-700 dark:text-amber-400">{importRows.filter(r => r.isDuplicate).length}</p>
+                    <p className="text-xs text-amber-600 dark:text-amber-500 mt-0.5">Duplicates (skip)</p>
+                  </div>
+                </div>
+
+                {/* Preview list */}
+                {importRows.length > 0 && (
+                  <div className="max-h-52 overflow-y-auto border border-gray-100 dark:border-gray-800 rounded-xl divide-y divide-gray-100 dark:divide-gray-800">
+                    {importRows.map((r, i) => (
+                      <div key={i} className={`flex items-center gap-3 px-3 py-2.5 ${r.isDuplicate ? 'bg-amber-50/50 dark:bg-amber-950/20' : ''}`}>
+                        <div className="flex-1 min-w-0">
+                          <p className={`text-sm truncate ${r.isDuplicate ? 'text-amber-700 dark:text-amber-400' : 'text-gray-900 dark:text-white'}`}>{r.name}</p>
+                          <p className="text-xs text-gray-400 dark:text-gray-600 mt-0.5">₦{r.price.toLocaleString()} · {r.stock} in stock</p>
+                        </div>
+                        {r.isDuplicate ? (
+                          <span className="text-xs font-medium text-amber-600 dark:text-amber-500 shrink-0">duplicate</span>
+                        ) : (
+                          <span className="text-xs font-medium text-green-600 dark:text-green-400 shrink-0">new</span>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {importRows.filter(r => !r.isDuplicate).length === 0 && (
+                  <p className="text-sm text-center text-gray-500 dark:text-gray-400 py-2">
+                    All rows are duplicates — nothing to import.
+                  </p>
+                )}
+              </div>
+
+              {/* Footer */}
+              <div className="px-6 py-4 border-t border-gray-100 dark:border-gray-800 flex gap-3">
+                <button type="button" onClick={() => setImportRows(null)}
+                  className="flex-1 px-4 py-2.5 text-sm font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-800 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors">
+                  Cancel
+                </button>
+                <button type="button" onClick={handleConfirmImport} disabled={isImporting || importRows.filter(r => !r.isDuplicate).length === 0}
+                  className="flex-1 px-4 py-2.5 text-sm font-medium text-white bg-gray-900 dark:bg-white dark:text-gray-900 rounded-lg hover:bg-gray-700 dark:hover:bg-gray-100 transition-colors disabled:opacity-50">
+                  {isImporting ? 'Importing…' : `Import ${importRows.filter(r => !r.isDuplicate).length} products`}
+                </button>
+              </div>
+            </div>
+          </div>
+        </>
       )}
 
       {/* Quick edit drawer */}

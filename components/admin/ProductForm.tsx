@@ -6,6 +6,7 @@ import type { DragEvent, ChangeEvent, KeyboardEvent, FormEvent } from 'react'
 import Link from 'next/link'
 import { createCategoryInline } from '@/lib/actions/categories'
 import { createBrandInline } from '@/lib/actions/brands'
+import { checkDuplicateProduct } from '@/lib/actions/products'
 
 // ─── Types ────────────────────────────────────────────────
 
@@ -228,6 +229,16 @@ export default function ProductForm({
   })
 
   useEffect(() => { if (!slugEdited) setSlug(slugify(name)) }, [name, slugEdited])
+
+  const [dupResults, setDupResults] = useState<{ id: string; name: string; slug: string }[]>([])
+  useEffect(() => {
+    if (name.trim().length < 3) { setDupResults([]); return }
+    const timer = setTimeout(async () => {
+      const results = await checkDuplicateProduct(name, product?.id)
+      setDupResults(results)
+    }, 600)
+    return () => clearTimeout(timer)
+  }, [name, product?.id])
 
   // ── Image upload ─────────────────────────────────────────
 
@@ -477,6 +488,24 @@ export default function ProductForm({
               <div>
                 <FieldLabel>Product Name</FieldLabel>
                 <input name="name" value={name} onChange={e => setName(e.target.value)} required placeholder="e.g. NIV Study Bible" className={inputCls} />
+                {dupResults.length > 0 && (
+                  <div className="mt-2 flex items-start gap-2 p-3 bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800/60 rounded-lg">
+                    <svg className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126ZM12 15.75h.007v.008H12v-.008Z" />
+                    </svg>
+                    <div>
+                      <p className="text-xs font-semibold text-amber-700 dark:text-amber-400">Similar products already exist</p>
+                      <ul className="mt-1 space-y-0.5">
+                        {dupResults.map(p => (
+                          <li key={p.id} className="text-xs text-amber-600 dark:text-amber-500 flex items-center gap-1.5">
+                            <Link href={`/admin/products/${p.id}/edit`} target="_blank" className="hover:underline font-medium">{p.name}</Link>
+                            <span className="font-mono opacity-60">/{p.slug}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  </div>
+                )}
               </div>
               <div>
                 <FieldLabel optional>URL Slug</FieldLabel>
