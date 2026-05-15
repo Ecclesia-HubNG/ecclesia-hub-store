@@ -100,25 +100,40 @@ type ImportRow = {
   isDuplicate: boolean
 }
 
-function parseImportCSV(text: string, existing: Product[]): ImportRow[] {
-  // Strip UTF-8 BOM if present
-  const cleaned = text.replace(/^﻿/, '').replace(/^ï»¿/, '')
-  const lines = cleaned.trim().split('\n').filter(Boolean)
-  if (lines.length < 2) return []
-  const headers = parseCSVLine(lines[0]).map(h => h.toLowerCase().trim())
+const TEMPLATE_COLUMNS = ['Name', 'Price', 'Compare At Price', 'Stock', 'SKU', 'Status', 'Featured', 'Description'] as const
 
-  const nameIdx    = headers.findIndex(h => h === 'name')
-  // WooCommerce uses "Regular price"; our template uses "Price"
-  const priceIdx   = headers.findIndex(h => h === 'price' || h === 'regular price')
-  const compareIdx = headers.findIndex(h => h.includes('compare') || h === 'sale price')
-  const stockIdx   = headers.findIndex(h => h === 'stock')
-  // WooCommerce "In stock?" uses 1/0; our template uses Active/Inactive
-  const inStockIdx = headers.findIndex(h => h === 'in stock?')
-  const statusIdx  = headers.findIndex(h => h === 'status' || h === 'published')
-  // WooCommerce "Is featured?" uses 1/0; our template uses Yes/No
-  const featuredIdx = headers.findIndex(h => h === 'featured' || h === 'is featured?')
-  // WooCommerce has a Type column — we only want simple products
-  const typeIdx    = headers.findIndex(h => h === 'type')
+const TEMPLATE_CSV = [
+  '# Ecclesia Hub — Product Import Template',
+  '# Fill in your products below this line. Delete all comment rows (starting with #) before uploading.',
+  '# Columns:',
+  '#   Name              — Required. Product name.',
+  '#   Price             — Required. Selling price (numbers only, e.g. 5000).',
+  '#   Compare At Price  — Optional. Original/crossed-out price (leave blank if no sale).',
+  '#   Stock             — Required. Quantity available (whole number, e.g. 50).',
+  '#   SKU               — Optional. Your internal stock code.',
+  '#   Status            — Required. Must be exactly: Active or Inactive',
+  '#   Featured          — Required. Must be exactly: Yes or No',
+  '#   Description       — Optional. Short product description.',
+  TEMPLATE_COLUMNS.join(','),
+  '"Wireless Earbuds Pro",15000,20000,30,SKU-001,Active,Yes,"Premium sound quality with 24-hour battery life"',
+  '"Phone Case - Black",2500,,100,SKU-002,Active,No,"Slim protective case for all phone models"',
+  '"Broken Headphones",8000,,0,,Inactive,No,',
+].join('\n')
+
+function parseImportCSV(text: string, existing: Product[]): ImportRow[] {
+  const cleaned = text.replace(/^﻿/, '').replace(/^ï»¿/, '')
+  const lines = cleaned.trim().split('\n').filter(l => !l.trimStart().startsWith('#') && l.trim())
+  if (lines.length < 2) return []
+
+  const headers = parseCSVLine(lines[0]).map(h => h.trim())
+  const col = (name: string) => headers.findIndex(h => h.toLowerCase() === name.toLowerCase())
+
+  const nameIdx    = col('Name')
+  const priceIdx   = col('Price')
+  const compareIdx = col('Compare At Price')
+  const stockIdx   = col('Stock')
+  const statusIdx  = col('Status')
+  const featuredIdx = col('Featured')
 
   if (nameIdx === -1 || priceIdx === -1) return []
 
@@ -130,36 +145,21 @@ function parseImportCSV(text: string, existing: Product[]): ImportRow[] {
     const name = vals[nameIdx]?.trim() ?? ''
     if (!name) return []
 
-    // Skip non-simple WooCommerce product types
-    const type = typeIdx !== -1 ? vals[typeIdx]?.toLowerCase().trim() : 'simple'
-    if (type && type !== 'simple') return []
+    const rawPrice = vals[priceIdx]?.trim() ?? ''
+    const price = parseFloat(rawPrice)
+    if (isNaN(price) || rawPrice === '') return []
 
-    const rawPrice = vals[priceIdx] ?? ''
-    const price = parseFloat(rawPrice) || 0
-    if (price === 0 && rawPrice === '') return [] // skip rows with no price at all
+    const stock = stockIdx !== -1 ? parseInt(vals[stockIdx] ?? '') || 0 : 0
 
-    // Stock: prefer explicit number, fall back to in-stock flag
-    let stock = stockIdx !== -1 ? parseInt(vals[stockIdx] ?? '') : NaN
-    if (isNaN(stock)) {
-      const inStock = inStockIdx !== -1 ? vals[inStockIdx]?.trim() : '1'
-      stock = inStock === '1' || inStock?.toLowerCase() === 'yes' ? 1 : 0
-    }
+    const is_active = statusIdx !== -1
+      ? vals[statusIdx]?.trim().toLowerCase() === 'active'
+      : true
 
-    // Status: handle both "Active"/"Inactive" and "1"/"0"
-    let is_active = true
-    if (statusIdx !== -1) {
-      const s = vals[statusIdx]?.toLowerCase().trim()
-      is_active = s === 'active' || s === '1'
-    }
+    const is_featured = featuredIdx !== -1
+      ? vals[featuredIdx]?.trim().toLowerCase() === 'yes'
+      : false
 
-    // Featured: handle both "Yes"/"No" and "1"/"0"
-    let is_featured = false
-    if (featuredIdx !== -1) {
-      const f = vals[featuredIdx]?.toLowerCase().trim()
-      is_featured = f === 'yes' || f === '1'
-    }
-
-    const compare_at_price = compareIdx !== -1 && vals[compareIdx]
+    const compare_at_price = compareIdx !== -1 && vals[compareIdx]?.trim()
       ? parseFloat(vals[compareIdx]) || null
       : null
 
@@ -380,8 +380,7 @@ export function ProductsManager({
                   <button
                     type="button"
                     onClick={() => {
-                      const template = 'Name,Price,Compare At Price,Stock,Status,Featured\n"Example Product",5000,,10,Active,No'
-                      const blob = new Blob([template], { type: 'text/csv' })
+                      const blob = new Blob([TEMPLATE_CSV], { type: 'text/csv' })
                       const url = URL.createObjectURL(blob)
                       const a = document.createElement('a')
                       a.href = url
@@ -775,12 +774,11 @@ export function ProductsManager({
                 )}
 
                 <p className="text-xs text-gray-400 dark:text-gray-600">
-                  Required columns: <span className="font-mono">Name</span>, <span className="font-mono">Price</span>. Optional: <span className="font-mono">Stock</span>, <span className="font-mono">Status</span>, <span className="font-mono">Featured</span>, <span className="font-mono">Compare At Price</span>.
+                  Use the official template — Status must be <span className="font-mono">Active</span> or <span className="font-mono">Inactive</span>, Featured must be <span className="font-mono">Yes</span> or <span className="font-mono">No</span>.
                   {' '}<button type="button" onClick={() => {
-                    const t = 'Name,Price,Compare At Price,Stock,Status,Featured\n"Example Product",5000,,10,Active,No'
-                    const blob = new Blob([t], { type: 'text/csv' })
+                    const blob = new Blob([TEMPLATE_CSV], { type: 'text/csv' })
                     const url = URL.createObjectURL(blob)
-                    const a = document.createElement('a'); a.href = url; a.download = 'template.csv'; a.click()
+                    const a = document.createElement('a'); a.href = url; a.download = 'products-import-template.csv'; a.click()
                     URL.revokeObjectURL(url)
                   }} className="underline underline-offset-2 hover:text-gray-600 dark:hover:text-gray-400 transition-colors">Download template</button>
                 </p>
