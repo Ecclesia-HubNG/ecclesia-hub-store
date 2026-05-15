@@ -135,7 +135,7 @@ export default function FeaturedManager({
                   </div>
                   <Link href={`/admin/products/${p.id}/edit`} className="text-xs text-gray-400 dark:text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 transition-colors shrink-0">Edit</Link>
                   <div className="flex items-center gap-2 shrink-0">
-                    <span className={`text-xs ${p.is_featured ? 'text-gray-900 dark:text-white font-medium' : 'text-gray-400 dark:text-gray-600'}`}>
+                    <span className={`text-xs w-20 text-right ${p.is_featured ? 'text-gray-900 dark:text-white font-medium' : 'text-gray-400 dark:text-gray-600'}`}>
                       {p.is_featured ? 'Featured' : 'Not featured'}
                     </span>
                     <Toggle on={p.is_featured} onChange={() => toggle('products', p.id, p.is_featured)} pending={isPending} />
@@ -166,7 +166,7 @@ export default function FeaturedManager({
                   </div>
                   <Link href={`/admin/categories/${c.id}/edit`} className="text-xs text-gray-400 dark:text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 transition-colors shrink-0">Edit</Link>
                   <div className="flex items-center gap-2 shrink-0">
-                    <span className={`text-xs ${c.is_featured ? 'text-gray-900 dark:text-white font-medium' : 'text-gray-400 dark:text-gray-600'}`}>
+                    <span className={`text-xs w-20 text-right ${c.is_featured ? 'text-gray-900 dark:text-white font-medium' : 'text-gray-400 dark:text-gray-600'}`}>
                       {c.is_featured ? 'Featured' : 'Not featured'}
                     </span>
                     <Toggle on={c.is_featured} onChange={() => toggle('categories', c.id, c.is_featured)} pending={isPending} />
@@ -204,7 +204,7 @@ export default function FeaturedManager({
                   </div>
                   <Link href={`/admin/brands/${b.id}/edit`} className="text-xs text-gray-400 dark:text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 transition-colors shrink-0">Edit</Link>
                   <div className="flex items-center gap-2 shrink-0">
-                    <span className={`text-xs ${b.is_featured ? 'text-gray-900 dark:text-white font-medium' : 'text-gray-400 dark:text-gray-600'}`}>
+                    <span className={`text-xs w-20 text-right ${b.is_featured ? 'text-gray-900 dark:text-white font-medium' : 'text-gray-400 dark:text-gray-600'}`}>
                       {b.is_featured ? 'Featured' : 'Not featured'}
                     </span>
                     <Toggle on={b.is_featured} onChange={() => toggle('brands', b.id, b.is_featured)} pending={isPending} />
