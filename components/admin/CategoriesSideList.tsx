@@ -59,7 +59,7 @@ export default function CategoriesSideList({ categories }: { categories: Categor
             {categories.map(cat => (
               <li
                 key={cat.id}
-                className="flex items-center gap-3 px-4 py-3 hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors group"
+                className="flex items-center gap-3 px-4 py-3 hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors"
               >
                 {/* Thumbnail */}
                 <div className="w-9 h-9 rounded-lg overflow-hidden bg-gray-100 dark:bg-gray-800 shrink-0">
@@ -88,7 +88,7 @@ export default function CategoriesSideList({ categories }: { categories: Categor
                 </div>
 
                 {/* Actions — visible on hover */}
-                <div className="flex items-center gap-0.5 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
+                <div className="flex items-center gap-0.5 shrink-0">
                   <Link
                     href={`/admin/categories/${cat.id}/edit`}
                     className="px-2.5 py-1 text-xs text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md transition-colors"
