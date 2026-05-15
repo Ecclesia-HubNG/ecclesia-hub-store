@@ -69,6 +69,23 @@ export async function deleteProduct(formData: FormData) {
   revalidatePath('/admin/products')
 }
 
+export async function quickUpdateProduct(id: string, data: {
+  name: string
+  price: number
+  compare_at_price: number | null
+  stock: number
+  category_id: string | null
+  brand_id: string | null
+  is_active: boolean
+  is_featured: boolean
+}) {
+  const supabase = createAdminClient()
+  const { error } = await supabase.from('products').update(data).eq('id', id)
+  if (error) return { error: error.message }
+  revalidatePath('/admin/products')
+  return { success: true as const }
+}
+
 export async function duplicateProduct(formData: FormData) {
   const supabase = createAdminClient()
   const id = formData.get('id') as string
