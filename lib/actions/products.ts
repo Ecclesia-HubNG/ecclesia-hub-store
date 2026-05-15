@@ -24,6 +24,7 @@ function parseForm(formData: FormData) {
     sale_starts_at:    (formData.get('sale_starts_at') as string) || null,
     sale_ends_at:      (formData.get('sale_ends_at') as string) || null,
     category_id:       (formData.get('category_id') as string) || null,
+    brand_id:          (formData.get('brand_id') as string) || null,
     brand:             (formData.get('brand') as string) || null,
     thumbnail:         images[0] ?? null,
     images,

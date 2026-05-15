@@ -5,10 +5,12 @@ import { useEffect, useRef, useState, useTransition } from 'react'
 import type { DragEvent, ChangeEvent, KeyboardEvent, FormEvent } from 'react'
 import Link from 'next/link'
 import { createCategoryInline } from '@/lib/actions/categories'
+import { createBrandInline } from '@/lib/actions/brands'
 
 // ─── Types ────────────────────────────────────────────────
 
 type Category = { id: string; name: string }
+type Brand = { id: string; name: string }
 type RelatedProduct = { id: string; name: string; thumbnail: string | null }
 
 type Product = {
@@ -23,6 +25,7 @@ type Product = {
   sale_starts_at: string | null
   sale_ends_at: string | null
   category_id: string | null
+  brand_id: string | null
   brand: string | null
   thumbnail: string | null
   images: string[] | null
@@ -131,11 +134,12 @@ function PlusIcon({ className = 'w-4 h-4' }: { className?: string }) {
 // ─── Main Component ───────────────────────────────────────
 
 export default function ProductForm({
-  action, product, categories, allProducts = [], submitLabel = 'Publish Product',
+  action, product, categories, brands = [], allProducts = [], submitLabel = 'Publish Product',
 }: {
   action: ActionFn
   product?: Product
   categories: Category[]
+  brands?: Brand[]
   allProducts?: RelatedProduct[]
   submitLabel?: string
 }) {
@@ -189,6 +193,14 @@ export default function ProductForm({
   const [newCategoryName, setNewCategoryName] = useState('')
   const [addingCategory, setAddingCategory] = useState(false)
   const [categoryError, setCategoryError] = useState('')
+
+  // Brand
+  const [localBrands, setLocalBrands] = useState<Brand[]>(brands)
+  const [selectedBrandId, setSelectedBrandId] = useState(product?.brand_id ?? '')
+  const [showNewBrand, setShowNewBrand] = useState(false)
+  const [newBrandName, setNewBrandName] = useState('')
+  const [addingBrand, setAddingBrand] = useState(false)
+  const [brandError, setBrandError] = useState('')
 
   // Related products
   const [relatedIds, setRelatedIds] = useState<string[]>(product?.related_product_ids ?? [])
@@ -307,6 +319,23 @@ export default function ProductForm({
       setNewCategoryName(''); setShowNewCategory(false)
     }
     setAddingCategory(false)
+  }
+
+  // ── Inline brand ─────────────────────────────────────────
+
+  const handleAddBrand = async () => {
+    const trimmed = newBrandName.trim()
+    if (!trimmed) return
+    setAddingBrand(true); setBrandError('')
+    const result = await createBrandInline(trimmed)
+    if ('error' in result) {
+      setBrandError(result.error)
+    } else {
+      setLocalBrands(prev => [...prev, result].sort((a, b) => a.name.localeCompare(b.name)))
+      setSelectedBrandId(result.id)
+      setNewBrandName(''); setShowNewBrand(false)
+    }
+    setAddingBrand(false)
   }
 
   // ── Related products ──────────────────────────────────────
@@ -646,7 +675,31 @@ export default function ProductForm({
               </div>
               <div>
                 <FieldLabel optional>Brand</FieldLabel>
-                <input name="brand" defaultValue={product?.brand ?? ''} placeholder="e.g. Saltair, Crossway" className={inputCls} />
+                <select name="brand_id" value={selectedBrandId} onChange={e => setSelectedBrandId(e.target.value)} className={selectCls}>
+                  <option value="">No brand</option>
+                  {localBrands.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
+                </select>
+                {showNewBrand ? (
+                  <div className="mt-2 space-y-1.5">
+                    <div className="flex gap-2">
+                      <input value={newBrandName} onChange={e => setNewBrandName(e.target.value)}
+                        onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); handleAddBrand() } if (e.key === 'Escape') setShowNewBrand(false) }}
+                        placeholder="Brand name" autoFocus className={`${inputCls} flex-1`} />
+                      <button type="button" onClick={handleAddBrand} disabled={addingBrand || !newBrandName.trim()}
+                        className="px-3 py-2 bg-gray-900 text-white text-sm rounded-lg hover:bg-gray-700 transition-colors disabled:opacity-50">
+                        {addingBrand ? '…' : 'Add'}
+                      </button>
+                      <button type="button" onClick={() => { setShowNewBrand(false); setBrandError('') }}
+                        className="px-3 py-2 text-sm text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors">Cancel</button>
+                    </div>
+                    {brandError && <p className="text-xs text-red-500 dark:text-red-400">{brandError}</p>}
+                  </div>
+                ) : (
+                  <button type="button" onClick={() => setShowNewBrand(true)}
+                    className="mt-2 flex items-center gap-1 text-xs text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors">
+                    <PlusIcon className="w-3.5 h-3.5" /> Add new brand
+                  </button>
+                )}
               </div>
             </div>
           </Card>

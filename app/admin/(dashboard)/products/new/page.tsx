@@ -5,8 +5,9 @@ import ProductForm from '@/components/admin/ProductForm'
 
 export default async function NewProductPage() {
   const supabase = createAdminClient()
-  const [{ data: categories }, { data: allProducts }] = await Promise.all([
+  const [{ data: categories }, { data: brands }, { data: allProducts }] = await Promise.all([
     supabase.from('categories').select('id, name').order('name'),
+    supabase.from('brands').select('id, name').order('name'),
     supabase.from('products').select('id, name, thumbnail').order('name'),
   ])
 
@@ -21,6 +22,7 @@ export default async function NewProductPage() {
       <ProductForm
         action={createProduct}
         categories={categories ?? []}
+        brands={brands ?? []}
         allProducts={allProducts ?? []}
         submitLabel="Create product"
       />

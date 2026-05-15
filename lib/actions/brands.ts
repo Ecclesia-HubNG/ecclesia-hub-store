@@ -42,3 +42,19 @@ export async function deleteBrand(formData: FormData) {
   await supabase.from('brands').delete().eq('id', formData.get('id') as string)
   revalidatePath('/admin/brands')
 }
+
+export async function createBrandInline(
+  name: string
+): Promise<{ id: string; name: string } | { error: string }> {
+  const supabase = createAdminClient()
+  const base = slugify(name)
+  const slug = `${base}-${Date.now()}`
+  const { data, error } = await supabase
+    .from('brands')
+    .insert({ name: name.trim(), slug })
+    .select('id, name')
+    .single()
+  if (error) return { error: error.message }
+  revalidatePath('/admin/brands')
+  return data
+}
