@@ -101,36 +101,74 @@ type ImportRow = {
 }
 
 function parseImportCSV(text: string, existing: Product[]): ImportRow[] {
-  const lines = text.trim().split('\n').filter(Boolean)
+  // Strip UTF-8 BOM if present
+  const cleaned = text.replace(/^﻿/, '').replace(/^ï»¿/, '')
+  const lines = cleaned.trim().split('\n').filter(Boolean)
   if (lines.length < 2) return []
   const headers = parseCSVLine(lines[0]).map(h => h.toLowerCase().trim())
-  const nameIdx = headers.findIndex(h => h === 'name')
-  const priceIdx = headers.findIndex(h => h === 'price')
-  const compareIdx = headers.findIndex(h => h.includes('compare'))
-  const stockIdx = headers.findIndex(h => h === 'stock')
-  const statusIdx = headers.findIndex(h => h === 'status')
-  const featuredIdx = headers.findIndex(h => h === 'featured')
+
+  const nameIdx    = headers.findIndex(h => h === 'name')
+  // WooCommerce uses "Regular price"; our template uses "Price"
+  const priceIdx   = headers.findIndex(h => h === 'price' || h === 'regular price')
+  const compareIdx = headers.findIndex(h => h.includes('compare') || h === 'sale price')
+  const stockIdx   = headers.findIndex(h => h === 'stock')
+  // WooCommerce "In stock?" uses 1/0; our template uses Active/Inactive
+  const inStockIdx = headers.findIndex(h => h === 'in stock?')
+  const statusIdx  = headers.findIndex(h => h === 'status' || h === 'published')
+  // WooCommerce "Is featured?" uses 1/0; our template uses Yes/No
+  const featuredIdx = headers.findIndex(h => h === 'featured' || h === 'is featured?')
+  // WooCommerce has a Type column — we only want simple products
+  const typeIdx    = headers.findIndex(h => h === 'type')
+
   if (nameIdx === -1 || priceIdx === -1) return []
 
   const existingNames = new Set(existing.map(p => p.name.toLowerCase().trim()))
   const existingSlugs = new Set(existing.map(p => p.slug))
 
-  return lines.slice(1).map(line => {
+  return lines.slice(1).flatMap(line => {
     const vals = parseCSVLine(line)
     const name = vals[nameIdx]?.trim() ?? ''
+    if (!name) return []
+
+    // Skip non-simple WooCommerce product types
+    const type = typeIdx !== -1 ? vals[typeIdx]?.toLowerCase().trim() : 'simple'
+    if (type && type !== 'simple') return []
+
+    const rawPrice = vals[priceIdx] ?? ''
+    const price = parseFloat(rawPrice) || 0
+    if (price === 0 && rawPrice === '') return [] // skip rows with no price at all
+
+    // Stock: prefer explicit number, fall back to in-stock flag
+    let stock = stockIdx !== -1 ? parseInt(vals[stockIdx] ?? '') : NaN
+    if (isNaN(stock)) {
+      const inStock = inStockIdx !== -1 ? vals[inStockIdx]?.trim() : '1'
+      stock = inStock === '1' || inStock?.toLowerCase() === 'yes' ? 1 : 0
+    }
+
+    // Status: handle both "Active"/"Inactive" and "1"/"0"
+    let is_active = true
+    if (statusIdx !== -1) {
+      const s = vals[statusIdx]?.toLowerCase().trim()
+      is_active = s === 'active' || s === '1'
+    }
+
+    // Featured: handle both "Yes"/"No" and "1"/"0"
+    let is_featured = false
+    if (featuredIdx !== -1) {
+      const f = vals[featuredIdx]?.toLowerCase().trim()
+      is_featured = f === 'yes' || f === '1'
+    }
+
+    const compare_at_price = compareIdx !== -1 && vals[compareIdx]
+      ? parseFloat(vals[compareIdx]) || null
+      : null
+
     const isDuplicate =
       existingNames.has(name.toLowerCase()) ||
       existingSlugs.has(slugify(name))
-    return {
-      name,
-      price: parseFloat(vals[priceIdx] ?? '0') || 0,
-      compare_at_price: compareIdx !== -1 && vals[compareIdx] ? parseFloat(vals[compareIdx]) || null : null,
-      stock: stockIdx !== -1 ? parseInt(vals[stockIdx] ?? '0') || 0 : 0,
-      is_active: statusIdx !== -1 ? vals[statusIdx]?.toLowerCase() === 'active' : true,
-      is_featured: featuredIdx !== -1 ? vals[featuredIdx]?.toLowerCase() === 'yes' : false,
-      isDuplicate,
-    }
-  }).filter(r => r.name.length > 0)
+
+    return [{ name, price, compare_at_price, stock, is_active, is_featured, isDuplicate }]
+  })
 }
 
 function exportToCSV(products: Product[]) {
