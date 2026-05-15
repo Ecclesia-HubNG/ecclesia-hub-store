@@ -67,3 +67,20 @@ export async function deleteProduct(formData: FormData) {
   await supabase.from('products').delete().eq('id', formData.get('id') as string)
   revalidatePath('/admin/products')
 }
+
+export async function duplicateProduct(formData: FormData) {
+  const supabase = createAdminClient()
+  const id = formData.get('id') as string
+  const { data: src, error: fetchErr } = await supabase.from('products').select('*').eq('id', id).single()
+  if (fetchErr || !src) return
+  const { id: _id, created_at: _ca, updated_at: _ua, ...fields } = src
+  const slug = `${fields.slug}-copy-${Date.now()}`
+  const { data, error } = await supabase
+    .from('products')
+    .insert({ ...fields, name: `Copy of ${fields.name}`, slug, is_active: false })
+    .select('id')
+    .single()
+  if (error || !data) return
+  revalidatePath('/admin/products')
+  redirect(`/admin/products/${data.id}/edit`)
+}

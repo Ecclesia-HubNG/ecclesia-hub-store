@@ -1,7 +1,8 @@
 import { createAdminClient } from '@/lib/supabase/admin'
 import Link from 'next/link'
-import { deleteProduct } from '@/lib/actions/products'
+import { deleteProduct, duplicateProduct } from '@/lib/actions/products'
 import { DeleteButton } from '@/components/admin/DeleteButton'
+import { DuplicateButton } from '@/components/admin/DuplicateButton'
 
 function fmt(n: number) {
   return n.toLocaleString('en', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
@@ -148,7 +149,8 @@ export default async function AdminProductsPage() {
 
                   {/* Actions */}
                   <td className="px-4 py-3">
-                    <div className="flex items-center gap-4 justify-end">
+                    <div className="flex items-center gap-3 justify-end">
+                      <DuplicateButton id={product.id} action={duplicateProduct} />
                       <Link
                         href={`/admin/products/${product.id}/edit`}
                         className="text-sm text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors"
