@@ -1,6 +1,5 @@
 'use server'
 
-import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
@@ -21,23 +20,23 @@ function parseForm(formData: FormData) {
 }
 
 export async function createCategory(_: unknown, formData: FormData) {
-  const supabase = createClient()
-  const { error } = await supabase.from('categories').insert(parseForm(formData))
+  const supabase = createAdminClient()
+  const { data, error } = await supabase.from('categories').insert(parseForm(formData)).select('id').single()
   if (error) return { error: error.message }
   revalidatePath('/admin/categories')
-  redirect('/admin/categories')
+  redirect(`/admin/categories/${data.id}/edit?saved=1`)
 }
 
 export async function updateCategory(id: string, _: unknown, formData: FormData) {
-  const supabase = createClient()
+  const supabase = createAdminClient()
   const { error } = await supabase.from('categories').update(parseForm(formData)).eq('id', id)
   if (error) return { error: error.message }
   revalidatePath('/admin/categories')
-  redirect('/admin/categories')
+  return { success: true as const }
 }
 
 export async function deleteCategory(formData: FormData) {
-  const supabase = createClient()
+  const supabase = createAdminClient()
   await supabase.from('categories').delete().eq('id', formData.get('id') as string)
   revalidatePath('/admin/categories')
 }
