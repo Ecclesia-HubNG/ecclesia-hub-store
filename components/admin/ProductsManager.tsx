@@ -238,7 +238,7 @@ export function ProductsManager({ products }: { products: Product[] }) {
             }`}
           >
             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M12 3c2.755 0 5.455.232 8.083.678.533.09.917.556.917 1.096v1.044a2.25 2.25 0 0 1-.659 1.591L15.75 12m0 0v6.75a.75.75 0 0 1-1.06.53l-4.5-2.25a.75.75 0 0 1-.44-.68V12m6 0-6-3.75" />
+              <path strokeLinecap="round" strokeLinejoin="round" d="M3 4.5h18M6 9h12M9 13.5h6M11 18h2" />
             </svg>
             {statusLabels[status]}
             <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
