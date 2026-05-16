@@ -134,6 +134,14 @@ export async function quickUpdateProduct(id: string, data: {
   return { success: true as const }
 }
 
+export async function toggleProductActive(id: string, is_active: boolean) {
+  const supabase = createAdminClient()
+  const { error } = await supabase.from('products').update({ is_active }).eq('id', id)
+  if (error) return { error: error.message }
+  revalidatePath('/admin/products')
+  return { success: true as const }
+}
+
 export async function duplicateProduct(formData: FormData) {
   const supabase = createAdminClient()
   const id = formData.get('id') as string

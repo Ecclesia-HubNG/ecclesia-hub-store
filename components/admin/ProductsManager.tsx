@@ -3,7 +3,7 @@
 import { useState, useMemo, useTransition } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { deleteProduct, duplicateProduct, quickUpdateProduct, bulkImportProducts, bulkDeleteProducts } from '@/lib/actions/products'
+import { deleteProduct, duplicateProduct, quickUpdateProduct, bulkImportProducts, bulkDeleteProducts, toggleProductActive } from '@/lib/actions/products'
 import { DeleteButton } from '@/components/admin/DeleteButton'
 import { DuplicateButton } from '@/components/admin/DuplicateButton'
 
@@ -63,6 +63,34 @@ function Toggle({ on, onChange }: { on: boolean; onChange: () => void }) {
       className={`relative inline-flex h-5 w-9 shrink-0 items-center rounded-full transition-colors duration-200 ${on ? 'bg-gray-900 dark:bg-white' : 'bg-gray-200 dark:bg-gray-700'}`}
     >
       <span className={`inline-block h-3.5 w-3.5 rounded-full bg-white dark:bg-gray-900 shadow transform transition-transform duration-200 ${on ? 'translate-x-4' : 'translate-x-0.5'}`} />
+    </button>
+  )
+}
+
+function ActiveToggle({ id, isActive }: { id: string; isActive: boolean }) {
+  const [optimistic, setOptimistic] = useState(isActive)
+  const [, startTransition] = useTransition()
+  const handleToggle = () => {
+    const next = !optimistic
+    setOptimistic(next)
+    startTransition(async () => {
+      const res = await toggleProductActive(id, next)
+      if (res?.error) setOptimistic(optimistic)
+    })
+  }
+  return (
+    <button
+      type="button"
+      onClick={handleToggle}
+      title={optimistic ? 'Active — click to deactivate' : 'Inactive — click to activate'}
+      className="flex items-center gap-1.5 group"
+    >
+      <span className={`relative inline-flex h-5 w-9 shrink-0 items-center rounded-full transition-colors duration-200 ${optimistic ? 'bg-green-500' : 'bg-gray-200 dark:bg-gray-700'}`}>
+        <span className={`inline-block h-3.5 w-3.5 rounded-full bg-white shadow transform transition-transform duration-200 ${optimistic ? 'translate-x-4' : 'translate-x-0.5'}`} />
+      </span>
+      <span className={`text-xs font-medium transition-colors ${optimistic ? 'text-green-600 dark:text-green-400' : 'text-gray-400 dark:text-gray-500'}`}>
+        {optimistic ? 'Active' : 'Inactive'}
+      </span>
     </button>
   )
 }
@@ -715,7 +743,6 @@ export function ProductsManager({
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">Category</th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">Price</th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">Stock</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">Created</th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">Status</th>
                 <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">Actions</th>
               </tr>
@@ -760,15 +787,9 @@ export function ProductsManager({
                   <td className="px-4 py-3">
                     <StockBadge stock={product.stock} />
                   </td>
-                  <td className="px-4 py-3 text-xs text-gray-500 dark:text-gray-400 whitespace-nowrap">
-                    {new Date(product.created_at).toLocaleDateString('en', { day: '2-digit', month: 'short', year: 'numeric' })}
-                  </td>
                   <td className="px-4 py-3">
-                    <div className="flex items-center gap-1.5 flex-wrap">
-                      <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${product.is_active ? 'bg-green-50 dark:bg-green-950 text-green-700 dark:text-green-400' : 'bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400'}`}>
-                        <span className={`w-1.5 h-1.5 rounded-full ${product.is_active ? 'bg-green-500' : 'bg-gray-400'}`} />
-                        {product.is_active ? 'Active' : 'Inactive'}
-                      </span>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <ActiveToggle id={product.id} isActive={product.is_active} />
                       {product.is_featured && (
                         <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-purple-50 dark:bg-purple-950 text-purple-700 dark:text-purple-400">Featured</span>
                       )}
@@ -784,7 +805,7 @@ export function ProductsManager({
                         className="w-8 h-8 flex items-center justify-center rounded-lg text-gray-400 dark:text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
                       >
                         <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                          <path strokeLinecap="round" strokeLinejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Zm0 0L19.5 7.125" />
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M10.5 6h9.75M10.5 6a1.5 1.5 0 1 1-3 0m3 0a1.5 1.5 0 1 0-3 0M3.75 6H7.5m3 12h9.75m-9.75 0a1.5 1.5 0 0 1-3 0m3 0a1.5 1.5 0 0 0-3 0m-3.75 0H7.5m9-6h3.75m-3.75 0a1.5 1.5 0 0 1-3 0m3 0a1.5 1.5 0 0 0-3 0m-9.75 0h9.75" />
                         </svg>
                       </button>
 
@@ -796,7 +817,7 @@ export function ProductsManager({
                         <button
                           type="button"
                           onClick={() => setOpenActionId(prev => prev === product.id ? null : product.id)}
-                          className="w-8 h-8 flex items-center justify-center rounded-lg text-gray-400 dark:text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+                          className="w-8 h-8 flex items-center justify-center rounded-lg bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700 hover:text-gray-700 dark:hover:text-gray-200 transition-colors"
                         >
                           <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
                             <circle cx="5" cy="12" r="1.5" /><circle cx="12" cy="12" r="1.5" /><circle cx="19" cy="12" r="1.5" />
@@ -814,7 +835,7 @@ export function ProductsManager({
                               </svg>
                               Edit
                             </Link>
-                            <DuplicateButton id={product.id} action={duplicateProduct} className="flex items-center gap-2.5 px-3 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors w-full text-left" />
+                            <DuplicateButton id={product.id} action={duplicateProduct} label="Duplicate" className="flex items-center gap-2.5 px-3 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors w-full text-left" />
                             <div className="my-1 border-t border-gray-100 dark:border-gray-800" />
                             <DeleteButton
                               id={product.id}
