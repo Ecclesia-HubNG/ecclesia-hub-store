@@ -2,6 +2,8 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { OrderStatusSelect } from '@/components/admin/OrderStatusSelect'
+import { OrderQuickActions } from '@/components/admin/OrderQuickActions'
+import { OrderTracking } from '@/components/admin/OrderTracking'
 
 const STATUS_COLORS: Record<string, string> = {
   pending:    'bg-amber-50 dark:bg-amber-950/30 text-amber-700 dark:text-amber-400',
@@ -34,6 +36,9 @@ export default async function OrderDetailPage({ params }: { params: { id: string
   const items: Array<{ product_id?: string; name: string; price: number; quantity: number; thumbnail?: string | null }> =
     Array.isArray(order.items) ? order.items : []
   const shipping = order.shipping_address as Record<string, string> | null
+  const trackingNumber: string | null = (order as Record<string, unknown>).tracking_number as string | null ?? null
+  const carrier: string | null = (order as Record<string, unknown>).carrier as string | null ?? null
+  const adminNotes: string | null = (order as Record<string, unknown>).admin_notes as string | null ?? null
 
   const subtotal = items.reduce((s, i) => s + i.price * i.quantity, 0)
   const isTerminal = ['cancelled', 'refunded'].includes(order.status)
@@ -62,6 +67,16 @@ export default async function OrderDetailPage({ params }: { params: { id: string
           </p>
         </div>
         <div className="flex items-center gap-3">
+          <Link
+            href={`/admin/orders/${order.id}/invoice`}
+            target="_blank"
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
+          >
+            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z" />
+            </svg>
+            Invoice
+          </Link>
           <span className={`px-3 py-1.5 rounded-full text-xs font-semibold capitalize ${STATUS_COLORS[order.status] ?? STATUS_COLORS.pending}`}>
             {order.status}
           </span>
@@ -101,6 +116,17 @@ export default async function OrderDetailPage({ params }: { params: { id: string
           </div>
         </div>
       )}
+
+      {/* Quick actions */}
+      <OrderQuickActions id={order.id} status={order.status} />
+
+      {/* Tracking & Notes */}
+      <OrderTracking
+        id={order.id}
+        trackingNumber={trackingNumber}
+        carrier={carrier}
+        adminNotes={adminNotes}
+      />
 
       <div className="grid grid-cols-3 gap-5 mb-5">
         {/* Customer */}
