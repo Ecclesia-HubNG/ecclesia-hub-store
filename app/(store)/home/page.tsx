@@ -7,7 +7,7 @@ export default async function HomePage() {
 
   const { data: featured } = await supabase
     .from('products')
-    .select('id, name, slug, price, compare_at_price, thumbnail, categories(name)')
+    .select('id, name, slug, price, compare_at_price, thumbnail, stock, categories(name)')
     .eq('is_featured', true)
     .eq('is_active', true)
     .limit(4)
