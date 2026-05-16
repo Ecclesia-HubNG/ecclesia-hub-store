@@ -1,5 +1,7 @@
 import Link from 'next/link'
 
+type ProductVariant = { name: string; options: { value: string; price?: number | null }[] }
+
 type Product = {
   id: string
   name: string
@@ -8,6 +10,7 @@ type Product = {
   compare_at_price: number | null
   thumbnail: string | null
   stock?: number
+  variants?: ProductVariant[] | null
   categories?: { name: string } | null
 }
 
@@ -77,10 +80,37 @@ export default function ProductCard({ product, showCategory = true }: { product:
             {product.categories.name}
           </p>
         )}
-        <p className="text-sm text-gray-800 dark:text-gray-100 font-medium leading-snug line-clamp-2 flex-1 mb-3">
+        <p className="text-sm text-gray-800 dark:text-gray-100 font-medium leading-snug line-clamp-2 mb-2.5">
           {product.name}
         </p>
-        <div className="flex items-center gap-2 flex-wrap">
+
+        {/* Variants */}
+        {product.variants && product.variants.length > 0 && (
+          <div className="flex flex-col gap-1.5 mb-3">
+            {product.variants.slice(0, 2).map(v => (
+              <div key={v.name} className="flex items-start gap-1.5 flex-wrap">
+                <span className="text-[10px] font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wide shrink-0 pt-px">
+                  {v.name}
+                </span>
+                <div className="flex items-center gap-1 flex-wrap">
+                  {v.options.slice(0, 4).map(opt => (
+                    <span
+                      key={opt.value}
+                      className="px-1.5 py-0.5 bg-gray-100 dark:bg-gray-800 text-[10px] font-medium text-gray-600 dark:text-gray-400 rounded-md leading-none"
+                    >
+                      {opt.value}
+                    </span>
+                  ))}
+                  {v.options.length > 4 && (
+                    <span className="text-[10px] text-gray-400 dark:text-gray-600">+{v.options.length - 4}</span>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        <div className="flex items-center gap-2 flex-wrap mt-auto">
           <span className={`text-[15px] font-bold ${outOfStock ? 'text-gray-400 dark:text-gray-600' : 'text-[#4A0F1C] dark:text-[#E8C4CB]'}`}>
             ₦{product.price.toLocaleString('en')}
           </span>

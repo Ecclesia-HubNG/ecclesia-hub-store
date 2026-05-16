@@ -8,7 +8,7 @@ export default async function ShopPage() {
     supabase.from('categories').select('id, name, slug').order('name'),
     supabase
       .from('products')
-      .select('id, name, slug, price, compare_at_price, thumbnail, stock, category_id, is_featured, categories(name)')
+      .select('id, name, slug, price, compare_at_price, thumbnail, stock, category_id, is_featured, variants, categories(name)')
       .eq('is_active', true)
       .order('created_at', { ascending: false }),
   ])

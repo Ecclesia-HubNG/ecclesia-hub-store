@@ -5,6 +5,8 @@ import ProductCard from '@/components/store/ProductCard'
 
 type Category = { id: string; name: string; slug: string }
 
+type ProductVariant = { name: string; options: { value: string; price?: number | null }[] }
+
 type Product = {
   id: string
   name: string
@@ -15,6 +17,7 @@ type Product = {
   stock: number
   category_id: string | null
   is_featured: boolean
+  variants: ProductVariant[] | null
   categories: { name: string } | null
 }
 
