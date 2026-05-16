@@ -3,7 +3,7 @@
 import { useState, useMemo, useTransition } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { updateOrderStatus } from '@/lib/actions/orders'
+import { updateOrderStatus, bulkUpdateOrderStatus } from '@/lib/actions/orders'
 
 type OrderItem = {
   product_id?: string
@@ -49,6 +49,27 @@ function StatusBadge({ status }: { status: string }) {
 
 function fmt(n: number) {
   return '₦' + n.toLocaleString('en', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+}
+
+function exportOrdersCSV(orders: Order[]) {
+  const headers = ['Order ID', 'Customer', 'Email', 'Status', 'Total', 'Items', 'Date']
+  const rows = orders.map(o => [
+    o.id.slice(0, 8).toUpperCase(),
+    `"${(o.customers?.full_name ?? 'Guest').replace(/"/g, '""')}"`,
+    `"${(o.customers?.email ?? '').replace(/"/g, '""')}"`,
+    o.status,
+    Number(o.total).toFixed(2),
+    Array.isArray(o.items) ? o.items.length : 0,
+    new Date(o.created_at).toLocaleDateString('en'),
+  ])
+  const csv = [headers.join(','), ...rows.map(r => r.join(','))].join('\n')
+  const blob = new Blob([csv], { type: 'text/csv' })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = `orders-${new Date().toISOString().split('T')[0]}.csv`
+  a.click()
+  URL.revokeObjectURL(url)
 }
 
 function InlineStatusSelect({ id, status }: { id: string; status: string }) {
@@ -105,6 +126,10 @@ export default function OrdersManager({ orders: initial }: { orders: Order[] }) 
   const [dateFrom, setDateFrom] = useState('')
   const [dateTo, setDateTo] = useState('')
   const [showDatePicker, setShowDatePicker] = useState(false)
+  const [sortBy, setSortBy] = useState<'newest' | 'oldest' | 'total_high' | 'total_low'>('newest')
+  const [showSortDropdown, setShowSortDropdown] = useState(false)
+  const [selected, setSelected] = useState<Set<string>>(new Set())
+  const [, startBulkUpdate] = useTransition()
 
   const filtered = useMemo(() => {
     return initial.filter(o => {
@@ -122,6 +147,42 @@ export default function OrdersManager({ orders: initial }: { orders: Order[] }) 
       return true
     })
   }, [initial, search, statusFilter, dateFrom, dateTo])
+
+  const sorted = useMemo(() => {
+    return [...filtered].sort((a, b) => {
+      switch (sortBy) {
+        case 'oldest': return new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+        case 'total_high': return Number(b.total) - Number(a.total)
+        case 'total_low': return Number(a.total) - Number(b.total)
+        default: return new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+      }
+    })
+  }, [filtered, sortBy])
+
+  const allSelected = sorted.length > 0 && sorted.every(o => selected.has(o.id))
+  const someSelected = selected.size > 0
+
+  const toggleSelect = (id: string) => setSelected(prev => {
+    const next = new Set(prev)
+    next.has(id) ? next.delete(id) : next.add(id)
+    return next
+  })
+
+  const toggleSelectAll = () => {
+    if (allSelected) {
+      setSelected(prev => { const next = new Set(prev); sorted.forEach(o => next.delete(o.id)); return next })
+    } else {
+      setSelected(prev => { const next = new Set(prev); sorted.forEach(o => next.add(o.id)); return next })
+    }
+  }
+
+  const handleBulkStatus = (status: string) => {
+    const ids = Array.from(selected)
+    startBulkUpdate(async () => {
+      await bulkUpdateOrderStatus(ids, status)
+      setSelected(new Set())
+    })
+  }
 
   // Stats
   const revenue = initial
@@ -153,6 +214,16 @@ export default function OrdersManager({ orders: initial }: { orders: Order[] }) 
           <h1 className="text-xl font-semibold text-gray-900 dark:text-white">Orders</h1>
           <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">{initial.length} total orders</p>
         </div>
+        <button
+          type="button"
+          onClick={() => exportOrdersCSV(filtered)}
+          className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+        >
+          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5M16.5 12 12 16.5m0 0L7.5 12m4.5 4.5V3" />
+          </svg>
+          Export CSV
+        </button>
       </div>
 
       {/* Stats */}
@@ -201,38 +272,79 @@ export default function OrdersManager({ orders: initial }: { orders: Order[] }) 
           ))}
         </div>
 
-        <div className="ml-auto relative">
-          {showDatePicker && <div className="fixed inset-0 z-10" onClick={() => setShowDatePicker(false)} />}
-          <button
-            type="button"
-            onClick={() => setShowDatePicker(p => !p)}
-            className={`flex items-center gap-2 px-3 py-2 text-sm rounded-lg border transition-colors ${dateFrom || dateTo ? 'border-gray-900 dark:border-white text-gray-900 dark:text-white' : 'border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800'}`}
-          >
-            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 0 1 2.25-2.25h13.5A2.25 2.25 0 0 1 21 7.5v11.25m-18 0A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75m-18 0v-7.5A2.25 2.25 0 0 1 5.25 9h13.5A2.25 2.25 0 0 1 21 11.25v7.5" />
-            </svg>
-            {dateLabel}
-            <svg className="w-3.5 h-3.5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
-            </svg>
-          </button>
-          {showDatePicker && (
-            <div className="absolute right-0 top-full mt-1 z-20 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl shadow-lg p-4 w-64">
-              <div className="space-y-3">
-                <div>
-                  <label className="text-xs text-gray-500 dark:text-gray-400 mb-1 block">From</label>
-                  <input type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)} className="w-full px-3 py-2 text-sm border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none" />
-                </div>
-                <div>
-                  <label className="text-xs text-gray-500 dark:text-gray-400 mb-1 block">To</label>
-                  <input type="date" value={dateTo} onChange={e => setDateTo(e.target.value)} className="w-full px-3 py-2 text-sm border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none" />
-                </div>
-                {(dateFrom || dateTo) && (
-                  <button type="button" onClick={() => { setDateFrom(''); setDateTo('') }} className="text-xs text-gray-400 hover:text-red-500 transition-colors">Clear dates</button>
-                )}
+        <div className="ml-auto flex items-center gap-2">
+          {/* Sort by */}
+          <div className="relative">
+            {showSortDropdown && <div className="fixed inset-0 z-10" onClick={() => setShowSortDropdown(false)} />}
+            <button
+              type="button"
+              onClick={() => { setShowSortDropdown(p => !p); setShowDatePicker(false) }}
+              className={`flex items-center gap-2 px-3 py-2 text-sm rounded-lg border transition-colors ${sortBy !== 'newest' ? 'border-gray-900 dark:border-white text-gray-900 dark:text-white' : 'border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800'}`}
+            >
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M3 7.5 7.5 3m0 0L12 7.5M7.5 3v13.5m13.5 0L16.5 21m0 0L12 16.5m4.5 4.5V7.5" />
+              </svg>
+              Sort
+              <svg className="w-3.5 h-3.5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
+              </svg>
+            </button>
+            {showSortDropdown && (
+              <div className="absolute right-0 top-full mt-1 z-20 w-48 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl shadow-lg py-1 overflow-hidden">
+                {([
+                  ['newest', 'Newest first'],
+                  ['oldest', 'Oldest first'],
+                  ['total_high', 'Total: high → low'],
+                  ['total_low', 'Total: low → high'],
+                ] as const).map(([val, label]) => (
+                  <button key={val} type="button" onClick={() => { setSortBy(val); setShowSortDropdown(false) }}
+                    className={`flex items-center justify-between w-full px-3 py-2.5 text-sm transition-colors ${sortBy === val ? 'text-gray-900 dark:text-white font-medium bg-gray-50 dark:bg-gray-800' : 'text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800'}`}>
+                    {label}
+                    {sortBy === val && (
+                      <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="m4.5 12.75 6 6 9-13.5" />
+                      </svg>
+                    )}
+                  </button>
+                ))}
               </div>
-            </div>
-          )}
+            )}
+          </div>
+
+          {/* Date picker */}
+          <div className="relative">
+            {showDatePicker && <div className="fixed inset-0 z-10" onClick={() => setShowDatePicker(false)} />}
+            <button
+              type="button"
+              onClick={() => setShowDatePicker(p => !p)}
+              className={`flex items-center gap-2 px-3 py-2 text-sm rounded-lg border transition-colors ${dateFrom || dateTo ? 'border-gray-900 dark:border-white text-gray-900 dark:text-white' : 'border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800'}`}
+            >
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 0 1 2.25-2.25h13.5A2.25 2.25 0 0 1 21 7.5v11.25m-18 0A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75m-18 0v-7.5A2.25 2.25 0 0 1 5.25 9h13.5A2.25 2.25 0 0 1 21 11.25v7.5" />
+              </svg>
+              {dateLabel}
+              <svg className="w-3.5 h-3.5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
+              </svg>
+            </button>
+            {showDatePicker && (
+              <div className="absolute right-0 top-full mt-1 z-20 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl shadow-lg p-4 w-64">
+                <div className="space-y-3">
+                  <div>
+                    <label className="text-xs text-gray-500 dark:text-gray-400 mb-1 block">From</label>
+                    <input type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)} className="w-full px-3 py-2 text-sm border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none" />
+                  </div>
+                  <div>
+                    <label className="text-xs text-gray-500 dark:text-gray-400 mb-1 block">To</label>
+                    <input type="date" value={dateTo} onChange={e => setDateTo(e.target.value)} className="w-full px-3 py-2 text-sm border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none" />
+                  </div>
+                  {(dateFrom || dateTo) && (
+                    <button type="button" onClick={() => { setDateFrom(''); setDateTo('') }} className="text-xs text-gray-400 hover:text-red-500 transition-colors">Clear dates</button>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
@@ -244,6 +356,32 @@ export default function OrdersManager({ orders: initial }: { orders: Order[] }) 
             className="text-xs text-gray-400 underline underline-offset-2 hover:text-gray-600 transition-colors">Clear filters</button>
         </div>
       )}
+
+      {/* Bulk action bar */}
+      <div className={`fixed bottom-8 left-1/2 -translate-x-1/2 z-50 transition-all duration-300 ${someSelected ? 'translate-y-0 opacity-100' : 'translate-y-4 opacity-0 pointer-events-none'}`}>
+        <div className="flex items-center gap-3 bg-gray-900 dark:bg-white text-white dark:text-gray-900 rounded-2xl px-4 py-3 shadow-xl">
+          <span className="text-sm font-medium whitespace-nowrap">{selected.size} selected</span>
+          <div className="w-px h-4 bg-white/20 dark:bg-gray-900/20" />
+          <button type="button" onClick={() => handleBulkStatus('shipped')}
+            className="text-sm font-medium px-3 py-1.5 rounded-lg bg-white/10 dark:bg-gray-900/10 hover:bg-white/20 dark:hover:bg-gray-900/20 transition-colors whitespace-nowrap">
+            Mark Shipped
+          </button>
+          <button type="button" onClick={() => handleBulkStatus('delivered')}
+            className="text-sm font-medium px-3 py-1.5 rounded-lg bg-white/10 dark:bg-gray-900/10 hover:bg-white/20 dark:hover:bg-gray-900/20 transition-colors whitespace-nowrap">
+            Mark Delivered
+          </button>
+          <button type="button" onClick={() => handleBulkStatus('cancelled')}
+            className="text-sm font-medium px-3 py-1.5 rounded-lg bg-red-500/20 text-red-300 dark:text-red-600 hover:bg-red-500/30 transition-colors">
+            Cancel
+          </button>
+          <button type="button" onClick={() => setSelected(new Set())}
+            className="text-white/60 dark:text-gray-900/60 hover:text-white dark:hover:text-gray-900 transition-colors ml-1">
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+      </div>
 
       {/* Table */}
       {filtered.length === 0 ? (
@@ -257,6 +395,14 @@ export default function OrdersManager({ orders: initial }: { orders: Order[] }) 
           <table className="w-full text-sm">
             <thead>
               <tr className="bg-gray-50 dark:bg-gray-900/80 border-b border-gray-200 dark:border-gray-800">
+                <th className="pl-4 pr-2 py-3 w-8">
+                  <input
+                    type="checkbox"
+                    checked={allSelected}
+                    onChange={toggleSelectAll}
+                    className="w-4 h-4 rounded border-gray-300 dark:border-gray-600 accent-gray-900 dark:accent-white cursor-pointer"
+                  />
+                </th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">Order</th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">Customer</th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">Items</th>
@@ -267,12 +413,22 @@ export default function OrdersManager({ orders: initial }: { orders: Order[] }) 
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100 dark:divide-gray-800 bg-white dark:bg-gray-900">
-              {filtered.map(order => {
+              {sorted.map(order => {
                 const customer = order.customers
                 const items: OrderItem[] = Array.isArray(order.items) ? order.items : []
                 const thumbs = items.filter(i => i.thumbnail).slice(0, 3)
                 return (
-                  <tr key={order.id} className="hover:bg-gray-50 dark:hover:bg-gray-800/40 transition-colors">
+                  <tr key={order.id} className={`transition-colors ${selected.has(order.id) ? 'bg-blue-50/60 dark:bg-blue-950/20' : 'hover:bg-gray-50 dark:hover:bg-gray-800/40'}`}>
+                    {/* Checkbox */}
+                    <td className="pl-4 pr-2 py-3 w-8">
+                      <input
+                        type="checkbox"
+                        checked={selected.has(order.id)}
+                        onChange={() => toggleSelect(order.id)}
+                        className="w-4 h-4 rounded border-gray-300 dark:border-gray-600 accent-gray-900 dark:accent-white cursor-pointer"
+                      />
+                    </td>
+
                     {/* Order */}
                     <td className="px-4 py-3">
                       <p className="font-mono text-xs font-semibold text-gray-900 dark:text-white tracking-wide">

@@ -11,3 +11,10 @@ export async function updateOrderStatus(formData: FormData) {
   revalidatePath('/admin/orders')
   revalidatePath('/admin')
 }
+
+export async function bulkUpdateOrderStatus(ids: string[], status: string) {
+  const supabase = createClient()
+  await supabase.from('orders').update({ status }).in('id', ids)
+  revalidatePath('/admin/orders')
+  revalidatePath('/admin')
+}

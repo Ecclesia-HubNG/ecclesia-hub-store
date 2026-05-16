@@ -305,6 +305,11 @@ export function ProductsManager({
   const [showMoreActions, setShowMoreActions] = useState(false)
   const [showStatusDropdown, setShowStatusDropdown] = useState(false)
   const [showCategoryDropdown, setShowCategoryDropdown] = useState(false)
+  const [showSortDropdown, setShowSortDropdown] = useState(false)
+  const [showStockDropdown, setShowStockDropdown] = useState(false)
+
+  const [sortBy, setSortBy] = useState<'newest' | 'oldest' | 'name_asc' | 'name_desc' | 'price_high' | 'price_low' | 'stock_high' | 'stock_low'>('newest')
+  const [stockFilter, setStockFilter] = useState<'all' | 'in_stock' | 'low_stock' | 'out_of_stock'>('all')
 
   // Quick edit
   const [editingProduct, setEditingProduct] = useState<Product | null>(null)
@@ -430,15 +435,33 @@ export function ProductsManager({
       if (status === 'inactive' && p.is_active) return false
       if (status === 'featured' && !p.is_featured) return false
       if (status === 'out_of_stock' && p.stock !== 0) return false
+      if (stockFilter === 'in_stock' && p.stock === 0) return false
+      if (stockFilter === 'low_stock' && (p.stock === 0 || p.stock > 5)) return false
+      if (stockFilter === 'out_of_stock' && p.stock !== 0) return false
       if (categoryId && p.category_id !== categoryId) return false
       if (dateFrom && new Date(p.created_at) < new Date(dateFrom)) return false
       if (dateTo && new Date(p.created_at) > new Date(dateTo + 'T23:59:59')) return false
       return true
     })
-  }, [products, search, status, categoryId, dateFrom, dateTo])
+  }, [products, search, status, stockFilter, categoryId, dateFrom, dateTo])
 
-  const hasFilters = !!(search || status !== 'all' || categoryId || dateFrom || dateTo)
-  const clearFilters = () => { setSearch(''); setStatus('all'); setCategoryId(''); setDateFrom(''); setDateTo('') }
+  const sorted = useMemo(() => {
+    return [...filtered].sort((a, b) => {
+      switch (sortBy) {
+        case 'name_asc': return a.name.localeCompare(b.name)
+        case 'name_desc': return b.name.localeCompare(a.name)
+        case 'price_high': return b.price - a.price
+        case 'price_low': return a.price - b.price
+        case 'stock_high': return b.stock - a.stock
+        case 'stock_low': return a.stock - b.stock
+        case 'oldest': return new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+        default: return new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+      }
+    })
+  }, [filtered, sortBy])
+
+  const hasFilters = !!(search || status !== 'all' || stockFilter !== 'all' || categoryId || dateFrom || dateTo)
+  const clearFilters = () => { setSearch(''); setStatus('all'); setStockFilter('all'); setCategoryId(''); setDateFrom(''); setDateTo('') }
 
   const allFilteredSelected = filtered.length > 0 && filtered.every(p => selected.has(p.id))
   const someSelected = selected.size > 0
@@ -468,7 +491,7 @@ export function ProductsManager({
       ? `${dateFrom ? new Date(dateFrom).toLocaleDateString('en', { day: '2-digit', month: 'short', year: 'numeric' }) : '...'} → ${dateTo ? new Date(dateTo).toLocaleDateString('en', { day: '2-digit', month: 'short', year: 'numeric' }) : '...'}`
       : 'Date range'
 
-  const closeAll = () => { setShowStatusDropdown(false); setShowCategoryDropdown(false); setShowDatePicker(false); setShowMoreActions(false) }
+  const closeAll = () => { setShowStatusDropdown(false); setShowCategoryDropdown(false); setShowDatePicker(false); setShowMoreActions(false); setShowSortDropdown(false); setShowStockDropdown(false) }
 
   return (
     <div>
@@ -655,6 +678,44 @@ export function ProductsManager({
           </div>
         )}
 
+        {/* Stock filter */}
+        <div className="relative">
+          <button
+            type="button"
+            onClick={() => { setShowStockDropdown(p => !p); setShowStatusDropdown(false); setShowCategoryDropdown(false); setShowDatePicker(false); setShowSortDropdown(false) }}
+            className={`flex items-center gap-2 px-3 py-2 text-sm rounded-lg border transition-colors ${stockFilter !== 'all' ? 'border-gray-900 dark:border-white text-gray-900 dark:text-white bg-gray-50 dark:bg-gray-800' : 'border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800'}`}
+          >
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="m20.25 7.5-.625 10.632a2.25 2.25 0 0 1-2.247 2.118H6.622a2.25 2.25 0 0 1-2.247-2.118L3.75 7.5M10 11.25h4M3.375 7.5h17.25c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125z" />
+            </svg>
+            {stockFilter === 'all' ? 'All Stock' : stockFilter === 'in_stock' ? 'In Stock' : stockFilter === 'low_stock' ? 'Low Stock' : 'Out of Stock'}
+            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
+            </svg>
+          </button>
+          {showStockDropdown && (
+            <>
+              <div className="fixed inset-0 z-10" onClick={() => setShowStockDropdown(false)} />
+              <div className="absolute left-0 top-full mt-1.5 z-20 w-48 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl shadow-lg py-1 overflow-hidden">
+                {(['all', 'in_stock', 'low_stock', 'out_of_stock'] as const).map(val => {
+                  const label = val === 'all' ? 'All Stock' : val === 'in_stock' ? 'In Stock' : val === 'low_stock' ? 'Low Stock (≤5)' : 'Out of Stock'
+                  return (
+                    <button key={val} type="button" onClick={() => { setStockFilter(val); setShowStockDropdown(false) }}
+                      className={`flex items-center justify-between w-full px-4 py-2.5 text-sm transition-colors ${stockFilter === val ? 'text-gray-900 dark:text-white font-medium bg-gray-50 dark:bg-gray-800' : 'text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800'}`}>
+                      {label}
+                      {stockFilter === val && (
+                        <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="m4.5 12.75 6 6 9-13.5" />
+                        </svg>
+                      )}
+                    </button>
+                  )
+                })}
+              </div>
+            </>
+          )}
+        </div>
+
         {/* Date range */}
         <div className="relative">
           <button
@@ -695,6 +756,50 @@ export function ProductsManager({
                     Apply
                   </button>
                 </div>
+              </div>
+            </>
+          )}
+        </div>
+
+        {/* Sort by */}
+        <div className="relative ml-auto">
+          <button
+            type="button"
+            onClick={() => { setShowSortDropdown(p => !p); setShowStatusDropdown(false); setShowCategoryDropdown(false); setShowDatePicker(false); setShowStockDropdown(false) }}
+            className={`flex items-center gap-2 px-3 py-2 text-sm rounded-lg border transition-colors ${sortBy !== 'newest' ? 'border-gray-900 dark:border-white text-gray-900 dark:text-white bg-gray-50 dark:bg-gray-800' : 'border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800'}`}
+          >
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M3 7.5 7.5 3m0 0L12 7.5M7.5 3v13.5m13.5 0L16.5 21m0 0L12 16.5m4.5 4.5V7.5" />
+            </svg>
+            Sort
+            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
+            </svg>
+          </button>
+          {showSortDropdown && (
+            <>
+              <div className="fixed inset-0 z-10" onClick={() => setShowSortDropdown(false)} />
+              <div className="absolute right-0 top-full mt-1.5 z-20 w-52 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl shadow-lg py-1 overflow-hidden">
+                {([
+                  ['newest', 'Newest first'],
+                  ['oldest', 'Oldest first'],
+                  ['name_asc', 'Name A → Z'],
+                  ['name_desc', 'Name Z → A'],
+                  ['price_high', 'Price: high → low'],
+                  ['price_low', 'Price: low → high'],
+                  ['stock_high', 'Stock: high → low'],
+                  ['stock_low', 'Stock: low → high'],
+                ] as const).map(([val, label]) => (
+                  <button key={val} type="button" onClick={() => { setSortBy(val); setShowSortDropdown(false) }}
+                    className={`flex items-center justify-between w-full px-4 py-2.5 text-sm transition-colors ${sortBy === val ? 'text-gray-900 dark:text-white font-medium bg-gray-50 dark:bg-gray-800' : 'text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800'}`}>
+                    {label}
+                    {sortBy === val && (
+                      <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="m4.5 12.75 6 6 9-13.5" />
+                      </svg>
+                    )}
+                  </button>
+                ))}
               </div>
             </>
           )}
@@ -748,7 +853,7 @@ export function ProductsManager({
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100 dark:divide-gray-800 bg-white dark:bg-gray-900">
-              {filtered.map(product => (
+              {sorted.map(product => (
                 <tr key={product.id} className={`transition-colors ${selected.has(product.id) ? 'bg-blue-50/60 dark:bg-blue-950/20' : 'hover:bg-gray-50 dark:hover:bg-gray-800/40'}`}>
                   <td className="pl-4 pr-2 py-3 w-8">
                     <input
