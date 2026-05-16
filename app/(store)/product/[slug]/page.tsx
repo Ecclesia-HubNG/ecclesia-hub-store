@@ -2,7 +2,7 @@ import { createClient } from '@/lib/supabase/server'
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import ImageGallery from '@/components/store/ImageGallery'
-import VariantSelector from '@/components/store/VariantSelector'
+import AddToCart from '@/components/store/AddToCart'
 
 function fmt(n: number) {
   return `₦${n.toLocaleString('en', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
@@ -109,11 +109,8 @@ export default async function ProductPage({ params }: { params: { slug: string }
             </p>
           )}
 
-          {/* Variants */}
-          <VariantSelector variants={variants} />
-
           {/* Stock status */}
-          <p className="text-sm mb-5">
+          <p className="text-sm mb-4">
             {product.stock > 5 ? (
               <span className="text-green-600 dark:text-green-400 font-medium">In stock</span>
             ) : product.stock > 0 ? (
@@ -123,13 +120,16 @@ export default async function ProductPage({ params }: { params: { slug: string }
             )}
           </p>
 
-          {/* CTA */}
-          <button
-            disabled={product.stock === 0}
-            className="w-full py-3.5 bg-gray-900 dark:bg-white text-white dark:text-gray-900 text-sm font-semibold rounded-full hover:bg-gray-700 dark:hover:bg-gray-100 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-          >
-            {product.stock === 0 ? 'Out of stock' : 'Add to cart'}
-          </button>
+          {/* Variant selector + Add to cart (client) */}
+          <AddToCart
+            productId={product.id}
+            slug={product.slug}
+            name={product.name}
+            basePrice={displayPrice}
+            thumbnail={product.thumbnail ?? null}
+            variants={variants}
+            stock={product.stock}
+          />
 
           {/* Attributes */}
           {attributes.length > 0 && (
