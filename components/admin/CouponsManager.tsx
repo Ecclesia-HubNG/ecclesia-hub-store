@@ -18,6 +18,8 @@ type Coupon = {
   created_at: string
 }
 
+type AppliesTo = 'all' | 'products' | 'categories'
+
 type FormState = {
   code: string
   description: string
@@ -27,11 +29,15 @@ type FormState = {
   max_uses: string
   expires_at: string
   is_active: boolean
+  applies_to: AppliesTo
+  product_ids: string[]
+  category_ids: string[]
 }
 
 const empty: FormState = {
   code: '', description: '', discount_type: 'percentage',
   discount_value: '', min_order_amount: '', max_uses: '', expires_at: '', is_active: true,
+  applies_to: 'all', product_ids: [], category_ids: [],
 }
 
 const inputCls = 'w-full px-3 py-2 border border-gray-200 dark:border-gray-700 rounded-lg text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-gray-900/10 dark:focus:ring-white/10 focus:border-gray-400 dark:focus:border-gray-500 transition-colors placeholder:text-gray-400 dark:placeholder:text-gray-600'
@@ -47,7 +53,10 @@ function formatExpiry(dateStr: string | null) {
   return { label: d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }), expired: false }
 }
 
-export default function CouponsManager({ coupons: initial }: { coupons: Coupon[] }) {
+type Product = { id: string; name: string; thumbnail: string | null }
+type Category = { id: string; name: string }
+
+export default function CouponsManager({ coupons: initial, products, categories }: { coupons: Coupon[]; products: Product[]; categories: Category[] }) {
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
 
@@ -58,7 +67,7 @@ export default function CouponsManager({ coupons: initial }: { coupons: Coupon[]
   const [error, setError] = useState('')
   const [copied, setCopied] = useState<string | null>(null)
 
-  const set = (key: keyof FormState, val: string | boolean) =>
+  const set = (key: keyof FormState, val: string | boolean | string[]) =>
     setForm(f => ({ ...f, [key]: val }))
 
   const openCreate = () => {
@@ -79,6 +88,9 @@ export default function CouponsManager({ coupons: initial }: { coupons: Coupon[]
       max_uses: c.max_uses != null ? String(c.max_uses) : '',
       expires_at: c.expires_at ? new Date(c.expires_at).toISOString().slice(0, 16) : '',
       is_active: c.is_active,
+      applies_to: (c as any).applies_to ?? 'all',
+      product_ids: (c as any).product_ids ?? [],
+      category_ids: (c as any).category_ids ?? [],
     })
     setError('')
     setShowForm(true)
@@ -97,6 +109,9 @@ export default function CouponsManager({ coupons: initial }: { coupons: Coupon[]
       max_uses: form.max_uses ? parseInt(form.max_uses) : null,
       expires_at: form.expires_at ? new Date(form.expires_at).toISOString() : null,
       is_active: form.is_active,
+      applies_to: form.applies_to,
+      product_ids: form.applies_to === 'products' ? form.product_ids : [],
+      category_ids: form.applies_to === 'categories' ? form.category_ids : [],
     }
     startTransition(async () => {
       const result = editingId ? await updateCoupon(editingId, input) : await createCoupon(input)
@@ -202,6 +217,47 @@ export default function CouponsManager({ coupons: initial }: { coupons: Coupon[]
               <input type="datetime-local" value={form.expires_at} onChange={e => set('expires_at', e.target.value)} className={inputCls} />
             </div>
             <div className="sm:col-span-2 lg:col-span-3">
+              <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1.5">Applies to</label>
+              <div className="flex gap-2">
+                {(['all', 'products', 'categories'] as AppliesTo[]).map(opt => (
+                  <button key={opt} type="button" onClick={() => set('applies_to', opt)}
+                    className={`px-3 py-1.5 text-sm rounded-lg border transition-colors capitalize ${form.applies_to === opt ? 'border-gray-900 dark:border-white bg-gray-900 dark:bg-white text-white dark:text-gray-900' : 'border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 hover:border-gray-400 dark:hover:border-gray-500'}`}>
+                    {opt === 'all' ? 'All products' : opt === 'products' ? 'Specific products' : 'Specific categories'}
+                  </button>
+                ))}
+              </div>
+
+              {/* Product picker */}
+              {form.applies_to === 'products' && (
+                <div className="mt-3 border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden max-h-48 overflow-y-auto">
+                  {products.map(p => (
+                    <label key={p.id} className="flex items-center gap-3 px-3 py-2 hover:bg-gray-50 dark:hover:bg-gray-800 cursor-pointer">
+                      <input type="checkbox" checked={form.product_ids.includes(p.id)}
+                        onChange={e => set('product_ids', e.target.checked ? [...form.product_ids, p.id] : form.product_ids.filter(id => id !== p.id))}
+                        className="w-4 h-4 rounded border-gray-300 accent-gray-900" />
+                      {p.thumbnail && <img src={p.thumbnail} alt="" className="w-6 h-6 rounded object-cover shrink-0" />}
+                      <span className="text-sm text-gray-700 dark:text-gray-300 truncate">{p.name}</span>
+                    </label>
+                  ))}
+                </div>
+              )}
+
+              {/* Category picker */}
+              {form.applies_to === 'categories' && (
+                <div className="mt-3 border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden max-h-48 overflow-y-auto">
+                  {categories.map(c => (
+                    <label key={c.id} className="flex items-center gap-3 px-3 py-2 hover:bg-gray-50 dark:hover:bg-gray-800 cursor-pointer">
+                      <input type="checkbox" checked={form.category_ids.includes(c.id)}
+                        onChange={e => set('category_ids', e.target.checked ? [...form.category_ids, c.id] : form.category_ids.filter(id => id !== c.id))}
+                        className="w-4 h-4 rounded border-gray-300 accent-gray-900" />
+                      <span className="text-sm text-gray-700 dark:text-gray-300">{c.name}</span>
+                    </label>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <div className="sm:col-span-2 lg:col-span-3">
               <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1.5">Description <span className="text-gray-400">(optional)</span></label>
               <input value={form.description} onChange={e => set('description', e.target.value)}
                 placeholder="e.g. 20% off for newsletter subscribers" className={inputCls} />
@@ -277,6 +333,13 @@ export default function CouponsManager({ coupons: initial }: { coupons: Coupon[]
                         {c.discount_type === 'percentage' ? `${c.discount_value}%` : `₦${fmt(c.discount_value)}`}
                       </span>
                       <span className="text-xs text-gray-400 dark:text-gray-600 ml-1">off</span>
+                      {(c as any).applies_to && (c as any).applies_to !== 'all' && (
+                        <p className="text-xs text-gray-400 dark:text-gray-600 mt-0.5">
+                          {(c as any).applies_to === 'products'
+                            ? `${((c as any).product_ids ?? []).length} product(s)`
+                            : `${((c as any).category_ids ?? []).length} categor${((c as any).category_ids ?? []).length === 1 ? 'y' : 'ies'}`}
+                        </p>
+                      )}
                     </td>
 
                     {/* Min order */}
