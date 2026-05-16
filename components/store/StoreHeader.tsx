@@ -1,8 +1,9 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
 import { useCart } from '@/lib/cart-context'
+import { createClient } from '@/lib/supabase/client'
 
 const NAV_LINKS = [
   { href: '/home', label: 'Home' },
@@ -13,7 +14,38 @@ const NAV_LINKS = [
 
 export default function StoreHeader() {
   const [menuOpen, setMenuOpen] = useState(false)
+  const [accountOpen, setAccountOpen] = useState(false)
+  const [user, setUser] = useState<{ email?: string; user_metadata?: { full_name?: string } } | null>(null)
   const { count } = useCart()
+  const accountRef = useRef<HTMLDivElement>(null)
+  const supabase = createClient()
+
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data: { user } }) => setUser(user))
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_e, session) => {
+      setUser(session?.user ?? null)
+    })
+    return () => subscription.unsubscribe()
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  // Close dropdown on outside click
+  useEffect(() => {
+    if (!accountOpen) return
+    const handler = (e: MouseEvent) => {
+      if (accountRef.current && !accountRef.current.contains(e.target as Node)) {
+        setAccountOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [accountOpen])
+
+  async function signOut() {
+    await supabase.auth.signOut()
+    setAccountOpen(false)
+    setUser(null)
+  }
 
   return (
     <>
@@ -85,16 +117,92 @@ export default function StoreHeader() {
               )}
             </Link>
 
-            {/* Account — person */}
-            <Link
-              href="/account"
-              aria-label="Account"
-              className="p-2 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors"
-            >
-              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 6a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0ZM4.501 20.118a7.5 7.5 0 0 1 14.998 0A17.933 17.933 0 0 1 12 21.75c-2.676 0-5.216-.584-7.499-1.632Z" />
-              </svg>
-            </Link>
+            {/* Account dropdown */}
+            <div ref={accountRef} className="relative">
+              <button
+                type="button"
+                aria-label="Account"
+                onClick={() => setAccountOpen(p => !p)}
+                className="p-2 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors"
+              >
+                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 6a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0ZM4.501 20.118a7.5 7.5 0 0 1 14.998 0A17.933 17.933 0 0 1 12 21.75c-2.676 0-5.216-.584-7.499-1.632Z" />
+                </svg>
+              </button>
+
+              {accountOpen && (
+                <div className="absolute right-0 top-full mt-2 w-52 bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl shadow-xl overflow-hidden z-50">
+                  {user ? (
+                    <>
+                      {/* Logged-in header */}
+                      <div className="px-4 py-3 border-b border-gray-100 dark:border-gray-800">
+                        <p className="text-xs font-semibold text-gray-900 dark:text-white truncate">
+                          {user.user_metadata?.full_name ?? 'My Account'}
+                        </p>
+                        <p className="text-[11px] text-gray-400 dark:text-gray-500 truncate mt-0.5">{user.email}</p>
+                      </div>
+                      <div className="py-1">
+                        <Link
+                          href="/account"
+                          onClick={() => setAccountOpen(false)}
+                          className="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+                        >
+                          <svg className="w-4 h-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 6a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0ZM4.501 20.118a7.5 7.5 0 0 1 14.998 0A17.933 17.933 0 0 1 12 21.75c-2.676 0-5.216-.584-7.499-1.632Z" />
+                          </svg>
+                          My Account
+                        </Link>
+                        <Link
+                          href="/account"
+                          onClick={() => setAccountOpen(false)}
+                          className="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+                        >
+                          <svg className="w-4 h-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 10.5V6a3.75 3.75 0 1 0-7.5 0v4.5m11.356-1.993 1.263 12c.07.665-.45 1.243-1.119 1.243H4.25a1.125 1.125 0 0 1-1.12-1.243l1.264-12A1.125 1.125 0 0 1 5.513 7.5h12.974c.576 0 1.059.435 1.119 1.007Z" />
+                          </svg>
+                          My Orders
+                        </Link>
+                      </div>
+                      <div className="border-t border-gray-100 dark:border-gray-800 py-1">
+                        <button
+                          type="button"
+                          onClick={signOut}
+                          className="flex items-center gap-3 w-full px-4 py-2.5 text-sm text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
+                        >
+                          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0 0 13.5 3h-6a2.25 2.25 0 0 0-2.25 2.25v13.5A2.25 2.25 0 0 0 7.5 21h6a2.25 2.25 0 0 0 2.25-2.25V15m3 0 3-3m0 0-3-3m3 3H9" />
+                          </svg>
+                          Sign out
+                        </button>
+                      </div>
+                    </>
+                  ) : (
+                    <div className="py-1">
+                      <Link
+                        href="/account"
+                        onClick={() => setAccountOpen(false)}
+                        className="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+                      >
+                        <svg className="w-4 h-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0 0 13.5 3h-6a2.25 2.25 0 0 0-2.25 2.25v13.5A2.25 2.25 0 0 0 7.5 21h6a2.25 2.25 0 0 0 2.25-2.25V15m3 0 3-3m0 0-3-3m3 3H9" />
+                        </svg>
+                        Sign in
+                      </Link>
+                      <Link
+                        href="/account"
+                        onClick={() => setAccountOpen(false)}
+                        className="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+                      >
+                        <svg className="w-4 h-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M18 7.5v3m0 0v3m0-3h3m-3 0h-3m-2.25-4.125a3.375 3.375 0 1 1-6.75 0 3.375 3.375 0 0 1 6.75 0ZM3 19.235v-.11a6.375 6.375 0 0 1 12.75 0v.109A12.318 12.318 0 0 1 9.374 21c-2.331 0-4.512-.645-6.374-1.766Z" />
+                        </svg>
+                        Create account
+                      </Link>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
           </div>
         </div>
       </header>
