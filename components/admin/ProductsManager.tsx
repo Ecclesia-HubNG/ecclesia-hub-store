@@ -120,7 +120,9 @@ const TEMPLATE_CSV = [
   '"Broken Headphones",8000,,0,,Inactive,No,',
 ].join('\n')
 
-function parseImportCSV(text: string, existing: Product[]): ImportRow[] {
+type ImportFormat = 'template' | 'woocommerce'
+
+function parseTemplateCSV(text: string, existing: Product[]): ImportRow[] {
   const cleaned = text.replace(/^﻿/, '').replace(/^ï»¿/, '')
   const lines = cleaned.trim().split('\n').filter(l => !l.trimStart().startsWith('#') && l.trim())
   if (lines.length < 2) return []
@@ -128,11 +130,11 @@ function parseImportCSV(text: string, existing: Product[]): ImportRow[] {
   const headers = parseCSVLine(lines[0]).map(h => h.trim())
   const col = (name: string) => headers.findIndex(h => h.toLowerCase() === name.toLowerCase())
 
-  const nameIdx    = col('Name')
-  const priceIdx   = col('Price')
-  const compareIdx = col('Compare At Price')
-  const stockIdx   = col('Stock')
-  const statusIdx  = col('Status')
+  const nameIdx     = col('Name')
+  const priceIdx    = col('Price')
+  const compareIdx  = col('Compare At Price')
+  const stockIdx    = col('Stock')
+  const statusIdx   = col('Status')
   const featuredIdx = col('Featured')
 
   if (nameIdx === -1 || priceIdx === -1) return []
@@ -150,25 +152,80 @@ function parseImportCSV(text: string, existing: Product[]): ImportRow[] {
     if (isNaN(price) || rawPrice === '') return []
 
     const stock = stockIdx !== -1 ? parseInt(vals[stockIdx] ?? '') || 0 : 0
-
-    const is_active = statusIdx !== -1
-      ? vals[statusIdx]?.trim().toLowerCase() === 'active'
-      : true
-
-    const is_featured = featuredIdx !== -1
-      ? vals[featuredIdx]?.trim().toLowerCase() === 'yes'
-      : false
-
+    const is_active = statusIdx !== -1 ? vals[statusIdx]?.trim().toLowerCase() === 'active' : true
+    const is_featured = featuredIdx !== -1 ? vals[featuredIdx]?.trim().toLowerCase() === 'yes' : false
     const compare_at_price = compareIdx !== -1 && vals[compareIdx]?.trim()
-      ? parseFloat(vals[compareIdx]) || null
-      : null
-
-    const isDuplicate =
-      existingNames.has(name.toLowerCase()) ||
-      existingSlugs.has(slugify(name))
+      ? parseFloat(vals[compareIdx]) || null : null
+    const isDuplicate = existingNames.has(name.toLowerCase()) || existingSlugs.has(slugify(name))
 
     return [{ name, price, compare_at_price, stock, is_active, is_featured, isDuplicate }]
   })
+}
+
+function parseWooCommerceCSV(text: string, existing: Product[]): ImportRow[] {
+  const cleaned = text.replace(/^﻿/, '').replace(/^ï»¿/, '')
+  const lines = cleaned.trim().split('\n').filter(Boolean)
+  if (lines.length < 2) return []
+
+  const headers = parseCSVLine(lines[0]).map(h => h.toLowerCase().trim())
+  const col = (names: string[]) => headers.findIndex(h => names.includes(h))
+
+  const nameIdx     = col(['name'])
+  const priceIdx    = col(['price', 'regular price'])
+  const compareIdx  = col(['compare at price', 'sale price'])
+  const stockIdx    = col(['stock'])
+  const inStockIdx  = col(['in stock?'])
+  const statusIdx   = col(['status', 'published'])
+  const featuredIdx = col(['featured', 'is featured?'])
+  const typeIdx     = col(['type'])
+
+  if (nameIdx === -1 || priceIdx === -1) return []
+
+  const existingNames = new Set(existing.map(p => p.name.toLowerCase().trim()))
+  const existingSlugs = new Set(existing.map(p => p.slug))
+
+  return lines.slice(1).flatMap(line => {
+    const vals = parseCSVLine(line)
+    const name = vals[nameIdx]?.trim() ?? ''
+    if (!name) return []
+
+    const type = typeIdx !== -1 ? vals[typeIdx]?.toLowerCase().trim() : 'simple'
+    if (type && type !== 'simple') return []
+
+    const rawPrice = vals[priceIdx]?.trim() ?? ''
+    const price = parseFloat(rawPrice)
+    if (isNaN(price) || rawPrice === '') return []
+
+    let stock = stockIdx !== -1 ? parseInt(vals[stockIdx] ?? '') : NaN
+    if (isNaN(stock)) {
+      const inStock = inStockIdx !== -1 ? vals[inStockIdx]?.trim() : '1'
+      stock = inStock === '1' || inStock?.toLowerCase() === 'yes' ? 1 : 0
+    }
+
+    let is_active = true
+    if (statusIdx !== -1) {
+      const s = vals[statusIdx]?.toLowerCase().trim()
+      is_active = s === 'active' || s === '1'
+    }
+
+    let is_featured = false
+    if (featuredIdx !== -1) {
+      const f = vals[featuredIdx]?.toLowerCase().trim()
+      is_featured = f === 'yes' || f === '1'
+    }
+
+    const compare_at_price = compareIdx !== -1 && vals[compareIdx]?.trim()
+      ? parseFloat(vals[compareIdx]) || null : null
+    const isDuplicate = existingNames.has(name.toLowerCase()) || existingSlugs.has(slugify(name))
+
+    return [{ name, price, compare_at_price, stock, is_active, is_featured, isDuplicate }]
+  })
+}
+
+function parseImportCSV(text: string, existing: Product[], format: ImportFormat): ImportRow[] {
+  return format === 'woocommerce'
+    ? parseWooCommerceCSV(text, existing)
+    : parseTemplateCSV(text, existing)
 }
 
 function exportToCSV(products: Product[]) {
@@ -235,22 +292,36 @@ export function ProductsManager({
   const [isSaving, startSave] = useTransition()
 
   // CSV import
+  const [showImportPicker, setShowImportPicker] = useState(false)
+  const [importFormat, setImportFormat] = useState<ImportFormat | null>(null)
   const [importRows, setImportRows] = useState<ImportRow[] | null>(null)
   const [isImporting, startImport] = useTransition()
   const [importDone, setImportDone] = useState('')
 
-  const handleImportFile = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImportFile = (e: React.ChangeEvent<HTMLInputElement>, format: ImportFormat) => {
     const file = e.target.files?.[0]
     if (!file) return
     e.target.value = ''
     const reader = new FileReader()
     reader.onload = ev => {
       const text = ev.target?.result as string
-      const rows = parseImportCSV(text, products)
+      const rows = parseImportCSV(text, products, format)
       setImportRows(rows)
       setImportDone('')
+      setShowImportPicker(false)
+      setImportFormat(null)
     }
     reader.readAsText(file)
+  }
+
+  const downloadTemplate = () => {
+    const blob = new Blob([TEMPLATE_CSV], { type: 'text/csv' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = 'products-import-template.csv'
+    a.click()
+    URL.revokeObjectURL(url)
   }
 
   const handleConfirmImport = () => {
@@ -370,31 +441,15 @@ export function ProductsManager({
                     </svg>
                     Export CSV
                   </button>
-                  <label className="flex items-center gap-2.5 w-full px-4 py-2.5 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors cursor-pointer">
+                  <button
+                    type="button"
+                    onClick={() => { setShowImportPicker(true); setShowMoreActions(false) }}
+                    className="flex items-center gap-2.5 w-full px-4 py-2.5 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+                  >
                     <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
                       <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5m-13.5-9L12 3m0 0 4.5 4.5M12 3v13.5" />
                     </svg>
                     Import CSV
-                    <input type="file" accept=".csv" className="hidden" onChange={e => { handleImportFile(e); setShowMoreActions(false) }} />
-                  </label>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      const blob = new Blob([TEMPLATE_CSV], { type: 'text/csv' })
-                      const url = URL.createObjectURL(blob)
-                      const a = document.createElement('a')
-                      a.href = url
-                      a.download = 'products-import-template.csv'
-                      a.click()
-                      URL.revokeObjectURL(url)
-                      setShowMoreActions(false)
-                    }}
-                    className="flex items-center gap-2.5 w-full px-4 py-2.5 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
-                  >
-                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z" />
-                    </svg>
-                    CSV Template
                   </button>
                 </div>
               </>
@@ -711,6 +766,94 @@ export function ProductsManager({
         </div>
       )}
 
+      {/* Import format picker modal */}
+      {showImportPicker && (
+        <>
+          <div className="fixed inset-0 z-40 bg-black/50 backdrop-blur-[2px]" onClick={() => { setShowImportPicker(false); setImportFormat(null) }} />
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden">
+              {/* Header */}
+              <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 dark:border-gray-800">
+                <div>
+                  <h2 className="font-semibold text-gray-900 dark:text-white">Import Products</h2>
+                  <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">Choose your file format</p>
+                </div>
+                <button type="button" onClick={() => { setShowImportPicker(false); setImportFormat(null) }}
+                  className="w-8 h-8 flex items-center justify-center rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+
+              {/* Format options */}
+              <div className="px-6 py-5 space-y-3">
+                {/* Template option */}
+                <button
+                  type="button"
+                  onClick={() => setImportFormat('template')}
+                  className={`w-full text-left p-4 rounded-xl border-2 transition-colors ${importFormat === 'template' ? 'border-gray-900 dark:border-white bg-gray-50 dark:bg-white/5' : 'border-gray-100 dark:border-gray-800 hover:border-gray-300 dark:hover:border-gray-600'}`}
+                >
+                  <div className="flex items-start gap-3">
+                    <div className={`mt-0.5 w-4 h-4 rounded-full border-2 shrink-0 flex items-center justify-center transition-colors ${importFormat === 'template' ? 'border-gray-900 dark:border-white' : 'border-gray-300 dark:border-gray-600'}`}>
+                      {importFormat === 'template' && <div className="w-2 h-2 rounded-full bg-gray-900 dark:bg-white" />}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium text-gray-900 dark:text-white">Ecclesia Hub Template</p>
+                      <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">Our standard format — Name, Price, Stock, Status, Featured, and more.</p>
+                      {importFormat === 'template' && (
+                        <button
+                          type="button"
+                          onClick={e => { e.stopPropagation(); downloadTemplate() }}
+                          className="inline-flex items-center gap-1.5 mt-2 text-xs font-medium text-gray-700 dark:text-gray-300 underline underline-offset-2 hover:text-gray-900 dark:hover:text-white transition-colors"
+                        >
+                          <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5M16.5 12 12 16.5m0 0L7.5 12m4.5 4.5V3" />
+                          </svg>
+                          Download template
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                </button>
+
+                {/* WooCommerce option */}
+                <button
+                  type="button"
+                  onClick={() => setImportFormat('woocommerce')}
+                  className={`w-full text-left p-4 rounded-xl border-2 transition-colors ${importFormat === 'woocommerce' ? 'border-gray-900 dark:border-white bg-gray-50 dark:bg-white/5' : 'border-gray-100 dark:border-gray-800 hover:border-gray-300 dark:hover:border-gray-600'}`}
+                >
+                  <div className="flex items-start gap-3">
+                    <div className={`mt-0.5 w-4 h-4 rounded-full border-2 shrink-0 flex items-center justify-center transition-colors ${importFormat === 'woocommerce' ? 'border-gray-900 dark:border-white' : 'border-gray-300 dark:border-gray-600'}`}>
+                      {importFormat === 'woocommerce' && <div className="w-2 h-2 rounded-full bg-gray-900 dark:bg-white" />}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium text-gray-900 dark:text-white">WooCommerce Export</p>
+                      <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">Exported directly from WooCommerce. Supports Regular price, Published, Is featured? columns.</p>
+                    </div>
+                  </div>
+                </button>
+
+                {/* Upload button */}
+                <label className={`flex items-center justify-center gap-2 w-full py-2.5 rounded-xl text-sm font-medium transition-colors mt-1 ${importFormat ? 'bg-gray-900 dark:bg-white text-white dark:text-gray-900 hover:bg-gray-700 dark:hover:bg-gray-100 cursor-pointer' : 'bg-gray-100 dark:bg-gray-800 text-gray-400 dark:text-gray-600 cursor-not-allowed'}`}>
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5m-13.5-9L12 3m0 0 4.5 4.5M12 3v13.5" />
+                  </svg>
+                  {importFormat ? 'Choose CSV file' : 'Select a format first'}
+                  <input
+                    type="file"
+                    accept=".csv"
+                    disabled={!importFormat}
+                    className="hidden"
+                    onChange={e => { if (importFormat) handleImportFile(e, importFormat) }}
+                  />
+                </label>
+              </div>
+            </div>
+          </div>
+        </>
+      )}
+
       {/* CSV Import modal */}
       {importRows !== null && (
         <>
@@ -774,13 +917,8 @@ export function ProductsManager({
                 )}
 
                 <p className="text-xs text-gray-400 dark:text-gray-600">
-                  Use the official template — Status must be <span className="font-mono">Active</span> or <span className="font-mono">Inactive</span>, Featured must be <span className="font-mono">Yes</span> or <span className="font-mono">No</span>.
-                  {' '}<button type="button" onClick={() => {
-                    const blob = new Blob([TEMPLATE_CSV], { type: 'text/csv' })
-                    const url = URL.createObjectURL(blob)
-                    const a = document.createElement('a'); a.href = url; a.download = 'products-import-template.csv'; a.click()
-                    URL.revokeObjectURL(url)
-                  }} className="underline underline-offset-2 hover:text-gray-600 dark:hover:text-gray-400 transition-colors">Download template</button>
+                  Only new products will be imported — duplicates are automatically skipped.
+                  {' '}<button type="button" onClick={downloadTemplate} className="underline underline-offset-2 hover:text-gray-600 dark:hover:text-gray-400 transition-colors">Download template</button>
                 </p>
               </div>
 
