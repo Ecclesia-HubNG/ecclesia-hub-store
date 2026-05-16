@@ -74,12 +74,15 @@ function StyledCheckbox({ checked, onChange, label }: { checked: boolean; onChan
   )
 }
 
+type VariantGroup = { name: string; options: { value: string; count: number }[] }
+
 function Sidebar({
   categories, categoryId, setCategoryId,
   minPrice, setMinPrice, maxPrice, setMaxPrice,
   inStockOnly, setInStockOnly, onSaleOnly, setOnSaleOnly,
   categoryCounts, priceFloor, priceCeil,
   hasFilters, clearFilters,
+  variantGroups, variantFilters, toggleVariantFilter,
 }: {
   categories: Category[]
   categoryId: string | null
@@ -91,9 +94,14 @@ function Sidebar({
   categoryCounts: Record<string, number>
   priceFloor: number; priceCeil: number
   hasFilters: boolean; clearFilters: () => void
+  variantGroups: VariantGroup[]
+  variantFilters: Record<string, string[]>
+  toggleVariantFilter: (groupName: string, value: string) => void
 }) {
   const [open, setOpen] = useState({ category: true, price: true, availability: true })
+  const [variantOpen, setVariantOpen] = useState<Record<string, boolean>>({})
   const toggle = (k: keyof typeof open) => setOpen(p => ({ ...p, [k]: !p[k] }))
+  const toggleVariantOpen = (name: string) => setVariantOpen(p => ({ ...p, [name]: !(p[name] ?? true) }))
   const totalCount = Object.values(categoryCounts).reduce((a, b) => a + b, 0)
 
   return (
@@ -163,6 +171,47 @@ function Sidebar({
           <StyledCheckbox checked={onSaleOnly} onChange={setOnSaleOnly} label="On sale" />
         </div>
       </SidebarSection>
+
+      {/* Dynamic variant groups */}
+      {variantGroups.map(group => {
+        const isOpen = variantOpen[group.name] ?? true
+        const selected = variantFilters[group.name] ?? []
+        return (
+          <SidebarSection
+            key={group.name}
+            title={group.name}
+            open={isOpen}
+            onToggle={() => toggleVariantOpen(group.name)}
+          >
+            <div className="space-y-1">
+              {group.options.map(opt => {
+                const checked = selected.includes(opt.value)
+                return (
+                  <label
+                    key={opt.value}
+                    className="flex items-center justify-between gap-2 px-2 py-1.5 rounded-lg cursor-pointer group hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+                    onClick={() => toggleVariantFilter(group.name, opt.value)}
+                  >
+                    <span className="flex items-center gap-2.5">
+                      <div className={`w-4 h-4 rounded border-2 flex items-center justify-center transition-colors shrink-0 ${checked ? 'bg-[#4A0F1C] border-[#4A0F1C]' : 'border-gray-300 dark:border-gray-600 group-hover:border-gray-400'}`}>
+                        {checked && (
+                          <svg className="w-2.5 h-2.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                            <path strokeLinecap="round" strokeLinejoin="round" d="m4.5 12.75 6 6 9-13.5" />
+                          </svg>
+                        )}
+                      </div>
+                      <span className={`text-sm select-none transition-colors ${checked ? 'text-[#4A0F1C] dark:text-[#E8C4CB] font-semibold' : 'text-gray-700 dark:text-gray-300'}`}>
+                        {opt.value}
+                      </span>
+                    </span>
+                    <span className="text-xs text-gray-400 dark:text-gray-600 tabular-nums">{opt.count}</span>
+                  </label>
+                )
+              })}
+            </div>
+          </SidebarSection>
+        )
+      })}
     </div>
   )
 }
@@ -177,10 +226,20 @@ export default function ShopClient({ products, categories }: { products: Product
   const [inStockOnly, setInStockOnly] = useState(false)
   const [onSaleOnly, setOnSaleOnly] = useState(false)
   const [showMobileFilters, setShowMobileFilters] = useState(false)
+  const [variantFilters, setVariantFilters] = useState<Record<string, string[]>>({})
   const [page, setPage] = useState(1)
 
   // Wrap setters to reset pagination
   const set = <T,>(setter: (v: T) => void) => (v: T) => { setter(v); setPage(1) }
+
+  const toggleVariantFilter = (groupName: string, value: string) => {
+    setVariantFilters(prev => {
+      const current = prev[groupName] ?? []
+      const next = current.includes(value) ? current.filter(v => v !== value) : [...current, value]
+      return next.length ? { ...prev, [groupName]: next } : Object.fromEntries(Object.entries(prev).filter(([k]) => k !== groupName))
+    })
+    setPage(1)
+  }
 
   const categoryCounts = useMemo(() => {
     const counts: Record<string, number> = {}
@@ -191,7 +250,27 @@ export default function ShopClient({ products, categories }: { products: Product
   const priceFloor = useMemo(() => (products.length ? Math.floor(Math.min(...products.map(p => p.price))) : 0), [products])
   const priceCeil = useMemo(() => (products.length ? Math.ceil(Math.max(...products.map(p => p.price))) : 0), [products])
 
+  // Build variant groups with per-option product counts
+  const variantGroups = useMemo((): VariantGroup[] => {
+    const groups: Record<string, Record<string, number>> = {}
+    products.forEach(p => {
+      ;(p.variants ?? []).forEach(v => {
+        if (!groups[v.name]) groups[v.name] = {}
+        v.options.forEach(o => {
+          groups[v.name][o.value] = (groups[v.name][o.value] ?? 0) + 1
+        })
+      })
+    })
+    return Object.entries(groups).map(([name, opts]) => ({
+      name,
+      options: Object.entries(opts)
+        .map(([value, count]) => ({ value, count }))
+        .sort((a, b) => a.value.localeCompare(b.value)),
+    }))
+  }, [products])
+
   const filtered = useMemo(() => {
+    const activeVariants = Object.entries(variantFilters).filter(([, vals]) => vals.length > 0)
     const result = products.filter(p => {
       if (categoryId && p.category_id !== categoryId) return false
       if (search && !p.name.toLowerCase().includes(search.toLowerCase())) return false
@@ -199,24 +278,30 @@ export default function ShopClient({ products, categories }: { products: Product
       if (maxPrice && p.price > parseFloat(maxPrice)) return false
       if (inStockOnly && p.stock === 0) return false
       if (onSaleOnly && (!p.compare_at_price || p.compare_at_price <= p.price)) return false
+      // Every active variant group must match at least one selected value
+      for (const [groupName, selectedValues] of activeVariants) {
+        const group = (p.variants ?? []).find(v => v.name === groupName)
+        if (!group || !group.options.some(o => selectedValues.includes(o.value))) return false
+      }
       return true
     })
     if (sortBy === 'price_asc') return [...result].sort((a, b) => a.price - b.price)
     if (sortBy === 'price_desc') return [...result].sort((a, b) => b.price - a.price)
     if (sortBy === 'featured') return [...result].sort((a, b) => (b.is_featured ? 1 : 0) - (a.is_featured ? 1 : 0))
     return result
-  }, [products, categoryId, search, minPrice, maxPrice, inStockOnly, onSaleOnly, sortBy])
+  }, [products, categoryId, search, minPrice, maxPrice, inStockOnly, onSaleOnly, sortBy, variantFilters])
 
   const totalPages = Math.ceil(filtered.length / ITEMS_PER_PAGE)
   const paginated = filtered.slice((page - 1) * ITEMS_PER_PAGE, page * ITEMS_PER_PAGE)
 
-  const hasFilters = !!(categoryId || search || minPrice || maxPrice || inStockOnly || onSaleOnly)
-  const activeFilterCount = [!!categoryId, !!minPrice, !!maxPrice, inStockOnly, onSaleOnly].filter(Boolean).length
+  const hasVariantFilters = Object.values(variantFilters).some(v => v.length > 0)
+  const hasFilters = !!(categoryId || search || minPrice || maxPrice || inStockOnly || onSaleOnly || hasVariantFilters)
+  const activeFilterCount = [!!categoryId, !!minPrice, !!maxPrice, inStockOnly, onSaleOnly, hasVariantFilters].filter(Boolean).length
   const activeCategory = categories.find(c => c.id === categoryId)
 
   const clearFilters = () => {
     setCategoryId(null); setSearch(''); setMinPrice(''); setMaxPrice('')
-    setInStockOnly(false); setOnSaleOnly(false); setPage(1)
+    setInStockOnly(false); setOnSaleOnly(false); setVariantFilters({}); setPage(1)
   }
 
   const handlePageChange = (p: number) => {
@@ -224,11 +309,20 @@ export default function ShopClient({ products, categories }: { products: Product
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }
 
+  const variantChips = Object.entries(variantFilters).flatMap(([groupName, values]) =>
+    values.map(val => ({
+      key: `v-${groupName}-${val}`,
+      label: `${groupName}: ${val}`,
+      remove: () => toggleVariantFilter(groupName, val),
+    }))
+  )
+
   const activeChips: { key: string; label: string; remove: () => void }[] = [
     categoryId ? { key: 'cat', label: activeCategory?.name ?? 'Category', remove: () => { setCategoryId(null); setPage(1) } } : null,
     (minPrice || maxPrice) ? { key: 'price', label: `₦${minPrice || '0'} – ${maxPrice ? '₦' + maxPrice : 'any'}`, remove: () => { setMinPrice(''); setMaxPrice(''); setPage(1) } } : null,
     inStockOnly ? { key: 'stock', label: 'In stock', remove: () => { setInStockOnly(false); setPage(1) } } : null,
     onSaleOnly ? { key: 'sale', label: 'On sale', remove: () => { setOnSaleOnly(false); setPage(1) } } : null,
+    ...variantChips,
   ].filter(Boolean) as { key: string; label: string; remove: () => void }[]
 
   const sidebarProps = {
@@ -239,6 +333,7 @@ export default function ShopClient({ products, categories }: { products: Product
     onSaleOnly, setOnSaleOnly: set(setOnSaleOnly),
     categoryCounts, priceFloor, priceCeil,
     hasFilters, clearFilters,
+    variantGroups, variantFilters, toggleVariantFilter,
   }
 
   return (
