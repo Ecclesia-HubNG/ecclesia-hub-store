@@ -82,6 +82,15 @@ export async function checkDuplicateProduct(name: string, excludeId?: string) {
   return data ?? []
 }
 
+export async function bulkDeleteProducts(ids: string[]) {
+  if (!ids.length) return { success: true as const }
+  const supabase = createAdminClient()
+  const { error } = await supabase.from('products').delete().in('id', ids)
+  if (error) return { error: error.message }
+  revalidatePath('/admin/products')
+  return { success: true as const }
+}
+
 export async function bulkImportProducts(rows: Array<{
   name: string
   price: number

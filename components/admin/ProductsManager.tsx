@@ -3,7 +3,7 @@
 import { useState, useMemo, useTransition } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { deleteProduct, duplicateProduct, quickUpdateProduct, bulkImportProducts } from '@/lib/actions/products'
+import { deleteProduct, duplicateProduct, quickUpdateProduct, bulkImportProducts, bulkDeleteProducts } from '@/lib/actions/products'
 import { DeleteButton } from '@/components/admin/DeleteButton'
 import { DuplicateButton } from '@/components/admin/DuplicateButton'
 
@@ -291,6 +291,17 @@ export function ProductsManager({
   const [saveError, setSaveError] = useState('')
   const [isSaving, startSave] = useTransition()
 
+  // Multi-select
+  const [selected, setSelected] = useState<Set<string>>(new Set())
+  const [isBulkDeleting, startBulkDelete] = useTransition()
+  const [bulkDeleteConfirm, setBulkDeleteConfirm] = useState(false)
+
+  const toggleSelect = (id: string) => setSelected(prev => {
+    const next = new Set(prev)
+    next.has(id) ? next.delete(id) : next.add(id)
+    return next
+  })
+
   // CSV import
   const [showImportPicker, setShowImportPicker] = useState(false)
   const [importFormat, setImportFormat] = useState<ImportFormat | null>(null)
@@ -397,6 +408,27 @@ export function ProductsManager({
 
   const hasFilters = !!(search || status !== 'all' || categoryId || dateFrom || dateTo)
   const clearFilters = () => { setSearch(''); setStatus('all'); setCategoryId(''); setDateFrom(''); setDateTo('') }
+
+  const allFilteredSelected = filtered.length > 0 && filtered.every(p => selected.has(p.id))
+  const someSelected = selected.size > 0
+
+  const toggleSelectAll = () => {
+    if (allFilteredSelected) {
+      setSelected(prev => { const next = new Set(prev); filtered.forEach(p => next.delete(p.id)); return next })
+    } else {
+      setSelected(prev => { const next = new Set(prev); filtered.forEach(p => next.add(p.id)); return next })
+    }
+  }
+
+  const handleBulkDelete = () => {
+    const ids = Array.from(selected)
+    startBulkDelete(async () => {
+      await bulkDeleteProducts(ids)
+      setSelected(new Set())
+      setBulkDeleteConfirm(false)
+      router.refresh()
+    })
+  }
 
   const selectedCategory = categories.find(c => c.id === categoryId)
 
@@ -668,6 +700,14 @@ export function ProductsManager({
           <table className="w-full text-sm">
             <thead>
               <tr className="bg-gray-50 dark:bg-gray-900/80 border-b border-gray-200 dark:border-gray-800">
+                <th className="pl-4 pr-2 py-3 w-8">
+                  <input
+                    type="checkbox"
+                    checked={allFilteredSelected}
+                    onChange={toggleSelectAll}
+                    className="w-4 h-4 rounded border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white accent-gray-900 dark:accent-white cursor-pointer"
+                  />
+                </th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">Product</th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">Category</th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">Price</th>
@@ -679,7 +719,15 @@ export function ProductsManager({
             </thead>
             <tbody className="divide-y divide-gray-100 dark:divide-gray-800 bg-white dark:bg-gray-900">
               {filtered.map(product => (
-                <tr key={product.id} className="hover:bg-gray-50 dark:hover:bg-gray-800/40 transition-colors">
+                <tr key={product.id} className={`transition-colors ${selected.has(product.id) ? 'bg-blue-50/60 dark:bg-blue-950/20' : 'hover:bg-gray-50 dark:hover:bg-gray-800/40'}`}>
+                  <td className="pl-4 pr-2 py-3 w-8">
+                    <input
+                      type="checkbox"
+                      checked={selected.has(product.id)}
+                      onChange={() => toggleSelect(product.id)}
+                      className="w-4 h-4 rounded border-gray-300 dark:border-gray-600 accent-gray-900 dark:accent-white cursor-pointer"
+                    />
+                  </td>
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-3">
                       {product.thumbnail ? (
@@ -752,6 +800,52 @@ export function ProductsManager({
       )}
 
       {/* Import result toast */}
+      {/* Bulk action bar */}
+      <div className={`fixed bottom-6 left-1/2 -translate-x-1/2 z-50 transition-all duration-300 ${someSelected ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4 pointer-events-none'}`}>
+        <div className="flex items-center gap-3 px-4 py-3 bg-gray-900 dark:bg-white text-white dark:text-gray-900 rounded-xl shadow-2xl">
+          <span className="text-sm font-medium">{selected.size} selected</span>
+          <div className="w-px h-4 bg-white/20 dark:bg-gray-900/20" />
+          <button
+            type="button"
+            onClick={() => setSelected(new Set())}
+            className="text-sm text-white/70 dark:text-gray-900/70 hover:text-white dark:hover:text-gray-900 transition-colors"
+          >
+            Clear
+          </button>
+          {bulkDeleteConfirm ? (
+            <>
+              <span className="text-sm text-red-300 dark:text-red-600">Delete {selected.size} product{selected.size !== 1 ? 's' : ''}?</span>
+              <button
+                type="button"
+                onClick={handleBulkDelete}
+                disabled={isBulkDeleting}
+                className="px-3 py-1.5 text-sm font-medium bg-red-500 hover:bg-red-600 text-white rounded-lg transition-colors disabled:opacity-50"
+              >
+                {isBulkDeleting ? 'Deleting…' : 'Confirm'}
+              </button>
+              <button
+                type="button"
+                onClick={() => setBulkDeleteConfirm(false)}
+                className="px-3 py-1.5 text-sm font-medium bg-white/10 dark:bg-gray-900/10 hover:bg-white/20 dark:hover:bg-gray-900/20 rounded-lg transition-colors"
+              >
+                Cancel
+              </button>
+            </>
+          ) : (
+            <button
+              type="button"
+              onClick={() => setBulkDeleteConfirm(true)}
+              className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium bg-red-500 hover:bg-red-600 text-white rounded-lg transition-colors"
+            >
+              <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0" />
+              </svg>
+              Delete selected
+            </button>
+          )}
+        </div>
+      </div>
+
       {importDone && (
         <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 flex items-center gap-3 px-4 py-3 bg-gray-900 dark:bg-white text-white dark:text-gray-900 text-sm font-medium rounded-xl shadow-lg">
           <svg className="w-4 h-4 text-green-400 dark:text-green-600 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
