@@ -302,6 +302,9 @@ export function ProductsManager({
     return next
   })
 
+  // Row actions dropdown
+  const [openActionId, setOpenActionId] = useState<string | null>(null)
+
   // CSV import
   const [showImportPicker, setShowImportPicker] = useState(false)
   const [importFormat, setImportFormat] = useState<ImportFormat | null>(null)
@@ -714,7 +717,7 @@ export function ProductsManager({
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">Stock</th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">Created</th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">Status</th>
-                <th className="px-4 py-3" />
+                <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100 dark:divide-gray-800 bg-white dark:bg-gray-900">
@@ -772,24 +775,56 @@ export function ProductsManager({
                     </div>
                   </td>
                   <td className="px-4 py-3">
-                    <div className="flex items-center gap-4 justify-end">
+                    <div className="flex items-center gap-2 justify-end">
                       {/* Quick edit */}
                       <button
                         type="button"
                         onClick={() => openQuickEdit(product)}
                         title="Quick edit"
-                        className="flex items-center gap-1 text-xs text-gray-400 dark:text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 transition-colors"
+                        className="w-8 h-8 flex items-center justify-center rounded-lg text-gray-400 dark:text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
                       >
-                        <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                          <path strokeLinecap="round" strokeLinejoin="round" d="m3.75 13.5 10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75Z" />
+                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Zm0 0L19.5 7.125" />
                         </svg>
-                        Quick edit
                       </button>
-                      <DuplicateButton id={product.id} action={duplicateProduct} />
-                      <Link href={`/admin/products/${product.id}/edit`} className="text-sm text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors">
-                        Edit
-                      </Link>
-                      <DeleteButton id={product.id} action={deleteProduct} confirm={`Delete "${product.name}"? This can't be undone.`} />
+
+                      {/* Dots menu */}
+                      <div className="relative">
+                        {openActionId === product.id && (
+                          <div className="fixed inset-0 z-10" onClick={() => setOpenActionId(null)} />
+                        )}
+                        <button
+                          type="button"
+                          onClick={() => setOpenActionId(prev => prev === product.id ? null : product.id)}
+                          className="w-8 h-8 flex items-center justify-center rounded-lg text-gray-400 dark:text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+                        >
+                          <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                            <circle cx="5" cy="12" r="1.5" /><circle cx="12" cy="12" r="1.5" /><circle cx="19" cy="12" r="1.5" />
+                          </svg>
+                        </button>
+                        {openActionId === product.id && (
+                          <div className="absolute right-0 top-full mt-1 z-20 w-36 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl shadow-lg py-1 overflow-hidden">
+                            <Link
+                              href={`/admin/products/${product.id}/edit`}
+                              onClick={() => setOpenActionId(null)}
+                              className="flex items-center gap-2.5 px-3 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+                            >
+                              <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                                <path strokeLinecap="round" strokeLinejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Z" />
+                              </svg>
+                              Edit
+                            </Link>
+                            <DuplicateButton id={product.id} action={duplicateProduct} className="flex items-center gap-2.5 px-3 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors w-full text-left" />
+                            <div className="my-1 border-t border-gray-100 dark:border-gray-800" />
+                            <DeleteButton
+                              id={product.id}
+                              action={deleteProduct}
+                              confirm={`Delete "${product.name}"? This can't be undone.`}
+                              className="flex items-center gap-2.5 px-3 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors w-full text-left"
+                            />
+                          </div>
+                        )}
+                      </div>
                     </div>
                   </td>
                 </tr>

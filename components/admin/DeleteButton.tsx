@@ -5,11 +5,13 @@ export function DeleteButton({
   action,
   label = 'Delete',
   confirm: confirmMsg = 'Are you sure?',
+  className = 'text-sm text-red-400 hover:text-red-600 transition-colors',
 }: {
   id: string
   action: (formData: FormData) => Promise<void>
   label?: string
   confirm?: string
+  className?: string
 }) {
   return (
     <form action={action}>
@@ -17,7 +19,7 @@ export function DeleteButton({
       <button
         type="submit"
         onClick={e => { if (!window.confirm(confirmMsg)) e.preventDefault() }}
-        className="text-sm text-red-400 hover:text-red-600 transition-colors"
+        className={className}
       >
         {label}
       </button>
