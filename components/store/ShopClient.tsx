@@ -290,7 +290,7 @@ export default function ShopClient({
     <div>
       {/* Banner */}
       <div className="bg-[#4A0F1C]/[0.04] dark:bg-[#4A0F1C]/25 border-b border-[#4A0F1C]/10 dark:border-[#4A0F1C]/30">
-        <div className="max-w-6xl mx-auto px-6 py-10">
+        <div className="max-w-7xl mx-auto px-8 py-10">
           <p className="text-xs font-semibold uppercase tracking-widest text-[#6B1A2A] dark:text-[#D4849A] mb-1.5">
             {activeCategory ? activeCategory.name : 'Collection'}
           </p>
@@ -303,7 +303,7 @@ export default function ShopClient({
         </div>
       </div>
 
-      <div className="max-w-6xl mx-auto px-6 py-8">
+      <div className="max-w-7xl mx-auto px-8 py-8">
         {/* Top bar — search + sort + mobile filter toggle */}
         <div className="flex items-center gap-3 mb-6">
           {/* Mobile filter button */}

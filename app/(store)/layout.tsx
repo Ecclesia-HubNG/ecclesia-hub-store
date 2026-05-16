@@ -3,7 +3,7 @@ import Link from 'next/link'
 function StoreNav() {
   return (
     <header className="sticky top-0 z-40 bg-white/95 dark:bg-gray-950/95 backdrop-blur-md border-b border-gray-100 dark:border-gray-800/80">
-      <div className="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
+      <div className="max-w-7xl mx-auto px-8 h-16 flex items-center justify-between">
         {/* Logo */}
         <Link href="/home" className="flex items-center gap-2.5 shrink-0">
           <div className="w-8 h-8 rounded-lg bg-[#4A0F1C] flex items-center justify-center">
@@ -47,7 +47,7 @@ function StoreNav() {
 function StoreFooter() {
   return (
     <footer className="border-t border-gray-100 dark:border-gray-800 mt-20">
-      <div className="max-w-6xl mx-auto px-6 py-12">
+      <div className="max-w-7xl mx-auto px-8 py-12">
         <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-8">
           {/* Brand */}
           <div>
