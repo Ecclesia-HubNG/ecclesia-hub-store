@@ -9,10 +9,12 @@ export default function PromoComposer({
   products,
   totalCustomers,
   totalSubscribers,
+  totalUsers,
 }: {
   products: Product[]
   totalCustomers: number
   totalSubscribers: number
+  totalUsers: number
 }) {
   const [promoSubject, setPromoSubject] = useState('')
   const [promoHeadline, setPromoHeadline] = useState('')
@@ -21,7 +23,8 @@ export default function PromoComposer({
   const [bannerImage, setBannerImage] = useState('')
   const [promoCta, setPromoCta] = useState('Shop All Deals')
   const [selectedProducts, setSelectedProducts] = useState<string[]>([])
-  const [sendTo, setSendTo] = useState<'customers' | 'subscribers'>('customers')
+  const [productSearch, setProductSearch] = useState('')
+  const [sendTo, setSendTo] = useState<'customers' | 'subscribers' | 'users'>('customers')
   const [result, setResult] = useState<{ sent?: number; failed?: number; error?: string } | null>(null)
   const [pending, startTransition] = useTransition()
   const [uploading, setUploading] = useState(false)
@@ -86,7 +89,12 @@ export default function PromoComposer({
     })
   }
 
-  const recipientCount = sendTo === 'subscribers' ? totalSubscribers : totalCustomers
+  const recipientCount = sendTo === 'subscribers' ? totalSubscribers : sendTo === 'users' ? totalUsers : totalCustomers
+  const recipientLabel = sendTo === 'subscribers' ? 'subscriber' : sendTo === 'users' ? 'user' : 'customer'
+
+  const visibleProducts = productSearch.trim()
+    ? products.filter(p => p.name.toLowerCase().includes(productSearch.toLowerCase()))
+    : products
   const inputCls = 'w-full px-3.5 py-2.5 text-sm bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#4A0F1C]/20 focus:border-[#4A0F1C]/40 transition-colors'
 
   return (
@@ -162,14 +170,19 @@ export default function PromoComposer({
             {/* Send to */}
             <div>
               <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-2">Send to</label>
-              <div className="flex gap-3">
-                {([['customers', `All Customers (${totalCustomers})`], ['subscribers', `Subscribers (${totalSubscribers})`]] as const).map(([val, label]) => (
-                  <label key={val} className={`flex items-center gap-2.5 px-4 py-2.5 rounded-xl border cursor-pointer transition-colors ${sendTo === val ? 'border-[#4A0F1C]/40 bg-[#4A0F1C]/5 dark:bg-[#4A0F1C]/10' : 'border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800'}`}>
+              <div className="flex flex-wrap gap-2">
+                {([
+                  ['customers',   `All Customers`,  totalCustomers],
+                  ['subscribers', `Subscribers`,     totalSubscribers],
+                  ['users',       `Staff Users`,     totalUsers],
+                ] as const).map(([val, label, count]) => (
+                  <label key={val} className={`flex items-center gap-2.5 px-3.5 py-2 rounded-xl border cursor-pointer transition-colors ${sendTo === val ? 'border-[#4A0F1C]/40 bg-[#4A0F1C]/5 dark:bg-[#4A0F1C]/10' : 'border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800'}`}>
                     <input type="radio" name="promoSendTo" value={val} checked={sendTo === val} onChange={() => setSendTo(val)} className="sr-only" />
-                    <span className={`w-3.5 h-3.5 rounded-full border-2 flex items-center justify-center ${sendTo === val ? 'border-[#4A0F1C]' : 'border-gray-300 dark:border-gray-600'}`}>
+                    <span className={`w-3.5 h-3.5 rounded-full border-2 flex items-center justify-center shrink-0 ${sendTo === val ? 'border-[#4A0F1C]' : 'border-gray-300 dark:border-gray-600'}`}>
                       {sendTo === val && <span className="w-1.5 h-1.5 rounded-full bg-[#4A0F1C]" />}
                     </span>
                     <span className="text-sm text-gray-700 dark:text-gray-300">{label}</span>
+                    <span className="text-xs text-gray-400 tabular-nums">({count})</span>
                   </label>
                 ))}
               </div>
@@ -177,7 +190,7 @@ export default function PromoComposer({
 
             <div className="flex items-center justify-between pt-1">
               <p className="text-xs text-gray-400">
-                {selectedProducts.length} product{selectedProducts.length !== 1 ? 's' : ''} selected · to <strong className="text-gray-600 dark:text-gray-300">{recipientCount} {sendTo === 'subscribers' ? 'subscriber' : 'customer'}{recipientCount !== 1 ? 's' : ''}</strong>
+                {selectedProducts.length} product{selectedProducts.length !== 1 ? 's' : ''} selected · to <strong className="text-gray-600 dark:text-gray-300">{recipientCount} {recipientLabel}{recipientCount !== 1 ? 's' : ''}</strong>
               </p>
               <button
                 type="button"
@@ -192,10 +205,30 @@ export default function PromoComposer({
         </div>
 
         {/* Right — product picker */}
-        <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl p-4">
-          <p className="text-xs font-bold uppercase tracking-widest text-gray-400 mb-3">Pick Products (up to 3)</p>
-          <div className="space-y-2 max-h-[520px] overflow-y-auto">
-            {products.map(p => {
+        <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl p-4 flex flex-col">
+          <div className="flex items-center justify-between mb-3">
+            <p className="text-xs font-bold uppercase tracking-widest text-gray-400">Products (up to 3)</p>
+            {selectedProducts.length > 0 && (
+              <span className="text-[11px] font-semibold text-[#4A0F1C] dark:text-[#D4849A]">{selectedProducts.length}/3 selected</span>
+            )}
+          </div>
+
+          {/* Search */}
+          <div className="relative mb-3">
+            <svg className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z" />
+            </svg>
+            <input
+              type="text"
+              value={productSearch}
+              onChange={e => setProductSearch(e.target.value)}
+              placeholder="Search products…"
+              className="w-full pl-8 pr-3 py-2 text-xs bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#4A0F1C]/20 focus:border-[#4A0F1C]/40 transition-colors"
+            />
+          </div>
+
+          <div className="space-y-1.5 overflow-y-auto flex-1" style={{ maxHeight: 460 }}>
+            {visibleProducts.map(p => {
               const selected = selectedProducts.includes(p.id)
               const disabled = !selected && selectedProducts.length >= 3
               return (
@@ -204,12 +237,15 @@ export default function PromoComposer({
                   type="button"
                   onClick={() => !disabled && toggleProduct(p.id)}
                   disabled={disabled}
-                  className={`flex items-center gap-3 w-full p-2.5 rounded-xl text-left transition-colors border ${selected ? 'border-[#4A0F1C]/30 bg-[#4A0F1C]/5' : disabled ? 'opacity-40 border-transparent' : 'border-transparent hover:bg-gray-50 dark:hover:bg-gray-800'}`}
+                  className={`flex items-center gap-3 w-full p-2.5 rounded-xl text-left transition-colors border ${selected ? 'border-[#4A0F1C]/30 bg-[#4A0F1C]/5' : disabled ? 'opacity-40 border-transparent cursor-not-allowed' : 'border-transparent hover:bg-gray-50 dark:hover:bg-gray-800'}`}
                 >
                   <div className={`w-4 h-4 rounded flex items-center justify-center shrink-0 border transition-colors ${selected ? 'bg-[#4A0F1C] border-[#4A0F1C]' : 'border-gray-300 dark:border-gray-600'}`}>
                     {selected && <svg className="w-2.5 h-2.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}><path strokeLinecap="round" strokeLinejoin="round" d="m4.5 12.75 6 6 9-13.5" /></svg>}
                   </div>
-                  {p.thumbnail && <img src={p.thumbnail} className="w-9 h-9 rounded-lg object-cover shrink-0" alt="" />}
+                  {p.thumbnail
+                    ? <img src={p.thumbnail} className="w-9 h-9 rounded-lg object-cover shrink-0" alt="" />
+                    : <div className="w-9 h-9 rounded-lg bg-gray-100 dark:bg-gray-800 shrink-0" />
+                  }
                   <div className="min-w-0">
                     <p className="text-xs font-semibold text-gray-900 dark:text-white truncate">{p.name}</p>
                     <p className="text-xs text-gray-500">₦{p.price.toLocaleString('en')}</p>
@@ -217,7 +253,11 @@ export default function PromoComposer({
                 </button>
               )
             })}
-            {products.length === 0 && <p className="text-xs text-gray-400 text-center py-6">No products found.</p>}
+            {visibleProducts.length === 0 && (
+              <p className="text-xs text-gray-400 text-center py-8">
+                {productSearch ? `No products match "${productSearch}"` : 'No products found.'}
+              </p>
+            )}
           </div>
         </div>
       </div>
