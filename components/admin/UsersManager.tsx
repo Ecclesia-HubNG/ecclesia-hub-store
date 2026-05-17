@@ -25,22 +25,117 @@ function isBanned(user: AuthUser) {
   return new Date(user.banned_until) > new Date()
 }
 
+// ── Change Role modal ────────────────────────────────────────────────────────
+function ChangeRoleModal({ user, currentUserRole, onClose }: {
+  user: AuthUser
+  currentUserRole: string
+  onClose: () => void
+}) {
+  const [pending, startTransition] = useTransition()
+  const [saving, setSaving] = useState<string | null>(null)
+  const canAssign = assignableRoles(currentUserRole)
+  const name = user.user_metadata?.full_name || user.email?.split('@')[0] || 'this user'
+
+  function handleSelect(role: string) {
+    setSaving(role)
+    startTransition(async () => {
+      await setUserRole(user.id, role)
+      onClose()
+    })
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose} />
+      <div className="relative bg-white dark:bg-gray-900 rounded-2xl w-full max-w-md shadow-2xl overflow-hidden">
+        {/* Header */}
+        <div className="flex items-center justify-between px-6 py-5 border-b border-gray-100 dark:border-gray-800">
+          <div>
+            <h2 className="text-base font-semibold text-gray-900 dark:text-white">Change role</h2>
+            <p className="text-xs text-gray-400 mt-0.5">{name} · {user.email}</p>
+          </div>
+          <button type="button" onClick={onClose} className="p-1.5 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" /></svg>
+          </button>
+        </div>
+
+        {/* Role list */}
+        <div className="p-3 space-y-1.5 max-h-[70vh] overflow-y-auto">
+          {canAssign.map(r => {
+            const active = user.app_metadata?.role === r
+            const isSaving = saving === r && pending
+            return (
+              <button
+                key={r}
+                type="button"
+                disabled={pending}
+                onClick={() => handleSelect(r)}
+                className={`flex items-start gap-3.5 w-full px-4 py-3.5 rounded-xl text-left transition-colors border ${
+                  active
+                    ? 'border-[#4A0F1C]/20 bg-[#4A0F1C]/5 dark:bg-[#4A0F1C]/10'
+                    : 'border-transparent hover:bg-gray-50 dark:hover:bg-gray-800'
+                } disabled:opacity-60`}
+              >
+                {/* Badge */}
+                <span className={`mt-0.5 inline-flex items-center justify-center w-8 h-8 rounded-lg text-[11px] font-bold shrink-0 ${ROLE_COLORS[r]}`}>
+                  {r === 'super_admin' ? 'SA' : r === 'shop_keeper' ? 'SK' : ROLE_LABELS[r].slice(0, 2).toUpperCase()}
+                </span>
+
+                {/* Info */}
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2">
+                    <p className={`text-sm font-semibold ${active ? 'text-gray-900 dark:text-white' : 'text-gray-700 dark:text-gray-300'}`}>
+                      {ROLE_LABELS[r]}
+                    </p>
+                    {active && (
+                      <span className="px-1.5 py-0.5 text-[10px] font-semibold rounded-full bg-gray-100 dark:bg-gray-800 text-gray-400">
+                        current
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-xs text-gray-400 mt-0.5 leading-relaxed">{ROLE_DESCRIPTIONS[r]}</p>
+                </div>
+
+                {/* State indicator */}
+                <div className="shrink-0 mt-1">
+                  {isSaving ? (
+                    <div className="w-4 h-4 border-2 border-gray-300 border-t-gray-600 rounded-full animate-spin" />
+                  ) : active ? (
+                    <svg className="w-4 h-4 text-[#4A0F1C] dark:text-[#D4849A]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="m4.5 12.75 6 6 9-13.5" />
+                    </svg>
+                  ) : null}
+                </div>
+              </button>
+            )
+          })}
+        </div>
+
+        <div className="px-6 py-4 border-t border-gray-100 dark:border-gray-800">
+          <button type="button" onClick={onClose} className="w-full py-2.5 text-sm font-medium text-gray-600 dark:text-gray-400 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-xl transition-colors">
+            Cancel
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 // ── Row action menu ──────────────────────────────────────────────────────────
-function ActionMenu({ user, currentUserRole, onEdit, onDelete }: {
+function ActionMenu({ user, currentUserRole, onEdit, onDelete, onChangeRole }: {
   user: AuthUser
   currentUserRole: string
   onEdit: () => void
   onDelete: () => void
+  onChangeRole: () => void
 }) {
   const [open, setOpen] = useState(false)
-  const [roleOpen, setRoleOpen] = useState(false)
   const [menuStyle, setMenuStyle] = useState({ top: 0, right: 0 })
   const [, startTransition] = useTransition()
   const btnRef = useRef<HTMLButtonElement>(null)
   const menuRef = useRef<HTMLDivElement>(null)
   const banned = isBanned(user)
   const targetIsSuperAdmin = isSuperAdmin(user.app_metadata?.role)
-  // Only super_admin can see the role picker for another super_admin
   const canAssign = targetIsSuperAdmin && !isSuperAdmin(currentUserRole)
     ? []
     : assignableRoles(currentUserRole)
@@ -50,7 +145,6 @@ function ActionMenu({ user, currentUserRole, onEdit, onDelete }: {
       const r = btnRef.current.getBoundingClientRect()
       setMenuStyle({ top: r.bottom + 4, right: window.innerWidth - r.right })
     }
-    setRoleOpen(false)
     setOpen(p => !p)
   }
 
@@ -60,13 +154,13 @@ function ActionMenu({ user, currentUserRole, onEdit, onDelete }: {
       if (
         menuRef.current && !menuRef.current.contains(e.target as Node) &&
         btnRef.current && !btnRef.current.contains(e.target as Node)
-      ) { setOpen(false); setRoleOpen(false) }
+      ) setOpen(false)
     }
     document.addEventListener('mousedown', handler)
     return () => document.removeEventListener('mousedown', handler)
   }, [open])
 
-  // Super admin row — show a protected notice instead of action menu
+  // Super admin row — show a protected shield icon instead of action menu
   if (targetIsSuperAdmin && !isSuperAdmin(currentUserRole)) {
     return (
       <div className="flex items-center justify-end">
@@ -90,8 +184,8 @@ function ActionMenu({ user, currentUserRole, onEdit, onDelete }: {
 
       {open && createPortal(
         <>
-          <div className="fixed inset-0 z-40" onClick={() => { setOpen(false); setRoleOpen(false) }} />
-          <div ref={menuRef} className="fixed z-50 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl shadow-xl py-1 overflow-hidden" style={{ ...menuStyle, width: roleOpen ? 220 : 192 }}>
+          <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
+          <div ref={menuRef} className="fixed z-50 w-48 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl shadow-xl py-1 overflow-hidden" style={menuStyle}>
 
             {/* Edit name */}
             <button type="button" onClick={() => { setOpen(false); onEdit() }}
@@ -102,53 +196,23 @@ function ActionMenu({ user, currentUserRole, onEdit, onDelete }: {
               Edit name
             </button>
 
-            {/* Change role — expands inline */}
+            {/* Change role — opens modal */}
             {canAssign.length > 0 && (
-              <>
-                <button type="button" onClick={() => setRoleOpen(p => !p)}
-                  className="flex items-center gap-2.5 w-full px-3.5 py-2.5 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
-                  <svg className="w-4 h-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 5.25a3 3 0 0 1 3 3m3 0a6 6 0 0 1-7.029 5.912c-.563-.097-1.159.026-1.563.43L10.5 17.25H8.25v2.25H6v2.25H2.25v-2.818c0-.597.237-1.17.659-1.591l6.499-6.499c.404-.404.527-1 .43-1.563A6 6 0 0 1 21.75 8.25Z" />
-                  </svg>
-                  <span className="flex-1 text-left">Change role</span>
-                  <svg className={`w-3.5 h-3.5 text-gray-400 transition-transform ${roleOpen ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
-                  </svg>
-                </button>
-
-                {roleOpen && (
-                  <div className="mx-2 mb-1 rounded-xl border border-gray-100 dark:border-gray-800 overflow-hidden">
-                    {canAssign.map(r => {
-                      const active = user.app_metadata?.role === r
-                      return (
-                        <button key={r} type="button"
-                          onClick={() => {
-                            setOpen(false); setRoleOpen(false)
-                            startTransition(async () => { await setUserRole(user.id, r) })
-                          }}
-                          className={`flex items-start gap-2.5 w-full px-3 py-2.5 text-left transition-colors ${active ? 'bg-gray-50 dark:bg-gray-800' : 'hover:bg-gray-50 dark:hover:bg-gray-800/60'}`}
-                        >
-                          <span className={`mt-0.5 inline-flex px-1.5 py-0.5 rounded text-[10px] font-bold shrink-0 ${ROLE_COLORS[r]}`}>
-                            {r === 'super_admin' ? 'SA' : r === 'shop_keeper' ? 'SK' : ROLE_LABELS[r].slice(0, 2).toUpperCase()}
-                          </span>
-                          <div>
-                            <p className={`text-xs font-semibold ${active ? 'text-gray-900 dark:text-white' : 'text-gray-700 dark:text-gray-300'}`}>
-                              {ROLE_LABELS[r]}
-                              {active && <span className="ml-1.5 text-[10px] font-normal text-gray-400">current</span>}
-                            </p>
-                            <p className="text-[10px] text-gray-400 mt-0.5 leading-tight">{ROLE_DESCRIPTIONS[r]}</p>
-                          </div>
-                        </button>
-                      )
-                    })}
-                  </div>
-                )}
-              </>
+              <button type="button" onClick={() => { setOpen(false); onChangeRole() }}
+                className="flex items-center gap-2.5 w-full px-3.5 py-2.5 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
+                <svg className="w-4 h-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 5.25a3 3 0 0 1 3 3m3 0a6 6 0 0 1-7.029 5.912c-.563-.097-1.159.026-1.563.43L10.5 17.25H8.25v2.25H6v2.25H2.25v-2.818c0-.597.237-1.17.659-1.591l6.499-6.499c.404-.404.527-1 .43-1.563A6 6 0 0 1 21.75 8.25Z" />
+                </svg>
+                Change role
+                <svg className="w-3 h-3 ml-auto text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5" />
+                </svg>
+              </button>
             )}
 
             <div className="h-px bg-gray-100 dark:bg-gray-800 my-1" />
 
-            {/* Ban / Unban — hidden for super_admin */}
+            {/* Ban / Unban */}
             {!targetIsSuperAdmin && (
               <button type="button"
                 onClick={() => { setOpen(false); startTransition(async () => { await setUserBanned(user.id, !banned) }) }}
@@ -163,7 +227,7 @@ function ActionMenu({ user, currentUserRole, onEdit, onDelete }: {
               </button>
             )}
 
-            {/* Delete — hidden for super_admin */}
+            {/* Delete */}
             {!targetIsSuperAdmin && (
               <button type="button" onClick={() => { setOpen(false); onDelete() }}
                 className="flex items-center gap-2.5 w-full px-3.5 py-2.5 text-sm text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors">
@@ -294,6 +358,7 @@ export default function UsersManager({ users: initial, currentUserRole }: { user
   const [showRoleDd, setShowRoleDd] = useState(false)
   const [editUser, setEditUser] = useState<AuthUser | null>(null)
   const [deleteTarget, setDeleteTarget] = useState<AuthUser | null>(null)
+  const [changeRoleTarget, setChangeRoleTarget] = useState<AuthUser | null>(null)
 
   const filtered = useMemo(() => initial.filter(u => {
     const banned = isBanned(u)
@@ -331,6 +396,7 @@ export default function UsersManager({ users: initial, currentUserRole }: { user
     <div>
       {editUser && <EditModal user={editUser} onClose={() => setEditUser(null)} />}
       {deleteTarget && <DeleteModal user={deleteTarget} onClose={() => setDeleteTarget(null)} />}
+      {changeRoleTarget && <ChangeRoleModal user={changeRoleTarget} currentUserRole={currentUserRole} onClose={() => setChangeRoleTarget(null)} />}
 
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
@@ -512,7 +578,7 @@ export default function UsersManager({ users: initial, currentUserRole }: { user
 
                     {/* Actions */}
                     <td className="px-3 py-3 text-right">
-                      <ActionMenu user={user} currentUserRole={currentUserRole} onEdit={() => setEditUser(user)} onDelete={() => setDeleteTarget(user)} />
+                      <ActionMenu user={user} currentUserRole={currentUserRole} onEdit={() => setEditUser(user)} onDelete={() => setDeleteTarget(user)} onChangeRole={() => setChangeRoleTarget(user)} />
                     </td>
                   </tr>
                 )
