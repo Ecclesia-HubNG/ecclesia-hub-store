@@ -2,18 +2,18 @@
 
 import { useState, useTransition, useRef } from 'react'
 import { uploadEmailAsset } from '@/lib/actions/upload'
+import RichTextEditor from '@/components/admin/RichTextEditor'
 
 // ── Live preview ──────────────────────────────────────────────────────────────
 function NewsletterPreview({
-  subject, body, issueNumber, headerImage,
+  subject, bodyHtml, issueNumber, headerImage,
 }: {
   subject: string
-  body: string
+  bodyHtml: string
   issueNumber: string
   headerImage: string
 }) {
   const date = new Date().toLocaleDateString('en', { day: 'numeric', month: 'long', year: 'numeric' })
-  const paragraphs = body.split('\n').filter(Boolean)
 
   return (
     <div style={{ backgroundColor: '#f0f0f0', padding: '20px 12px', fontFamily: 'Georgia, serif', borderRadius: 12, minHeight: 400 }}>
@@ -45,11 +45,9 @@ function NewsletterPreview({
 
       {/* Body */}
       <div style={{ backgroundColor: '#fff', padding: '0 28px 28px', borderRadius: '0 0 10px 10px' }}>
-        {paragraphs.length > 0
-          ? paragraphs.map((p, i) => (
-              <p key={i} style={{ fontSize: 13, color: '#333', lineHeight: 1.85, margin: '0 0 12px' }}>{p}</p>
-            ))
-          : <p style={{ fontSize: 13, color: '#ccc', lineHeight: 1.85, margin: 0 }}>Your newsletter body will appear here…</p>
+        {bodyHtml
+          ? <div style={{ fontSize: 13, color: '#333', lineHeight: 1.85 }} dangerouslySetInnerHTML={{ __html: bodyHtml }} />
+          : <p style={{ fontSize: 13, color: '#ccc', lineHeight: 1.85, margin: 0 }}>Your newsletter content will appear here…</p>
         }
         <hr style={{ border: 'none', borderTop: '1px solid #eee', margin: '18px 0 14px' }} />
         <p style={{ fontSize: 12, color: '#888', margin: 0, fontFamily: 'Arial, sans-serif' }}>— The Ecclesia Hub Team</p>
@@ -77,7 +75,7 @@ export default function NewsletterComposer({
 }) {
   const [subject, setSubject] = useState('')
   const [issueNumber, setIssueNumber] = useState('')
-  const [body, setBody] = useState('')
+  const [bodyHtml, setBodyHtml] = useState('')
   const [headerImage, setHeaderImage] = useState('')
   const [sendTo, setSendTo] = useState<'subscribers' | 'customers'>('subscribers')
   const [result, setResult] = useState<{ sent?: number; failed?: number; error?: string } | null>(null)
@@ -104,7 +102,7 @@ export default function NewsletterComposer({
   }
 
   async function handleSend() {
-    if (!subject.trim() || !body.trim()) return
+    if (!subject.trim() || !bodyHtml.trim()) return
     setResult(null)
     startTransition(async () => {
       const res = await fetch('/api/email', {
@@ -114,14 +112,14 @@ export default function NewsletterComposer({
           type: 'newsletter',
           sendTo,
           subject,
-          body,
+          bodyHtml,
           issueNumber: issueNumber ? Number(issueNumber) : undefined,
           headerImage: headerImage || undefined,
         }),
       })
       const data = await res.json()
       setResult(data)
-      if (data.success) { setSubject(''); setBody(''); setIssueNumber(''); setHeaderImage('') }
+      if (data.success) { setSubject(''); setBodyHtml(''); setIssueNumber(''); setHeaderImage('') }
     })
   }
 
@@ -188,15 +186,8 @@ export default function NewsletterComposer({
 
           {/* Body */}
           <div>
-            <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1.5">Body <span className="text-red-400">*</span></label>
-            <textarea
-              value={body}
-              onChange={e => setBody(e.target.value)}
-              placeholder={'Write your newsletter content here.\n\nEach blank line creates a new paragraph.\n\nTip: Keep it personal and concise.'}
-              rows={10}
-              className={`${inputCls} resize-none leading-relaxed`}
-            />
-            <p className="text-xs text-gray-400 mt-1.5">Each blank line = new paragraph in the email.</p>
+            <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1.5">Content <span className="text-red-400">*</span></label>
+            <RichTextEditor onChange={setBodyHtml} placeholder="Write your newsletter content here…" minHeight={260} />
           </div>
 
           {/* Send to */}
@@ -224,7 +215,7 @@ export default function NewsletterComposer({
             <button
               type="button"
               onClick={handleSend}
-              disabled={pending || !subject.trim() || !body.trim() || recipientCount === 0}
+              disabled={pending || !subject.trim() || !bodyHtml.trim() || recipientCount === 0}
               className="px-5 py-2.5 text-sm font-semibold bg-[#4A0F1C] hover:bg-[#3A0B15] text-white rounded-xl disabled:opacity-50 transition-colors"
             >
               {pending ? 'Sending…' : 'Send Newsletter →'}
@@ -248,7 +239,7 @@ export default function NewsletterComposer({
             <div className="overflow-y-auto max-h-[700px]">
               <NewsletterPreview
                 subject={subject}
-                body={body}
+                bodyHtml={bodyHtml}
                 issueNumber={issueNumber}
                 headerImage={headerImage}
               />

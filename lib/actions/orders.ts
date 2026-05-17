@@ -2,33 +2,61 @@
 
 import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
-import { sendOrderShipped } from '@/lib/email'
+import { sendOrderShipped, sendOrderConfirmation } from '@/lib/email'
 
 export async function updateOrderStatus(formData: FormData) {
   const supabase = createClient()
   const id = formData.get('id') as string
   const status = formData.get('status') as string
 
-  // Fetch order before updating so we have customer details for email
   const { data: order } = await supabase
     .from('orders')
-    .select('items, shipping_address, tracking_number, carrier')
+    .select('items, shipping_address, tracking_number, carrier, total, subtotal, shipping_fee')
     .eq('id', id)
     .single()
 
   await supabase.from('orders').update({ status }).eq('id', id)
 
-  // Send shipped email when order moves to 'shipped'
-  if (status === 'shipped' && order?.shipping_address?.email) {
-    const addr = order.shipping_address
-    sendOrderShipped(addr.email, {
-      orderNumber: id.slice(0, 8).toUpperCase(),
-      customerName: `${addr.firstName ?? ''} ${addr.lastName ?? ''}`.trim(),
-      trackingNumber: order.tracking_number ?? undefined,
-      carrier: order.carrier ?? undefined,
-      items: (order.items ?? []).map((i: any) => ({ name: i.name, quantity: i.quantity })),
-      shippingAddress: addr,
-    }).catch(() => {})
+  const addr = order?.shipping_address
+  const orderNumber = id.slice(0, 8).toUpperCase()
+  const customerName = addr ? `${addr.firstName ?? ''} ${addr.lastName ?? ''}`.trim() : ''
+  const items = (order?.items ?? [] as any[]).map((i: any) => ({ name: i.name, quantity: i.quantity, price: i.price ?? 0, thumbnail: i.thumbnail, variant: i.variant }))
+
+  if (addr?.email) {
+    if (status === 'paid' || status === 'processing') {
+      sendOrderConfirmation(addr.email, {
+        orderNumber,
+        customerName,
+        items,
+        subtotal: order?.subtotal ?? order?.total ?? 0,
+        shipping: order?.shipping_fee ?? 0,
+        total: order?.total ?? 0,
+        shippingAddress: addr,
+      }).catch(() => {})
+    }
+
+    if (status === 'shipped') {
+      sendOrderShipped(addr.email, {
+        orderNumber,
+        customerName,
+        trackingNumber: order?.tracking_number ?? undefined,
+        carrier: order?.carrier ?? undefined,
+        items: items.map((i: { name: string; quantity: number }) => ({ name: i.name, quantity: i.quantity })),
+        shippingAddress: addr,
+      }).catch(() => {})
+    }
+
+    if (status === 'delivered') {
+      sendOrderConfirmation(addr.email, {
+        orderNumber,
+        customerName,
+        items,
+        subtotal: order?.subtotal ?? order?.total ?? 0,
+        shipping: order?.shipping_fee ?? 0,
+        total: order?.total ?? 0,
+        shippingAddress: addr,
+      }).catch(() => {})
+    }
   }
 
   revalidatePath('/admin/orders')

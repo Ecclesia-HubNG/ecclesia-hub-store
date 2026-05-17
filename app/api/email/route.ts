@@ -39,9 +39,9 @@ export async function POST(req: NextRequest) {
   }
 
   if (type === 'newsletter') {
-    const { subject, body: content, issueNumber, headerImage } = body
-    if (!subject || !content) return NextResponse.json({ error: 'subject and body required' }, { status: 400 })
-    const result = await sendNewsletter(emails, { subject, body: content, issueNumber, headerImage })
+    const { subject, body: content, bodyHtml, issueNumber, headerImage } = body
+    if (!subject || (!content && !bodyHtml)) return NextResponse.json({ error: 'subject and body required' }, { status: 400 })
+    const result = await sendNewsletter(emails, { subject, body: content, bodyHtml, issueNumber, headerImage })
     return NextResponse.json({ success: true, ...result })
   }
 
