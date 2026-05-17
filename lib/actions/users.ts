@@ -29,13 +29,17 @@ export async function updateUserName(id: string, fullName: string) {
 export async function setUserRole(id: string, role: string) {
   const [callerRole, targetRole] = await Promise.all([getCallerRole(), getTargetRole(id)])
 
-  // Only super_admin can change another super_admin's role
-  if (targetRole === 'super_admin' && callerRole !== 'super_admin') {
-    return { error: 'Super Admin accounts cannot be modified.' }
+  // Super admin accounts are permanently protected — nobody can demote them
+  if (targetRole === 'super_admin') {
+    return { error: 'Super Admin accounts cannot have their role changed.' }
   }
-  // Only super_admin can assign the super_admin role
+  // Only super_admin can grant the super_admin role
   if (role === 'super_admin' && callerRole !== 'super_admin') {
     return { error: 'Only a Super Admin can grant Super Admin access.' }
+  }
+  // Must be admin or super_admin to change roles at all
+  if (callerRole !== 'super_admin' && callerRole !== 'admin') {
+    return { error: 'You do not have permission to change roles.' }
   }
 
   const admin = createAdminClient()

@@ -33,7 +33,10 @@ function ChangeRoleModal({ user, currentUserRole, onClose }: {
 }) {
   const [pending, startTransition] = useTransition()
   const [saving, setSaving] = useState<string | null>(null)
-  const canAssign = assignableRoles(currentUserRole)
+  // Never allow demoting a super_admin — filter it out from assignable list
+  const canAssign = isSuperAdmin(user.app_metadata?.role)
+    ? []
+    : assignableRoles(currentUserRole)
   const name = user.user_metadata?.full_name || user.email?.split('@')[0] || 'this user'
 
   function handleSelect(role: string) {
@@ -136,9 +139,8 @@ function ActionMenu({ user, currentUserRole, onEdit, onDelete, onChangeRole }: {
   const menuRef = useRef<HTMLDivElement>(null)
   const banned = isBanned(user)
   const targetIsSuperAdmin = isSuperAdmin(user.app_metadata?.role)
-  const canAssign = targetIsSuperAdmin && !isSuperAdmin(currentUserRole)
-    ? []
-    : assignableRoles(currentUserRole)
+  // Super admin targets are immutable — nobody can change their role
+  const canAssign = targetIsSuperAdmin ? [] : assignableRoles(currentUserRole)
 
   function handleOpen() {
     if (btnRef.current) {
