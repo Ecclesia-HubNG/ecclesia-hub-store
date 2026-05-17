@@ -1,8 +1,8 @@
-import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 import { CustomersManager } from '@/components/admin/CustomersManager'
 
 export default async function AdminCustomersPage() {
-  const supabase = createClient()
+  const supabase = createAdminClient()
   const [{ data: customers }, { data: orders }] = await Promise.all([
     supabase.from('customers').select('*').order('created_at', { ascending: false }),
     supabase.from('orders').select('customer_id'),
