@@ -24,40 +24,81 @@ function pctChange(current: number, previous: number) {
 }
 
 // ── Revenue bar chart (pure SVG) ─────────────────────────────────────────────
+function niceMax(v: number) {
+  if (v <= 0) return 0
+  const mag = Math.pow(10, Math.floor(Math.log10(v)))
+  for (const s of [1, 2, 2.5, 5, 10]) {
+    if (s * mag >= v) return s * mag
+  }
+  return v
+}
+
+function fmtY(val: number) {
+  if (val === 0) return '₦0'
+  if (val >= 1_000_000) return `₦${(val / 1_000_000).toFixed(1)}M`
+  if (val >= 1_000) return `₦${(val / 1_000).toFixed(0)}k`
+  return `₦${val}`
+}
+
 function RevenueChart({ orders }: { orders: Order[] }) {
   const data = useMemo(() => {
     const now = new Date()
-    const months: { label: string; key: string; revenue: number }[] = []
-    for (let i = 5; i >= 0; i--) {
-      const d = new Date(now.getFullYear(), now.getMonth() - i, 1)
+    return Array.from({ length: 6 }, (_, i) => {
+      const d = new Date(now.getFullYear(), now.getMonth() - (5 - i), 1)
       const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
       const label = d.toLocaleDateString('en', { month: 'short' })
       const revenue = orders
         .filter(o => PAID_STATUSES.includes(o.status) && o.created_at.startsWith(key))
         .reduce((s, o) => s + o.total, 0)
-      months.push({ label, key, revenue })
-    }
-    return months
+      const isCurrent = i === 5
+      return { label, key, revenue, isCurrent }
+    })
   }, [orders])
 
-  const max = Math.max(...data.map(d => d.revenue), 1)
-  const chartH = 120
-  const barW = 40
-  const gap = 16
-  const padL = 52
-  const totalW = padL + data.length * (barW + gap) - gap + 8
+  const rawMax = Math.max(...data.map(d => d.revenue))
+  const hasData = rawMax > 0
+  const max = niceMax(rawMax) || 100_000 // fallback scale when no data
+
+  const chartH = 130
+  const padT = 16
+  const padB = 36
+  const padL = 60
+  const padR = 12
+  const barW = 36
+  const cols = data.length
+  const innerW = 420 // fixed inner width, SVG scales via viewBox
+  const colW = (innerW - padL - padR) / cols
+  const totalW = innerW
+  const totalH = chartH + padT + padB
+
+  const yTicks = [0, 0.25, 0.5, 0.75, 1]
 
   return (
-    <svg viewBox={`0 0 ${totalW} ${chartH + 36}`} width="100%" preserveAspectRatio="xMidYMid meet" className="overflow-visible">
-      {/* Y gridlines */}
-      {[0, 0.25, 0.5, 0.75, 1].map(t => {
-        const y = chartH - t * chartH
+    <svg
+      viewBox={`0 0 ${totalW} ${totalH}`}
+      width="100%"
+      preserveAspectRatio="xMidYMid meet"
+      className="overflow-visible"
+    >
+      {/* Y gridlines + labels */}
+      {yTicks.map(t => {
+        const y = padT + chartH - t * chartH
         const val = max * t
         return (
           <g key={t}>
-            <line x1={padL} y1={y} x2={totalW} y2={y} stroke="currentColor" strokeWidth={0.5} className="text-gray-200 dark:text-gray-700" strokeDasharray={t === 0 ? undefined : '3 3'} />
-            <text x={padL - 6} y={y + 4} textAnchor="end" fontSize={9} className="fill-gray-400">
-              {val >= 1000 ? `${(val / 1000).toFixed(0)}k` : val.toFixed(0)}
+            <line
+              x1={padL} y1={y} x2={totalW - padR} y2={y}
+              strokeWidth={0.75}
+              stroke={t === 0 ? 'currentColor' : 'currentColor'}
+              strokeDasharray={t === 0 ? undefined : '4 3'}
+              className={t === 0 ? 'text-gray-300 dark:text-gray-700' : 'text-gray-200 dark:text-gray-800'}
+            />
+            <text
+              x={padL - 8} y={y + 3.5}
+              textAnchor="end" fontSize={8.5}
+              className="fill-gray-400 dark:fill-gray-500"
+            >
+              {fmtY(val)}
             </text>
           </g>
         )
@@ -65,27 +106,58 @@ function RevenueChart({ orders }: { orders: Order[] }) {
 
       {/* Bars */}
       {data.map((d, i) => {
-        const barH = Math.max((d.revenue / max) * chartH, d.revenue > 0 ? 3 : 0)
-        const x = padL + i * (barW + gap)
-        const y = chartH - barH
-        const isCurrentMonth = i === data.length - 1
+        const barH = hasData ? Math.max((d.revenue / max) * chartH, d.revenue > 0 ? 4 : 0) : 0
+        const cx = padL + i * colW + colW / 2
+        const x = cx - barW / 2
+        const y = padT + chartH - barH
         return (
           <g key={d.key}>
-            <rect
-              x={x} y={y} width={barW} height={barH} rx={5}
-              className={isCurrentMonth ? 'fill-[#4A0F1C]' : 'fill-[#4A0F1C]/30 dark:fill-[#4A0F1C]/50'}
-            />
-            <text x={x + barW / 2} y={chartH + 16} textAnchor="middle" fontSize={10} className="fill-gray-500 dark:fill-gray-400">
-              {d.label}
-            </text>
-            {d.revenue > 0 && (
-              <text x={x + barW / 2} y={y - 5} textAnchor="middle" fontSize={9} className="fill-[#6B1A2A] dark:fill-[#D4849A] font-medium">
-                {d.revenue >= 1000 ? `${(d.revenue / 1000).toFixed(0)}k` : d.revenue}
+            {/* Placeholder bar (empty state) */}
+            {!hasData && (
+              <rect
+                x={x} y={padT + chartH - 6} width={barW} height={6} rx={3}
+                className="fill-gray-200 dark:fill-gray-800"
+              />
+            )}
+            {/* Actual bar */}
+            {hasData && (
+              <rect
+                x={x} y={y} width={barW} height={barH} rx={4}
+                className={d.isCurrent ? 'fill-[#4A0F1C] dark:fill-[#6B1A2A]' : 'fill-[#4A0F1C]/25 dark:fill-[#4A0F1C]/40'}
+              />
+            )}
+            {/* Value label above bar */}
+            {hasData && d.revenue > 0 && (
+              <text
+                x={cx} y={y - 5}
+                textAnchor="middle" fontSize={8}
+                className="fill-[#6B1A2A] dark:fill-[#D4849A]"
+              >
+                {fmtY(d.revenue)}
               </text>
             )}
+            {/* Month label */}
+            <text
+              x={cx} y={padT + chartH + padB - 16}
+              textAnchor="middle" fontSize={10}
+              className={d.isCurrent ? 'fill-[#4A0F1C] dark:fill-[#D4849A] font-semibold' : 'fill-gray-500 dark:fill-gray-400'}
+            >
+              {d.label}
+            </text>
           </g>
         )
       })}
+
+      {/* Empty state overlay */}
+      {!hasData && (
+        <text
+          x={totalW / 2} y={padT + chartH / 2 + 4}
+          textAnchor="middle" fontSize={11}
+          className="fill-gray-400 dark:fill-gray-500"
+        >
+          No revenue data yet — orders will appear once paid
+        </text>
+      )}
     </svg>
   )
 }
