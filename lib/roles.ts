@@ -28,15 +28,15 @@ export const ROLE_COLORS: Record<Role, string> = {
   financier:   'bg-green-50 dark:bg-green-950/40 text-green-700 dark:text-green-400',
 }
 
-export type Section = 'dashboard' | 'products' | 'orders' | 'customers' | 'users' | 'settings' | 'coupons' | 'emails'
+export type Section = 'dashboard' | 'products' | 'orders' | 'customers' | 'users' | 'settings' | 'coupons' | 'emails' | 'finance'
 
 export const ROLE_PERMISSIONS: Record<Role, Section[]> = {
-  super_admin: ['dashboard', 'products', 'orders', 'customers', 'users', 'settings', 'coupons', 'emails'],
-  admin:       ['dashboard', 'products', 'orders', 'customers', 'users', 'settings', 'coupons', 'emails'],
+  super_admin: ['dashboard', 'products', 'orders', 'customers', 'users', 'settings', 'coupons', 'emails', 'finance'],
+  admin:       ['dashboard', 'products', 'orders', 'customers', 'users', 'settings', 'coupons', 'emails', 'finance'],
   editor:      ['dashboard', 'products'],
-  manager:     ['dashboard', 'orders', 'customers'],
+  manager:     ['dashboard', 'orders', 'customers', 'finance'],
   shop_keeper: ['dashboard', 'products', 'orders'],
-  financier:   ['dashboard', 'orders', 'coupons'],
+  financier:   ['dashboard', 'orders', 'coupons', 'finance'],
 }
 
 export function can(role: string | undefined, section: Section): boolean {
