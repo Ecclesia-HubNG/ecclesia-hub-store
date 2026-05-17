@@ -1,13 +1,14 @@
 import {
   Html, Head, Body, Container, Section,
-  Heading, Text, Link, Hr, Preview,
+  Heading, Text, Link, Hr, Preview, Img,
 } from '@react-email/components'
 
 export type NewsletterEmailProps = {
   subject: string
   previewText?: string
-  body: string   // HTML-safe plain text or simple HTML
+  body: string
   issueNumber?: number
+  headerImage?: string
 }
 
 const brand = '#4A0F1C'
@@ -18,6 +19,7 @@ export default function NewsletterEmail({
   previewText,
   body = 'Your newsletter content goes here.',
   issueNumber,
+  headerImage,
 }: NewsletterEmailProps) {
   const date = new Date().toLocaleDateString('en', { day: 'numeric', month: 'long', year: 'numeric' })
 
@@ -43,6 +45,18 @@ export default function NewsletterEmail({
               Newsletter
             </Text>
           </Section>
+
+          {/* Optional header image */}
+          {headerImage && (
+            <Section style={{ backgroundColor: '#fff', padding: '24px 40px 0' }}>
+              <Img
+                src={headerImage}
+                width={520}
+                alt=""
+                style={{ width: '100%', borderRadius: 8, display: 'block', objectFit: 'cover' }}
+              />
+            </Section>
+          )}
 
           {/* Subject line as article title */}
           <Section style={{ backgroundColor: '#fff', padding: '36px 40px 8px' }}>

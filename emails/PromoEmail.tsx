@@ -16,6 +16,7 @@ export type PromoEmailProps = {
   headline: string
   subheadline?: string
   bannerText?: string
+  bannerImage?: string
   products: PromoProduct[]
   ctaText?: string
   ctaUrl?: string
@@ -30,6 +31,7 @@ export default function PromoEmail({
   headline = 'Exclusive Deals Just for You',
   subheadline = 'Limited time offer — shop now before it\'s gone.',
   bannerText = '🎉 SPECIAL OFFER',
+  bannerImage,
   products = [
     { name: 'Study Bible KJV', price: 8500, comparePrice: 12000, slug: 'study-bible-kjv' },
     { name: 'Daily Devotional', price: 3500, slug: 'daily-devotional' },
@@ -51,7 +53,7 @@ export default function PromoEmail({
           </Section>
 
           {/* Banner */}
-          <Section style={{ background: `linear-gradient(135deg, ${brandLight}, #9B3A50)`, padding: '36px 40px', textAlign: 'center' }}>
+          <Section style={{ background: `linear-gradient(135deg, ${brandLight}, #9B3A50)`, padding: bannerImage ? '36px 40px 0' : '36px 40px', textAlign: 'center' }}>
             {bannerText && (
               <Text style={{ color: 'rgba(255,255,255,0.8)', fontSize: 12, fontWeight: 700, letterSpacing: 2, textTransform: 'uppercase', margin: '0 0 8px' }}>
                 {bannerText}
@@ -61,9 +63,17 @@ export default function PromoEmail({
               {headline}
             </Heading>
             {subheadline && (
-              <Text style={{ color: 'rgba(255,255,255,0.8)', fontSize: 15, margin: 0 }}>
+              <Text style={{ color: 'rgba(255,255,255,0.8)', fontSize: 15, margin: bannerImage ? '0 0 20px' : '0' }}>
                 {subheadline}
               </Text>
+            )}
+            {bannerImage && (
+              <Img
+                src={bannerImage}
+                width={600}
+                alt=""
+                style={{ width: '100%', maxHeight: 260, objectFit: 'cover', display: 'block' }}
+              />
             )}
           </Section>
 
