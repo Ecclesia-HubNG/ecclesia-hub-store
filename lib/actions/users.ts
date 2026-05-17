@@ -13,7 +13,7 @@ export async function updateUserName(id: string, fullName: string) {
   revalidatePath(PATH)
 }
 
-export async function setUserRole(id: string, role: 'admin' | 'user') {
+export async function setUserRole(id: string, role: string) {
   const supabase = createAdminClient()
   await supabase.auth.admin.updateUserById(id, {
     app_metadata: { role },

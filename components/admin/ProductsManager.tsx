@@ -128,24 +128,35 @@ type ImportRow = {
   isDuplicate: boolean
 }
 
-const TEMPLATE_COLUMNS = ['Name', 'Price', 'Compare At Price', 'Stock', 'SKU', 'Status', 'Featured', 'Description'] as const
+const TEMPLATE_COLUMNS = [
+  'Name', 'Short Description', 'Long Description',
+  'Price', 'Compare At Price', 'Sale Price', 'Sale Starts At', 'Sale Ends At',
+  'SKU', 'Barcode', 'Stock', 'Weight (kg)',
+  'Brand', 'Category', 'Tags',
+  'Status', 'Featured', 'Shipping Type',
+  'Variants (JSON)', 'Attributes (JSON)',
+  'Thumbnail URL', 'Image URLs', 'Video URL',
+  'Meta Title', 'Meta Description',
+] as const
 
 const TEMPLATE_CSV = [
   '# Ecclesia Hub — Product Import Template',
-  '# Fill in your products below this line. Delete all comment rows (starting with #) before uploading.',
-  '# Columns:',
-  '#   Name              — Required. Product name.',
-  '#   Price             — Required. Selling price (numbers only, e.g. 5000).',
-  '#   Compare At Price  — Optional. Original/crossed-out price (leave blank if no sale).',
-  '#   Stock             — Required. Quantity available (whole number, e.g. 50).',
-  '#   SKU               — Optional. Your internal stock code.',
-  '#   Status            — Required. Must be exactly: Active or Inactive',
-  '#   Featured          — Required. Must be exactly: Yes or No',
-  '#   Description       — Optional. Short product description.',
+  '# Fill this sheet and send it back. Delete all rows starting with # before uploading.',
+  '#',
+  '# REQUIRED: Name, Price, Stock, Status, Featured',
+  '# DATES: Use YYYY-MM-DD format (e.g. 2026-06-01)',
+  '# STATUS: Active or Inactive',
+  '# FEATURED: Yes or No',
+  '# SHIPPING TYPE: standard | express | free | digital',
+  '# TAGS: comma-separated inside the cell (e.g. "audio,wireless,sale")',
+  '# IMAGE URLs: pipe-separated for multiple (e.g. "https://…/1.jpg|https://…/2.jpg")',
+  '# VARIANTS JSON: e.g. [{"name":"Color","values":["Black","White"]},{"name":"Size","values":["S","M","L"]}]',
+  '# ATTRIBUTES JSON: e.g. [{"name":"Material","value":"Cotton"},{"name":"Weight","value":"200g"}]',
+  '#',
   TEMPLATE_COLUMNS.join(','),
-  '"Wireless Earbuds Pro",15000,20000,30,SKU-001,Active,Yes,"Premium sound quality with 24-hour battery life"',
-  '"Phone Case - Black",2500,,100,SKU-002,Active,No,"Slim protective case for all phone models"',
-  '"Broken Headphones",8000,,0,,Inactive,No,',
+  '"Wireless Earbuds Pro","Crystal-clear sound with deep bass","Experience studio-quality audio anywhere with our flagship earbuds. Features active noise cancellation, 24-hour battery life, and IPX5 water resistance.",15000,20000,12500,2026-06-01,2026-06-30,WEP-001,6009876543210,30,0.18,"SoundTech","Electronics","audio,wireless,sale",Active,Yes,standard,"[{""name"":""Color"",""values"":[""Black"",""White"",""Navy""]}]","[{""name"":""Driver Size"",""value"":""10mm""},{""name"":""Battery"",""value"":""24h""}]","https://example.com/img/earbuds-thumb.jpg","https://example.com/img/earbuds-1.jpg|https://example.com/img/earbuds-2.jpg","https://youtube.com/watch?v=example","Wireless Earbuds Pro — SoundTech | Ecclesia Hub","Shop the SoundTech Wireless Earbuds Pro. Noise cancellation, 24h battery, IPX5 rated."',
+  '"Phone Case - Black","Slim protection for your phone","",2500,,,,PHC-BLK,,100,0.05,"","Accessories","cases,protection",Active,No,standard,"","[{""name"":""Material"",""value"":""TPU+PC Hybrid""}]","","","",,',
+  '"Study Bible (KJV)","King James Version with study notes","",8500,,,,BIB-KJV-001,9781234567890,15,0.9,"","Books & Media","bible,study,kjv",Active,No,standard,"","[{""name"":""Cover"",""value"":""Hardback""},{""name"":""Pages"",""value"":""1800""}]","","","","KJV Study Bible | Ecclesia Hub","King James Version Study Bible with comprehensive concordance and study notes."',
 ].join('\n')
 
 type ImportFormat = 'template' | 'woocommerce'

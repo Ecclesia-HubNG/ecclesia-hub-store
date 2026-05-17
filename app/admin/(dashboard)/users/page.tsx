@@ -1,9 +1,13 @@
 import { createAdminClient } from '@/lib/supabase/admin'
+import { createClient } from '@/lib/supabase/server'
 import UsersManager from '@/components/admin/UsersManager'
 
 export default async function AdminUsersPage() {
-  const admin = createAdminClient()
-  const { data: { users }, error } = await admin.auth.admin.listUsers()
+  const [admin, supabase] = [createAdminClient(), createClient()]
+  const [{ data: { users }, error }, { data: { user: me } }] = await Promise.all([
+    admin.auth.admin.listUsers(),
+    supabase.auth.getUser(),
+  ])
 
   if (error) {
     return (
@@ -15,9 +19,11 @@ export default async function AdminUsersPage() {
     )
   }
 
+  const myRole = (me?.app_metadata?.role ?? '') as string
+
   return (
     <div className="p-8">
-      <UsersManager users={users as any} />
+      <UsersManager users={users as any} currentUserRole={myRole} />
     </div>
   )
 }

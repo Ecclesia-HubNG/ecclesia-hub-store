@@ -2,6 +2,7 @@ import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import AdminSidebar from '@/components/admin/Sidebar'
 import { AdminHeader } from '@/components/admin/AdminHeader'
+import { ROLES } from '@/lib/roles'
 
 export default async function AdminDashboardLayout({ children }: { children: React.ReactNode }) {
   const supabase = createClient()
@@ -9,9 +10,12 @@ export default async function AdminDashboardLayout({ children }: { children: Rea
 
   if (!user) redirect('/admin/login')
 
+  const role = (user.app_metadata?.role ?? '') as string
+  if (!ROLES.includes(role as any)) redirect('/admin/login')
+
   return (
     <div className="flex h-screen overflow-hidden bg-gray-50 dark:bg-[#0d0d0d]">
-      <AdminSidebar />
+      <AdminSidebar role={role} />
       <div className="flex-1 flex flex-col overflow-hidden">
         <AdminHeader />
         <main className="flex-1 overflow-y-auto overflow-x-hidden bg-gray-50 dark:bg-[#0d0d0d]">
