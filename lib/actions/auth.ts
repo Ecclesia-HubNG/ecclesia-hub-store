@@ -3,6 +3,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
+import { sendWelcomeEmail } from '@/lib/email'
 
 export async function signIn(_: unknown, formData: FormData) {
   const supabase = createClient()
@@ -33,6 +34,12 @@ export async function signUp(_: unknown, formData: FormData) {
   })
 
   if (error) return { error: error.message }
+
+  // Send welcome email (non-blocking)
+  sendWelcomeEmail(email, {
+    name: `${firstName} ${lastName}`.trim() || email.split('@')[0],
+    email,
+  }).catch(() => {})
 
   return { success: true, email }
 }

@@ -28,11 +28,11 @@ export const ROLE_COLORS: Record<Role, string> = {
   financier:   'bg-green-50 dark:bg-green-950/40 text-green-700 dark:text-green-400',
 }
 
-export type Section = 'dashboard' | 'products' | 'orders' | 'customers' | 'users' | 'settings' | 'coupons'
+export type Section = 'dashboard' | 'products' | 'orders' | 'customers' | 'users' | 'settings' | 'coupons' | 'emails'
 
 export const ROLE_PERMISSIONS: Record<Role, Section[]> = {
-  super_admin: ['dashboard', 'products', 'orders', 'customers', 'users', 'settings', 'coupons'],
-  admin:       ['dashboard', 'products', 'orders', 'customers', 'users', 'settings', 'coupons'],
+  super_admin: ['dashboard', 'products', 'orders', 'customers', 'users', 'settings', 'coupons', 'emails'],
+  admin:       ['dashboard', 'products', 'orders', 'customers', 'users', 'settings', 'coupons', 'emails'],
   editor:      ['dashboard', 'products'],
   manager:     ['dashboard', 'orders', 'customers'],
   shop_keeper: ['dashboard', 'products', 'orders'],

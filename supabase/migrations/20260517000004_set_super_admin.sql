@@ -4,4 +4,4 @@
 
 UPDATE auth.users
 SET raw_app_meta_data = raw_app_meta_data || '{"role":"super_admin"}'::jsonb
-WHERE email = 'nnamdikbobi@gmail.com';
+WHERE email = 'ecclesiahubng@gmail.com';

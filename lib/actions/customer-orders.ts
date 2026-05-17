@@ -2,6 +2,7 @@
 
 import { createClient } from '@/lib/supabase/server'
 import type { CartItem } from '@/lib/cart-context'
+import { sendOrderConfirmation } from '@/lib/email'
 
 export type ShippingAddress = {
   firstName: string
@@ -38,6 +39,25 @@ export async function createOrder(items: CartItem[], shipping: ShippingAddress, 
     .single()
 
   if (error) return { error: error.message }
+
+  // Send order confirmation email (non-blocking)
+  const orderNumber = order.id.slice(0, 8).toUpperCase()
+  sendOrderConfirmation(shipping.email, {
+    orderNumber,
+    customerName: `${shipping.firstName} ${shipping.lastName}`,
+    items: items.map(i => ({
+      name: i.name,
+      quantity: i.quantity,
+      price: i.price,
+      thumbnail: i.thumbnail ?? undefined,
+      variant: i.selectedVariant ? Object.values(i.selectedVariant).join(' / ') : undefined,
+    })),
+    subtotal: total,
+    shipping: 0,
+    total,
+    shippingAddress: shipping,
+  }).catch(() => {})
+
   return { orderId: order.id }
 }
 
