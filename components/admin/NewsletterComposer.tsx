@@ -1,8 +1,73 @@
 'use client'
 
 import { useState, useTransition, useRef } from 'react'
-import { createClient } from '@/lib/supabase/client'
+import { uploadEmailAsset } from '@/lib/actions/upload'
 
+// ── Live preview ──────────────────────────────────────────────────────────────
+function NewsletterPreview({
+  subject, body, issueNumber, headerImage,
+}: {
+  subject: string
+  body: string
+  issueNumber: string
+  headerImage: string
+}) {
+  const date = new Date().toLocaleDateString('en', { day: 'numeric', month: 'long', year: 'numeric' })
+  const paragraphs = body.split('\n').filter(Boolean)
+
+  return (
+    <div style={{ backgroundColor: '#f0f0f0', padding: '20px 12px', fontFamily: 'Georgia, serif', borderRadius: 12, minHeight: 400 }}>
+      {/* Meta */}
+      <p style={{ textAlign: 'center', fontSize: 10, color: '#aaa', textTransform: 'uppercase', letterSpacing: 1, margin: '0 0 8px', fontFamily: 'Arial, sans-serif' }}>
+        {date}{issueNumber ? ` · Issue #${issueNumber}` : ''}
+      </p>
+
+      {/* Brand header */}
+      <div style={{ backgroundColor: '#4A0F1C', borderRadius: '10px 10px 0 0', padding: '20px 28px', textAlign: 'center' }}>
+        <p style={{ color: '#fff', fontSize: 18, margin: '0 0 2px', fontWeight: 700, fontFamily: 'Arial, sans-serif' }}>Ecclesia Hub</p>
+        <p style={{ color: 'rgba(255,255,255,0.55)', margin: 0, fontSize: 9, letterSpacing: 2, textTransform: 'uppercase', fontFamily: 'Arial, sans-serif' }}>Newsletter</p>
+      </div>
+
+      {/* Header image */}
+      {headerImage && (
+        <div style={{ backgroundColor: '#fff', padding: '14px 28px 0' }}>
+          <img src={headerImage} style={{ width: '100%', borderRadius: 6, objectFit: 'cover', maxHeight: 140, display: 'block' }} alt="" />
+        </div>
+      )}
+
+      {/* Subject */}
+      <div style={{ backgroundColor: '#fff', padding: '20px 28px 6px' }}>
+        <p style={{ fontSize: 17, color: subject ? '#111' : '#bbb', margin: '0 0 10px', fontWeight: 700, lineHeight: 1.3 }}>
+          {subject || 'Your subject line…'}
+        </p>
+        <hr style={{ border: 'none', borderTop: '1px solid #eee', margin: '0 0 14px' }} />
+      </div>
+
+      {/* Body */}
+      <div style={{ backgroundColor: '#fff', padding: '0 28px 28px', borderRadius: '0 0 10px 10px' }}>
+        {paragraphs.length > 0
+          ? paragraphs.map((p, i) => (
+              <p key={i} style={{ fontSize: 13, color: '#333', lineHeight: 1.85, margin: '0 0 12px' }}>{p}</p>
+            ))
+          : <p style={{ fontSize: 13, color: '#ccc', lineHeight: 1.85, margin: 0 }}>Your newsletter body will appear here…</p>
+        }
+        <hr style={{ border: 'none', borderTop: '1px solid #eee', margin: '18px 0 14px' }} />
+        <p style={{ fontSize: 12, color: '#888', margin: 0, fontFamily: 'Arial, sans-serif' }}>— The Ecclesia Hub Team</p>
+      </div>
+
+      {/* Footer */}
+      <div style={{ textAlign: 'center', padding: '14px 0 0' }}>
+        <p style={{ color: '#aaa', fontSize: 10, margin: '0 0 2px', fontFamily: 'Arial, sans-serif' }}>Ecclesia Hub · Lagos, Nigeria</p>
+        <p style={{ color: '#aaa', fontSize: 10, margin: 0, fontFamily: 'Arial, sans-serif' }}>
+          <span style={{ color: '#6B1A2A' }}>Shop now</span>
+          {' · Unsubscribe · Contact'}
+        </p>
+      </div>
+    </div>
+  )
+}
+
+// ── Main composer ─────────────────────────────────────────────────────────────
 export default function NewsletterComposer({
   totalCustomers,
   totalSubscribers,
@@ -25,13 +90,11 @@ export default function NewsletterComposer({
     if (!file) return
     setUploading(true)
     try {
-      const supabase = createClient()
-      const ext = file.name.split('.').pop()
-      const path = `newsletter/${Date.now()}.${ext}`
-      const { data, error } = await supabase.storage.from('email-assets').upload(path, file, { upsert: true })
-      if (error) throw error
-      const { data: { publicUrl } } = supabase.storage.from('email-assets').getPublicUrl(data.path)
-      setHeaderImage(publicUrl)
+      const fd = new FormData()
+      fd.append('file', file)
+      const res = await uploadEmailAsset(fd)
+      if (res.error) throw new Error(res.error)
+      setHeaderImage(res.url!)
     } catch (err: any) {
       alert(`Upload failed: ${err.message}`)
     } finally {
@@ -69,7 +132,7 @@ export default function NewsletterComposer({
     <div>
       <div className="mb-6">
         <h1 className="text-xl font-semibold text-gray-900 dark:text-white">Newsletter</h1>
-        <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">Compose and send your newsletter</p>
+        <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">Compose and preview your newsletter before sending</p>
       </div>
 
       {result && (
@@ -78,13 +141,14 @@ export default function NewsletterComposer({
         </div>
       )}
 
-      <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl p-6 max-w-2xl">
-        <div className="space-y-5">
+      <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 items-start">
+        {/* ── Left: form ── */}
+        <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl p-6 space-y-5">
           {/* Subject + issue */}
           <div className="flex gap-3">
             <div className="flex-1">
               <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1.5">Subject line <span className="text-red-400">*</span></label>
-              <input type="text" value={subject} onChange={e => setSubject(e.target.value)} placeholder="e.g. What's new at Ecclesia Hub this week" className={inputCls} />
+              <input type="text" value={subject} onChange={e => setSubject(e.target.value)} placeholder="e.g. What's new at Ecclesia Hub" className={inputCls} />
             </div>
             <div className="w-24">
               <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1.5">Issue #</label>
@@ -94,10 +158,10 @@ export default function NewsletterComposer({
 
           {/* Header image */}
           <div>
-            <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1.5">Header image (optional)</label>
+            <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1.5">Header image <span className="text-gray-400 font-normal">(optional)</span></label>
             {headerImage ? (
               <div className="relative">
-                <img src={headerImage} alt="" className="w-full h-36 object-cover rounded-xl border border-gray-200 dark:border-gray-700" />
+                <img src={headerImage} alt="" className="w-full h-32 object-cover rounded-xl border border-gray-200 dark:border-gray-700" />
                 <button
                   type="button"
                   onClick={() => setHeaderImage('')}
@@ -111,12 +175,12 @@ export default function NewsletterComposer({
                 type="button"
                 onClick={() => fileRef.current?.click()}
                 disabled={uploading}
-                className="flex items-center justify-center gap-2 w-full h-24 border-2 border-dashed border-gray-200 dark:border-gray-700 rounded-xl text-sm text-gray-400 hover:border-[#4A0F1C]/40 hover:text-[#4A0F1C] dark:hover:text-[#D4849A] transition-colors disabled:opacity-50"
+                className="flex items-center justify-center gap-2 w-full h-20 border-2 border-dashed border-gray-200 dark:border-gray-700 rounded-xl text-sm text-gray-400 hover:border-[#4A0F1C]/40 hover:text-[#4A0F1C] dark:hover:text-[#D4849A] transition-colors disabled:opacity-50"
               >
-                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5m-13.5-9L12 3m0 0 4.5 4.5M12 3v13.5" />
                 </svg>
-                {uploading ? 'Uploading…' : 'Upload image'}
+                {uploading ? 'Uploading…' : 'Upload header image'}
               </button>
             )}
             <input ref={fileRef} type="file" accept="image/*" onChange={handleImageUpload} className="hidden" />
@@ -128,31 +192,32 @@ export default function NewsletterComposer({
             <textarea
               value={body}
               onChange={e => setBody(e.target.value)}
-              placeholder={'Write your newsletter content here.\n\nEach blank line creates a new paragraph in the email.\n\nTip: Keep it personal and concise.'}
-              rows={12}
-              className={`${inputCls} resize-none font-mono text-xs leading-relaxed`}
+              placeholder={'Write your newsletter content here.\n\nEach blank line creates a new paragraph.\n\nTip: Keep it personal and concise.'}
+              rows={10}
+              className={`${inputCls} resize-none leading-relaxed`}
             />
-            <p className="text-xs text-gray-400 mt-1.5">Each blank line creates a new paragraph.</p>
+            <p className="text-xs text-gray-400 mt-1.5">Each blank line = new paragraph in the email.</p>
           </div>
 
           {/* Send to */}
           <div>
             <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-2">Send to</label>
-            <div className="flex gap-3">
-              {([['subscribers', `Subscribers (${totalSubscribers})`], ['customers', `All Customers (${totalCustomers})`]] as const).map(([val, label]) => (
-                <label key={val} className={`flex items-center gap-2.5 px-4 py-2.5 rounded-xl border cursor-pointer transition-colors ${sendTo === val ? 'border-[#4A0F1C]/40 bg-[#4A0F1C]/5 dark:bg-[#4A0F1C]/10' : 'border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800'}`}>
-                  <input type="radio" name="sendTo" value={val} checked={sendTo === val} onChange={() => setSendTo(val)} className="sr-only" />
-                  <span className={`w-3.5 h-3.5 rounded-full border-2 flex items-center justify-center ${sendTo === val ? 'border-[#4A0F1C]' : 'border-gray-300 dark:border-gray-600'}`}>
+            <div className="flex gap-2.5">
+              {([['subscribers', `Subscribers`, totalSubscribers], ['customers', `All Customers`, totalCustomers]] as const).map(([val, label, count]) => (
+                <label key={val} className={`flex items-center gap-2.5 px-3.5 py-2 rounded-xl border cursor-pointer transition-colors ${sendTo === val ? 'border-[#4A0F1C]/40 bg-[#4A0F1C]/5 dark:bg-[#4A0F1C]/10' : 'border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800'}`}>
+                  <input type="radio" name="nlSendTo" value={val} checked={sendTo === val} onChange={() => setSendTo(val)} className="sr-only" />
+                  <span className={`w-3.5 h-3.5 rounded-full border-2 flex items-center justify-center shrink-0 ${sendTo === val ? 'border-[#4A0F1C]' : 'border-gray-300 dark:border-gray-600'}`}>
                     {sendTo === val && <span className="w-1.5 h-1.5 rounded-full bg-[#4A0F1C]" />}
                   </span>
                   <span className="text-sm text-gray-700 dark:text-gray-300">{label}</span>
+                  <span className="text-xs text-gray-400">({count})</span>
                 </label>
               ))}
             </div>
           </div>
 
           {/* Send button */}
-          <div className="flex items-center justify-between pt-1">
+          <div className="flex items-center justify-between pt-1 border-t border-gray-100 dark:border-gray-800">
             <p className="text-xs text-gray-400">
               Sending to <strong className="text-gray-600 dark:text-gray-300">{recipientCount} {sendTo === 'subscribers' ? 'subscriber' : 'customer'}{recipientCount !== 1 ? 's' : ''}</strong>
             </p>
@@ -164,6 +229,30 @@ export default function NewsletterComposer({
             >
               {pending ? 'Sending…' : 'Send Newsletter →'}
             </button>
+          </div>
+        </div>
+
+        {/* ── Right: preview ── */}
+        <div className="sticky top-6">
+          <div className="flex items-center gap-2 mb-3">
+            <span className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">Email Preview</span>
+            <span className="text-xs text-gray-400 dark:text-gray-500">— what recipients will see</span>
+          </div>
+          <div className="border border-gray-200 dark:border-gray-700 rounded-2xl overflow-hidden">
+            <div className="bg-gray-100 dark:bg-gray-800 px-4 py-2 flex items-center gap-1.5 border-b border-gray-200 dark:border-gray-700">
+              <span className="w-2.5 h-2.5 rounded-full bg-gray-300 dark:bg-gray-600" />
+              <span className="w-2.5 h-2.5 rounded-full bg-gray-300 dark:bg-gray-600" />
+              <span className="w-2.5 h-2.5 rounded-full bg-gray-300 dark:bg-gray-600" />
+              <span className="ml-2 text-xs text-gray-400 font-mono truncate">Newsletter · {subject || 'No subject'}</span>
+            </div>
+            <div className="overflow-y-auto max-h-[700px]">
+              <NewsletterPreview
+                subject={subject}
+                body={body}
+                issueNumber={issueNumber}
+                headerImage={headerImage}
+              />
+            </div>
           </div>
         </div>
       </div>
