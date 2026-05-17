@@ -1,6 +1,80 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useRef, useEffect } from 'react'
+
+function Chevron() {
+  return (
+    <svg className="w-3.5 h-3.5 text-gray-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
+    </svg>
+  )
+}
+
+function Check() {
+  return (
+    <svg className="w-3.5 h-3.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="m4.5 12.75 6 6 9-13.5" />
+    </svg>
+  )
+}
+
+function Dropdown<T extends string>({
+  value, onChange, options, label,
+}: {
+  value: T
+  onChange: (v: T) => void
+  options: { value: T; label: string }[]
+  label: string
+}) {
+  const [open, setOpen] = useState(false)
+  const ref = useRef<HTMLDivElement>(null)
+  const current = options.find(o => o.value === value)
+  const isFiltered = value !== options[0].value
+
+  useEffect(() => {
+    function close(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false)
+    }
+    document.addEventListener('mousedown', close)
+    return () => document.removeEventListener('mousedown', close)
+  }, [])
+
+  return (
+    <div ref={ref} className="relative">
+      <button
+        type="button"
+        onClick={() => setOpen(p => !p)}
+        className={`flex items-center gap-2 px-3 py-2 text-sm rounded-lg border transition-colors ${
+          isFiltered
+            ? 'border-gray-900 dark:border-white text-gray-900 dark:text-white bg-white dark:bg-gray-900'
+            : 'border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800 bg-white dark:bg-gray-900'
+        }`}
+      >
+        {current?.label ?? label}
+        <Chevron />
+      </button>
+      {open && (
+        <div className="absolute left-0 top-full mt-1 z-20 min-w-[160px] bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl shadow-lg py-1">
+          {options.map(opt => (
+            <button
+              key={opt.value}
+              type="button"
+              onClick={() => { onChange(opt.value); setOpen(false) }}
+              className={`flex items-center justify-between w-full px-3 py-2.5 text-sm transition-colors ${
+                value === opt.value
+                  ? 'text-gray-900 dark:text-white font-medium bg-gray-50 dark:bg-gray-800'
+                  : 'text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800'
+              }`}
+            >
+              {opt.label}
+              {value === opt.value && <Check />}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
 
 type Log = {
   id: string
@@ -53,7 +127,15 @@ export default function EmailLogs({ logs: initialLogs }: { logs: Log[] }) {
   const sentCount = initialLogs.filter(l => l.status === 'sent').length
   const failedCount = initialLogs.filter(l => l.status === 'failed').length
 
-  const inputCls = 'px-3 py-2 text-sm bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#4A0F1C]/20 focus:border-[#4A0F1C]/40 transition-colors'
+  const typeOptions = [
+    { value: 'all', label: 'All types' },
+    ...ALL_TYPES.map(t => ({ value: t, label: TYPE_LABEL[t] ?? t })),
+  ]
+  const statusOptions = [
+    { value: 'all', label: 'All statuses' },
+    { value: 'sent', label: 'Sent' },
+    { value: 'failed', label: 'Failed' },
+  ]
 
   return (
     <div>
@@ -64,29 +146,36 @@ export default function EmailLogs({ logs: initialLogs }: { logs: Log[] }) {
         </p>
       </div>
 
-      {/* Filters */}
-      <div className="flex flex-wrap items-center gap-3 mb-5">
-        <input
-          type="search"
-          value={search}
-          onChange={e => setSearch(e.target.value)}
-          placeholder="Search subject or recipient…"
-          className={`${inputCls} w-64`}
-        />
-        <select value={typeFilter} onChange={e => setTypeFilter(e.target.value)} className={inputCls}>
-          <option value="all">All types</option>
-          {ALL_TYPES.map(t => <option key={t} value={t}>{TYPE_LABEL[t] ?? t}</option>)}
-        </select>
-        <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)} className={inputCls}>
-          <option value="all">All statuses</option>
-          <option value="sent">Sent</option>
-          <option value="failed">Failed</option>
-        </select>
+      {/* Filter bar */}
+      <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-3 mb-4 flex items-center gap-2 flex-wrap">
+        <div className="relative w-64 shrink-0">
+          <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z" />
+          </svg>
+          <input
+            type="text"
+            placeholder="Search subject or recipient…"
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            className="w-full pl-9 pr-3 py-2 text-sm bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-900 dark:focus:ring-white"
+          />
+        </div>
+        <div className="w-px h-6 bg-gray-200 dark:bg-gray-700" />
+        <Dropdown value={typeFilter} onChange={setTypeFilter} options={typeOptions} label="All types" />
+        <Dropdown value={statusFilter} onChange={setStatusFilter} options={statusOptions} label="All statuses" />
         {(typeFilter !== 'all' || statusFilter !== 'all' || search) && (
-          <button type="button" onClick={() => { setTypeFilter('all'); setStatusFilter('all'); setSearch('') }} className="text-xs text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 underline underline-offset-2">
-            Clear filters
-          </button>
+          <>
+            <div className="w-px h-6 bg-gray-200 dark:bg-gray-700" />
+            <button
+              type="button"
+              onClick={() => { setTypeFilter('all'); setStatusFilter('all'); setSearch('') }}
+              className="text-xs text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 transition-colors"
+            >
+              Clear all
+            </button>
+          </>
         )}
+        <span className="ml-auto text-xs text-gray-400">{filtered.length} result{filtered.length !== 1 ? 's' : ''}</span>
       </div>
 
       <div className="border border-gray-200 dark:border-gray-800 rounded-2xl overflow-hidden">
