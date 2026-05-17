@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useMemo, useTransition, useRef, useEffect } from 'react'
+import { createPortal } from 'react-dom'
 import { updateUserName, setUserRole, setUserBanned, deleteUser } from '@/lib/actions/users'
 
 type AuthUser = {
@@ -30,25 +31,39 @@ function ActionMenu({ user, onEdit, onDelete }: {
   onDelete: () => void
 }) {
   const [open, setOpen] = useState(false)
+  const [menuStyle, setMenuStyle] = useState({ top: 0, right: 0 })
   const [, startTransition] = useTransition()
-  const ref = useRef<HTMLDivElement>(null)
+  const btnRef = useRef<HTMLButtonElement>(null)
+  const menuRef = useRef<HTMLDivElement>(null)
   const banned = isBanned(user)
   const isAdmin = user.app_metadata?.role === 'admin'
+
+  function handleOpen() {
+    if (btnRef.current) {
+      const r = btnRef.current.getBoundingClientRect()
+      setMenuStyle({ top: r.bottom + 4, right: window.innerWidth - r.right })
+    }
+    setOpen(p => !p)
+  }
 
   useEffect(() => {
     if (!open) return
     const handler = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false)
+      if (
+        menuRef.current && !menuRef.current.contains(e.target as Node) &&
+        btnRef.current && !btnRef.current.contains(e.target as Node)
+      ) setOpen(false)
     }
     document.addEventListener('mousedown', handler)
     return () => document.removeEventListener('mousedown', handler)
   }, [open])
 
   return (
-    <div ref={ref} className="relative">
+    <div className="relative">
       <button
+        ref={btnRef}
         type="button"
-        onClick={() => setOpen(p => !p)}
+        onClick={handleOpen}
         className="w-8 h-8 flex items-center justify-center rounded-lg text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
       >
         <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
@@ -56,8 +71,10 @@ function ActionMenu({ user, onEdit, onDelete }: {
         </svg>
       </button>
 
-      {open && (
-        <div className="absolute right-0 top-full mt-1 z-30 w-48 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl shadow-xl py-1 overflow-hidden">
+      {open && createPortal(
+        <>
+          <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
+          <div ref={menuRef} className="fixed z-50 w-48 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl shadow-xl py-1 overflow-hidden" style={menuStyle}>
           {/* Edit name */}
           <button
             type="button"
@@ -118,6 +135,8 @@ function ActionMenu({ user, onEdit, onDelete }: {
             Delete user
           </button>
         </div>
+        </>,
+        document.body
       )}
     </div>
   )
