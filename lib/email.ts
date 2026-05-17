@@ -17,7 +17,7 @@ const FROM = process.env.FROM_EMAIL ?? 'no-reply@ecclesiahub.store'
 async function logEmail(type: string, to: string | string[], subject: string, status: 'sent' | 'failed', error?: string, metadata?: Record<string, unknown>) {
   try {
     const supabase = createAdminClient()
-    await supabase.from('email_logs').insert({
+    const { error: dbErr } = await supabase.from('email_logs').insert({
       type,
       to_email: Array.isArray(to) ? to.join(', ') : to,
       subject,
@@ -25,8 +25,9 @@ async function logEmail(type: string, to: string | string[], subject: string, st
       error: error ?? null,
       metadata: metadata ?? null,
     })
-  } catch {
-    // log failure is non-fatal
+    if (dbErr) console.error('[email-log] insert failed:', dbErr.message, dbErr.code)
+  } catch (err) {
+    console.error('[email-log] unexpected error:', err)
   }
 }
 
