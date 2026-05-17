@@ -22,9 +22,9 @@ const LINKS = {
     { label: 'Shipping Info', href: '#' },
   ],
   Legal: [
-    { label: 'Privacy Policy', href: '#' },
-    { label: 'Terms of Service', href: '#' },
-    { label: 'Cookies', href: '#' },
+    { label: 'Privacy Policy', href: '/privacy' },
+    { label: 'Terms of Service', href: '/terms' },
+    { label: 'Cookies', href: '/privacy#4.-cookies' },
   ],
 }
 
@@ -220,9 +220,13 @@ export default function StoreFooter() {
             © {new Date().getFullYear()} Ecclesia Hub. Made with ♥ in Nigeria.
           </p>
           <div className="flex items-center gap-4">
-            {['Privacy', 'Terms', 'Sitemap'].map((label, i, arr) => (
+            {[
+              { label: 'Privacy', href: '/privacy' },
+              { label: 'Terms', href: '/terms' },
+              { label: 'Sitemap', href: '#' },
+            ].map(({ label, href }, i, arr) => (
               <span key={label} className="flex items-center gap-4">
-                <Link href="#" className="text-xs text-gray-600 hover:text-gray-400 transition-colors">
+                <Link href={href} className="text-xs text-gray-600 hover:text-gray-400 transition-colors">
                   {label}
                 </Link>
                 {i < arr.length - 1 && <span className="text-gray-700">·</span>}
