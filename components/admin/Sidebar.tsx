@@ -14,7 +14,7 @@ function Icon({ d }: { d: string }) {
   )
 }
 
-type NavChild = { label: string; href: string; exact?: boolean }
+type NavChild = { label: string; href: string; exact?: boolean; section?: string }
 type NavItem  = { label: string; href: string; icon: string; exact?: boolean; section?: string; children?: NavChild[] }
 
 const ALL_NAV: NavItem[] = [
@@ -26,12 +26,12 @@ const ALL_NAV: NavItem[] = [
     label: 'Products', href: '/admin/products', section: 'products',
     icon: 'M15.75 10.5V6a3.75 3.75 0 1 0-7.5 0v4.5m11.356-1.993 1.263 12c.07.665-.45 1.243-1.119 1.243H4.25a1.125 1.125 0 0 1-1.12-1.243l1.264-12A1.125 1.125 0 0 1 5.513 7.5h12.974c.576 0 1.059.435 1.119 1.007ZM8.625 10.5a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm7.5 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Z',
     children: [
-      { label: 'All Products',   href: '/admin/products',     exact: true },
+      { label: 'All Products',    href: '/admin/products',     exact: true },
       { label: 'Add New Product', href: '/admin/products/new' },
-      { label: 'Categories',     href: '/admin/categories' },
-      { label: 'Brands',         href: '/admin/brands' },
-      { label: 'Featured',       href: '/admin/featured' },
-      { label: 'Coupons',        href: '/admin/coupons' },
+      { label: 'Categories',      href: '/admin/categories' },
+      { label: 'Brands',          href: '/admin/brands' },
+      { label: 'Featured',        href: '/admin/featured' },
+      { label: 'Coupons',         href: '/admin/coupons', section: 'coupons' },
     ],
   },
   {
@@ -45,6 +45,14 @@ const ALL_NAV: NavItem[] = [
   {
     label: 'Users', href: '/admin/users', section: 'users',
     icon: 'M18 18.72a9.094 9.094 0 0 0 3.741-.479 3 3 0 0 0-4.682-2.72m.94 3.198.001.031c0 .225-.012.447-.037.666A11.944 11.944 0 0 1 12 21c-2.17 0-4.207-.576-5.963-1.584A6.062 6.062 0 0 1 6 18.719m12 0a5.971 5.971 0 0 0-.941-3.197m0 0A5.995 5.995 0 0 0 12 12.75a5.995 5.995 0 0 0-5.058 2.772m0 0a3 3 0 0 0-4.681 2.72 8.986 8.986 0 0 0 3.74.477m.94-3.197a5.971 5.971 0 0 0-.94 3.197M15 6.75a3 3 0 1 1-6 0 3 3 0 0 1 6 0Zm6 3a2.25 2.25 0 1 1-4.5 0 2.25 2.25 0 0 1 4.5 0Zm-13.5 0a2.25 2.25 0 1 1-4.5 0 2.25 2.25 0 0 1 4.5 0Z',
+    children: [
+      { label: 'All Users',    href: '/admin/users',              exact: true },
+      { label: 'Admins',       href: '/admin/users/admins' },
+      { label: 'Editors',      href: '/admin/users/editors' },
+      { label: 'Managers',     href: '/admin/users/managers' },
+      { label: 'Shop Keepers', href: '/admin/users/shop-keepers' },
+      { label: 'Financiers',   href: '/admin/users/financiers' },
+    ],
   },
   {
     label: 'Emails', href: '/admin/emails', section: 'emails',
@@ -56,17 +64,38 @@ const ALL_NAV: NavItem[] = [
   },
 ]
 
-const productSubPaths = ['/admin/products', '/admin/categories', '/admin/brands', '/admin/featured', '/admin/coupons']
+const EXPANDABLE_ROOTS = ['/admin/products', '/admin/users']
 
 export default function AdminSidebar({ role }: { role: string }) {
   const pathname = usePathname()
   const router = useRouter()
-  const isOnProductsPath = productSubPaths.some(p => pathname.startsWith(p))
-  const [productsOpen, setProductsOpen] = useState(isOnProductsPath)
+
+  const [openSections, setOpenSections] = useState<Set<string>>(() => {
+    const open = new Set<string>()
+    for (const root of EXPANDABLE_ROOTS) {
+      if (pathname.startsWith(root)) open.add(root)
+    }
+    return open
+  })
 
   useEffect(() => {
-    if (isOnProductsPath) setProductsOpen(true)
-  }, [isOnProductsPath])
+    setOpenSections(prev => {
+      const next = new Set(prev)
+      for (const root of EXPANDABLE_ROOTS) {
+        if (pathname.startsWith(root)) next.add(root)
+      }
+      return next
+    })
+  }, [pathname])
+
+  function toggleSection(href: string) {
+    setOpenSections(prev => {
+      const next = new Set(prev)
+      if (next.has(href)) next.delete(href)
+      else next.add(href)
+      return next
+    })
+  }
 
   const navItems = ALL_NAV.filter(item => {
     if (!item.section) return true
@@ -91,9 +120,9 @@ export default function AdminSidebar({ role }: { role: string }) {
 
       {/* Nav */}
       <nav className="flex-1 px-3 py-4 space-y-0.5 overflow-y-auto">
-        {navItems.map(({ label, href, icon, exact, section, children }) => {
+        {navItems.map(({ label, href, icon, exact, children }) => {
           const isActive = exact ? pathname === href : pathname.startsWith(href)
-          const isOpen = children ? productsOpen : false
+          const isOpen = children ? openSections.has(href) : false
 
           return (
             <div key={href}>
@@ -101,10 +130,8 @@ export default function AdminSidebar({ role }: { role: string }) {
                 <button
                   type="button"
                   onClick={() => {
-                    setProductsOpen(prev => {
-                      if (!prev) router.push(href)
-                      return !prev
-                    })
+                    toggleSection(href)
+                    if (!openSections.has(href)) router.push(href)
                   }}
                   className={`flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors w-full text-left ${
                     isOpen ? 'text-white font-medium' : 'text-gray-400 hover:bg-white/5 hover:text-gray-200'
@@ -132,7 +159,7 @@ export default function AdminSidebar({ role }: { role: string }) {
                 <div className="mt-0.5 ml-3 pl-4 border-l border-white/10 space-y-0.5">
                   {children
                     .filter(child => {
-                      if (child.href === '/admin/coupons') return can(role, 'coupons')
+                      if (child.section) return can(role, child.section as any)
                       return true
                     })
                     .map(child => {

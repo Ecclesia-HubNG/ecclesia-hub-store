@@ -8,6 +8,8 @@ import OrderShipped, { type OrderShippedProps } from '@/emails/OrderShipped'
 import WelcomeEmail, { type WelcomeEmailProps } from '@/emails/WelcomeEmail'
 import PromoEmail, { type PromoEmailProps } from '@/emails/PromoEmail'
 import NewsletterEmail, { type NewsletterEmailProps } from '@/emails/NewsletterEmail'
+import InviteEmail, { type InviteEmailProps } from '@/emails/InviteEmail'
+import PasswordResetEmail, { type PasswordResetEmailProps } from '@/emails/PasswordResetEmail'
 
 const resend = new Resend(process.env.RESEND_API_KEY)
 const FROM = process.env.FROM_EMAIL ?? 'no-reply@ecclesiahub.store'
@@ -99,6 +101,30 @@ export async function sendNewsletter(recipients: string[], props: NewsletterEmai
   }
   if (sent > 0) await logEmail('newsletter', `${sent} recipients`, subject, 'sent', undefined, { total: recipients.length, sent, failed })
   return { sent, failed }
+}
+
+export async function sendStaffInvite(to: string, props: InviteEmailProps) {
+  const subject = `You've been invited to Ecclesia Hub as ${props.roleLabel}`
+  try {
+    const html = await render(createElement(InviteEmail, props))
+    await resend.emails.send({ from: FROM, to, subject, html })
+    await logEmail('staff_invite', to, subject, 'sent', undefined, { role: props.roleLabel })
+  } catch (err: any) {
+    await logEmail('staff_invite', to, subject, 'failed', err?.message)
+    throw err
+  }
+}
+
+export async function sendPasswordResetEmail(to: string, props: PasswordResetEmailProps) {
+  const subject = 'Reset your Ecclesia Hub password'
+  try {
+    const html = await render(createElement(PasswordResetEmail, props))
+    await resend.emails.send({ from: FROM, to, subject, html })
+    await logEmail('password_reset', to, subject, 'sent')
+  } catch (err: any) {
+    await logEmail('password_reset', to, subject, 'failed', err?.message)
+    throw err
+  }
 }
 
 function chunkArray<T>(arr: T[], size: number): T[][] {

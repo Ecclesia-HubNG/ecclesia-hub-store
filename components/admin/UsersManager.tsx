@@ -2,7 +2,7 @@
 
 import { useState, useMemo, useTransition, useRef, useEffect } from 'react'
 import { createPortal } from 'react-dom'
-import { updateUserName, setUserRole, setUserBanned, deleteUser } from '@/lib/actions/users'
+import { updateUserName, setUserRole, setUserBanned, deleteUser, inviteStaffMember, sendPasswordReset } from '@/lib/actions/users'
 import { ROLES, ROLE_LABELS, ROLE_COLORS, ROLE_DESCRIPTIONS, assignableRoles, isSuperAdmin } from '@/lib/roles'
 
 type AuthUser = {
@@ -23,6 +23,132 @@ function getInitials(name: string) {
 function isBanned(user: AuthUser) {
   if (!user.banned_until) return false
   return new Date(user.banned_until) > new Date()
+}
+
+// ── Invite Staff modal ────────────────────────────────────────────────────────
+function InviteModal({ currentUserRole, onClose }: { currentUserRole: string; onClose: () => void }) {
+  const [pending, startTransition] = useTransition()
+  const [email, setEmail] = useState('')
+  const [role, setRole] = useState<string>(() => {
+    const opts = assignableRoles(currentUserRole).filter(r => r !== 'super_admin')
+    return opts[0] ?? 'admin'
+  })
+  const [result, setResult] = useState<{ success?: boolean; error?: string } | null>(null)
+  const canAssign = assignableRoles(currentUserRole).filter(r => r !== 'super_admin')
+
+  function handleSubmit(e: React.FormEvent) {
+    e.preventDefault()
+    if (!email.trim()) return
+    startTransition(async () => {
+      const res = await inviteStaffMember(email.trim(), role)
+      setResult(res?.error ? { error: res.error } : { success: true })
+    })
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose} />
+      <div className="relative bg-white dark:bg-gray-900 rounded-2xl w-full max-w-md shadow-2xl overflow-hidden">
+
+        {/* Header */}
+        <div className="flex items-center justify-between px-6 py-5 border-b border-gray-100 dark:border-gray-800">
+          <div>
+            <h2 className="text-base font-semibold text-gray-900 dark:text-white">Invite staff member</h2>
+            <p className="text-xs text-gray-400 mt-0.5">They'll receive an email with a setup link</p>
+          </div>
+          <button type="button" onClick={onClose} className="p-1.5 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" /></svg>
+          </button>
+        </div>
+
+        {result?.success ? (
+          <div className="px-6 py-10 text-center">
+            <div className="w-14 h-14 rounded-2xl bg-green-50 dark:bg-green-950/50 flex items-center justify-center mx-auto mb-4">
+              <svg className="w-7 h-7 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M21.75 6.75v10.5a2.25 2.25 0 0 1-2.25 2.25h-15a2.25 2.25 0 0 1-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0 0 19.5 4.5h-15a2.25 2.25 0 0 0-2.25 2.25m19.5 0v.243a2.25 2.25 0 0 1-1.07 1.916l-7.5 4.615a2.25 2.25 0 0 1-2.36 0L3.32 8.91a2.25 2.25 0 0 1-1.07-1.916V6.75" />
+              </svg>
+            </div>
+            <h3 className="text-base font-semibold text-gray-900 dark:text-white mb-1">Invitation sent!</h3>
+            <p className="text-sm text-gray-500 dark:text-gray-400 mb-6">
+              An invite link has been sent to <span className="font-medium text-gray-700 dark:text-gray-300">{email}</span>
+            </p>
+            <div className="flex gap-2 px-0">
+              <button type="button" onClick={() => { setEmail(''); setResult(null) }} className="flex-1 py-2.5 text-sm font-medium text-[#4A0F1C] dark:text-[#D4849A] border border-[#4A0F1C]/20 hover:bg-[#4A0F1C]/5 rounded-xl transition-colors">
+                Invite another
+              </button>
+              <button type="button" onClick={onClose} className="flex-1 py-2.5 text-sm font-medium text-gray-600 dark:text-gray-400 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-xl transition-colors">
+                Done
+              </button>
+            </div>
+          </div>
+        ) : (
+          <form onSubmit={handleSubmit} className="p-6 space-y-4">
+            {result?.error && (
+              <div className="px-3.5 py-3 bg-red-50 dark:bg-red-950/40 border border-red-100 dark:border-red-900/50 rounded-xl text-sm text-red-600 dark:text-red-400">
+                {result.error}
+              </div>
+            )}
+
+            <div>
+              <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1.5">Email address</label>
+              <input
+                type="email"
+                required
+                value={email}
+                onChange={e => setEmail(e.target.value)}
+                placeholder="staff@example.com"
+                className="w-full px-3.5 py-2.5 text-sm bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#4A0F1C]/30 focus:border-[#4A0F1C]/50 transition-colors"
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1.5">Role</label>
+              <div className="space-y-1.5">
+                {canAssign.map(r => (
+                  <button
+                    key={r}
+                    type="button"
+                    onClick={() => setRole(r)}
+                    className={`flex items-center gap-3 w-full px-3.5 py-3 rounded-xl text-left border transition-colors ${
+                      role === r
+                        ? 'border-[#4A0F1C]/20 bg-[#4A0F1C]/5 dark:bg-[#4A0F1C]/10'
+                        : 'border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800'
+                    }`}
+                  >
+                    <span className={`inline-flex items-center justify-center w-7 h-7 rounded-lg text-[10px] font-bold shrink-0 ${ROLE_COLORS[r]}`}>
+                      {r === 'shop_keeper' ? 'SK' : ROLE_LABELS[r].slice(0, 2).toUpperCase()}
+                    </span>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium text-gray-900 dark:text-white">{ROLE_LABELS[r]}</p>
+                      <p className="text-xs text-gray-400 truncate">{ROLE_DESCRIPTIONS[r]}</p>
+                    </div>
+                    {role === r && (
+                      <svg className="w-4 h-4 text-[#4A0F1C] dark:text-[#D4849A] shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="m4.5 12.75 6 6 9-13.5" />
+                      </svg>
+                    )}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="flex gap-2 pt-1">
+              <button type="button" onClick={onClose} className="flex-1 px-4 py-2.5 text-sm font-medium text-gray-600 dark:text-gray-400 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-xl transition-colors">
+                Cancel
+              </button>
+              <button
+                type="submit"
+                disabled={pending || !email.trim()}
+                className="flex-1 px-4 py-2.5 text-sm font-semibold bg-[#4A0F1C] hover:bg-[#3A0B15] text-white rounded-xl transition-colors disabled:opacity-50"
+              >
+                {pending ? 'Sending…' : 'Send invite'}
+              </button>
+            </div>
+          </form>
+        )}
+      </div>
+    </div>
+  )
 }
 
 // ── Change Role modal ────────────────────────────────────────────────────────
@@ -51,7 +177,6 @@ function ChangeRoleModal({ user, currentUserRole, onClose }: {
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose} />
       <div className="relative bg-white dark:bg-gray-900 rounded-2xl w-full max-w-md shadow-2xl overflow-hidden">
-        {/* Header */}
         <div className="flex items-center justify-between px-6 py-5 border-b border-gray-100 dark:border-gray-800">
           <div>
             <h2 className="text-base font-semibold text-gray-900 dark:text-white">Change role</h2>
@@ -62,7 +187,6 @@ function ChangeRoleModal({ user, currentUserRole, onClose }: {
           </button>
         </div>
 
-        {/* Role list */}
         <div className="p-3 space-y-1.5 max-h-[70vh] overflow-y-auto">
           {canAssign.map(r => {
             const active = user.app_metadata?.role === r
@@ -79,12 +203,9 @@ function ChangeRoleModal({ user, currentUserRole, onClose }: {
                     : 'border-transparent hover:bg-gray-50 dark:hover:bg-gray-800'
                 } disabled:opacity-60`}
               >
-                {/* Badge */}
                 <span className={`mt-0.5 inline-flex items-center justify-center w-8 h-8 rounded-lg text-[11px] font-bold shrink-0 ${ROLE_COLORS[r]}`}>
                   {r === 'super_admin' ? 'SA' : r === 'shop_keeper' ? 'SK' : ROLE_LABELS[r].slice(0, 2).toUpperCase()}
                 </span>
-
-                {/* Info */}
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2">
                     <p className={`text-sm font-semibold ${active ? 'text-gray-900 dark:text-white' : 'text-gray-700 dark:text-gray-300'}`}>
@@ -98,8 +219,6 @@ function ChangeRoleModal({ user, currentUserRole, onClose }: {
                   </div>
                   <p className="text-xs text-gray-400 mt-0.5 leading-relaxed">{ROLE_DESCRIPTIONS[r]}</p>
                 </div>
-
-                {/* State indicator */}
                 <div className="shrink-0 mt-1">
                   {isSaving ? (
                     <div className="w-4 h-4 border-2 border-gray-300 border-t-gray-600 rounded-full animate-spin" />
@@ -135,12 +254,14 @@ function ActionMenu({ user, currentUserRole, onEdit, onDelete, onChangeRole }: {
   const [open, setOpen] = useState(false)
   const [menuStyle, setMenuStyle] = useState({ top: 0, right: 0 })
   const [, startTransition] = useTransition()
+  const [resetState, setResetState] = useState<'idle' | 'sending' | 'sent' | 'error'>('idle')
   const btnRef = useRef<HTMLButtonElement>(null)
   const menuRef = useRef<HTMLDivElement>(null)
   const banned = isBanned(user)
   const targetIsSuperAdmin = isSuperAdmin(user.app_metadata?.role)
-  // Super admin targets are immutable — nobody can change their role
+  // Super admin targets: no role changes allowed from anyone
   const canAssign = targetIsSuperAdmin ? [] : assignableRoles(currentUserRole)
+  const canManage = currentUserRole === 'super_admin' || currentUserRole === 'admin'
 
   function handleOpen() {
     if (btnRef.current) {
@@ -148,6 +269,18 @@ function ActionMenu({ user, currentUserRole, onEdit, onDelete, onChangeRole }: {
       setMenuStyle({ top: r.bottom + 4, right: window.innerWidth - r.right })
     }
     setOpen(p => !p)
+  }
+
+  function handleSendReset() {
+    if (!user.email) return
+    setOpen(false)
+    setResetState('sending')
+    const name = user.user_metadata?.full_name
+    startTransition(async () => {
+      const res = await sendPasswordReset(user.email!, name)
+      setResetState(res?.error ? 'error' : 'sent')
+      setTimeout(() => setResetState('idle'), 3000)
+    })
   }
 
   useEffect(() => {
@@ -162,7 +295,6 @@ function ActionMenu({ user, currentUserRole, onEdit, onDelete, onChangeRole }: {
     return () => document.removeEventListener('mousedown', handler)
   }, [open])
 
-  // Super admin row — show a protected shield icon instead of action menu
   if (targetIsSuperAdmin && !isSuperAdmin(currentUserRole)) {
     return (
       <div className="flex items-center justify-end">
@@ -171,6 +303,17 @@ function ActionMenu({ user, currentUserRole, onEdit, onDelete, onChangeRole }: {
             <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75 11.25 15 15 9.75m-3-7.036A11.959 11.959 0 0 1 3.598 6 11.99 11.99 0 0 0 3 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285Z" />
           </svg>
         </span>
+      </div>
+    )
+  }
+
+  // Show a brief sent/error indicator instead of the button when reset was triggered
+  if (resetState !== 'idle') {
+    return (
+      <div className="flex items-center justify-end pr-1">
+        {resetState === 'sending' && <div className="w-4 h-4 border-2 border-gray-300 border-t-gray-600 rounded-full animate-spin" />}
+        {resetState === 'sent' && <span className="text-xs text-green-600 dark:text-green-400 font-medium">Sent ✓</span>}
+        {resetState === 'error' && <span className="text-xs text-red-500 font-medium">Failed</span>}
       </div>
     )
   }
@@ -187,7 +330,7 @@ function ActionMenu({ user, currentUserRole, onEdit, onDelete, onChangeRole }: {
       {open && createPortal(
         <>
           <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
-          <div ref={menuRef} className="fixed z-50 w-48 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl shadow-xl py-1 overflow-hidden" style={menuStyle}>
+          <div ref={menuRef} className="fixed z-50 w-52 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl shadow-xl py-1 overflow-hidden" style={menuStyle}>
 
             {/* Edit name */}
             <button type="button" onClick={() => { setOpen(false); onEdit() }}
@@ -198,7 +341,7 @@ function ActionMenu({ user, currentUserRole, onEdit, onDelete, onChangeRole }: {
               Edit name
             </button>
 
-            {/* Change role — opens modal */}
+            {/* Change role */}
             {canAssign.length > 0 && (
               <button type="button" onClick={() => { setOpen(false); onChangeRole() }}
                 className="flex items-center gap-2.5 w-full px-3.5 py-2.5 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
@@ -209,6 +352,17 @@ function ActionMenu({ user, currentUserRole, onEdit, onDelete, onChangeRole }: {
                 <svg className="w-3 h-3 ml-auto text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5" />
                 </svg>
+              </button>
+            )}
+
+            {/* Send password reset */}
+            {canManage && user.email && (
+              <button type="button" onClick={handleSendReset}
+                className="flex items-center gap-2.5 w-full px-3.5 py-2.5 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
+                <svg className="w-4 h-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M21.75 6.75v10.5a2.25 2.25 0 0 1-2.25 2.25h-15a2.25 2.25 0 0 1-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0 0 19.5 4.5h-15a2.25 2.25 0 0 0-2.25 2.25m19.5 0v.243a2.25 2.25 0 0 1-1.07 1.916l-7.5 4.615a2.25 2.25 0 0 1-2.36 0L3.32 8.91a2.25 2.25 0 0 1-1.07-1.916V6.75" />
+                </svg>
+                Send password reset
               </button>
             )}
 
@@ -352,15 +506,26 @@ function DeleteModal({ user, onClose }: { user: AuthUser; onClose: () => void })
 type StatusFilter = 'all' | 'active' | 'blocked' | 'unverified'
 type RoleFilter = 'all' | 'no_role' | string
 
-export default function UsersManager({ users: initial, currentUserRole }: { users: AuthUser[], currentUserRole: string }) {
+export default function UsersManager({
+  users: initial,
+  currentUserRole,
+  initialRoleFilter = 'all',
+}: {
+  users: AuthUser[]
+  currentUserRole: string
+  initialRoleFilter?: string
+}) {
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all')
-  const [roleFilter, setRoleFilter] = useState<RoleFilter>('all')
+  const [roleFilter, setRoleFilter] = useState<RoleFilter>(initialRoleFilter)
   const [showStatusDd, setShowStatusDd] = useState(false)
   const [showRoleDd, setShowRoleDd] = useState(false)
   const [editUser, setEditUser] = useState<AuthUser | null>(null)
   const [deleteTarget, setDeleteTarget] = useState<AuthUser | null>(null)
   const [changeRoleTarget, setChangeRoleTarget] = useState<AuthUser | null>(null)
+  const [showInviteModal, setShowInviteModal] = useState(false)
+
+  const canInvite = currentUserRole === 'super_admin' || currentUserRole === 'admin'
 
   const filtered = useMemo(() => initial.filter(u => {
     const banned = isBanned(u)
@@ -394,18 +559,35 @@ export default function UsersManager({ users: initial, currentUserRole }: { user
     { value: 'no_role', label: 'No role' },
   ]
 
+  const pageTitle = initialRoleFilter !== 'all' && ROLE_LABELS[initialRoleFilter as keyof typeof ROLE_LABELS]
+    ? ROLE_LABELS[initialRoleFilter as keyof typeof ROLE_LABELS] + 's'
+    : 'Users'
+
   return (
     <div>
       {editUser && <EditModal user={editUser} onClose={() => setEditUser(null)} />}
       {deleteTarget && <DeleteModal user={deleteTarget} onClose={() => setDeleteTarget(null)} />}
       {changeRoleTarget && <ChangeRoleModal user={changeRoleTarget} currentUserRole={currentUserRole} onClose={() => setChangeRoleTarget(null)} />}
+      {showInviteModal && <InviteModal currentUserRole={currentUserRole} onClose={() => setShowInviteModal(false)} />}
 
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-xl font-semibold text-gray-900 dark:text-white">Users</h1>
+          <h1 className="text-xl font-semibold text-gray-900 dark:text-white">{pageTitle}</h1>
           <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">{initial.length} registered</p>
         </div>
+        {canInvite && (
+          <button
+            type="button"
+            onClick={() => setShowInviteModal(true)}
+            className="flex items-center gap-2 px-4 py-2.5 bg-[#4A0F1C] hover:bg-[#3A0B15] text-white text-sm font-semibold rounded-xl transition-colors"
+          >
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+            </svg>
+            Invite Staff
+          </button>
+        )}
       </div>
 
       {/* Stats */}
@@ -420,7 +602,6 @@ export default function UsersManager({ users: initial, currentUserRole }: { user
 
       {/* Filter bar */}
       <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-3 mb-4 flex items-center gap-2 flex-wrap">
-        {/* Search */}
         <div className="relative w-64 shrink-0">
           <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
             <path strokeLinecap="round" strokeLinejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z" />
@@ -481,7 +662,7 @@ export default function UsersManager({ users: initial, currentUserRole }: { user
         {(search || statusFilter !== 'all' || roleFilter !== 'all') && (
           <div className="flex items-center gap-3 ml-auto">
             <span className="text-xs text-gray-500 dark:text-gray-400">{filtered.length} result{filtered.length !== 1 ? 's' : ''}</span>
-            <button type="button" onClick={() => { setSearch(''); setStatusFilter('all'); setRoleFilter('all') }}
+            <button type="button" onClick={() => { setSearch(''); setStatusFilter('all'); setRoleFilter(initialRoleFilter) }}
               className="text-xs text-gray-400 underline underline-offset-2 hover:text-gray-600 transition-colors">
               Clear
             </button>
@@ -493,6 +674,11 @@ export default function UsersManager({ users: initial, currentUserRole }: { user
       {filtered.length === 0 ? (
         <div className="text-center py-20 border-2 border-dashed border-gray-200 dark:border-gray-800 rounded-xl">
           <p className="text-sm text-gray-400">{initial.length === 0 ? 'No users yet.' : 'No users match your filters.'}</p>
+          {canInvite && initial.length === 0 && (
+            <button type="button" onClick={() => setShowInviteModal(true)} className="mt-3 text-sm text-[#4A0F1C] dark:text-[#D4849A] underline underline-offset-2">
+              Invite a staff member
+            </button>
+          )}
         </div>
       ) : (
         <div className="border border-gray-200 dark:border-gray-800 rounded-xl overflow-hidden">
@@ -517,7 +703,6 @@ export default function UsersManager({ users: initial, currentUserRole }: { user
 
                 return (
                   <tr key={user.id} className={`transition-colors hover:bg-gray-50 dark:hover:bg-gray-800/40 ${banned ? 'opacity-60' : ''}`}>
-                    {/* User */}
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-3">
                         <div className={`w-9 h-9 rounded-full flex items-center justify-center shrink-0 text-xs font-bold ${isStaff ? 'bg-[#4A0F1C] text-white' : 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300'}`}>
@@ -533,7 +718,6 @@ export default function UsersManager({ users: initial, currentUserRole }: { user
                       </div>
                     </td>
 
-                    {/* Role */}
                     <td className="px-4 py-3">
                       {isStaff ? (
                         <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold ${ROLE_COLORS[role as keyof typeof ROLE_COLORS]}`}>
@@ -546,7 +730,6 @@ export default function UsersManager({ users: initial, currentUserRole }: { user
                       )}
                     </td>
 
-                    {/* Status */}
                     <td className="px-4 py-3">
                       {banned ? (
                         <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-red-50 dark:bg-red-950/40 text-red-600 dark:text-red-400">
@@ -566,21 +749,24 @@ export default function UsersManager({ users: initial, currentUserRole }: { user
                       )}
                     </td>
 
-                    {/* Joined */}
                     <td className="px-4 py-3 text-xs text-gray-400">
                       {new Date(user.created_at).toLocaleDateString('en', { day: 'numeric', month: 'short', year: 'numeric' })}
                     </td>
 
-                    {/* Last sign in */}
                     <td className="px-4 py-3 text-xs text-gray-400">
                       {user.last_sign_in_at
                         ? new Date(user.last_sign_in_at).toLocaleDateString('en', { day: 'numeric', month: 'short', year: 'numeric' })
                         : <span className="text-gray-300 dark:text-gray-600">Never</span>}
                     </td>
 
-                    {/* Actions */}
                     <td className="px-3 py-3 text-right">
-                      <ActionMenu user={user} currentUserRole={currentUserRole} onEdit={() => setEditUser(user)} onDelete={() => setDeleteTarget(user)} onChangeRole={() => setChangeRoleTarget(user)} />
+                      <ActionMenu
+                        user={user}
+                        currentUserRole={currentUserRole}
+                        onEdit={() => setEditUser(user)}
+                        onDelete={() => setDeleteTarget(user)}
+                        onChangeRole={() => setChangeRoleTarget(user)}
+                      />
                     </td>
                   </tr>
                 )

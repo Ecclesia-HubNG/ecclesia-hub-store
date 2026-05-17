@@ -3,6 +3,8 @@
 import { createAdminClient } from '@/lib/supabase/admin'
 import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
+import { sendStaffInvite, sendPasswordResetEmail } from '@/lib/email'
+import { ROLE_LABELS, assignableRoles } from '@/lib/roles'
 
 const PATH = '/admin/users'
 
@@ -69,4 +71,62 @@ export async function deleteUser(id: string) {
   const admin = createAdminClient()
   await admin.auth.admin.deleteUser(id)
   revalidatePath(PATH)
+}
+
+export async function inviteStaffMember(email: string, role: string) {
+  const callerRole = await getCallerRole()
+  if (callerRole !== 'super_admin' && callerRole !== 'admin') {
+    return { error: 'Only admins can invite staff.' }
+  }
+  if (!assignableRoles(callerRole).includes(role as any)) {
+    return { error: 'You cannot assign that role.' }
+  }
+
+  const admin = createAdminClient()
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://ecclesiahub.store'
+
+  const { data, error } = await admin.auth.admin.generateLink({
+    type: 'invite',
+    email,
+    options: { redirectTo: `${siteUrl}/auth/callback?next=/admin/settings` },
+  })
+  if (error) return { error: error.message }
+
+  // Set app_metadata role on the newly created user
+  await admin.auth.admin.updateUserById(data.user.id, { app_metadata: { role } })
+
+  const roleLabel = ROLE_LABELS[role as keyof typeof ROLE_LABELS] ?? role
+  await sendStaffInvite(email, {
+    email,
+    roleLabel,
+    inviteLink: data.properties.action_link,
+  }).catch(() => {})
+
+  revalidatePath(PATH)
+  return { success: true }
+}
+
+export async function sendPasswordReset(email: string, name?: string) {
+  const callerRole = await getCallerRole()
+  if (callerRole !== 'super_admin' && callerRole !== 'admin') {
+    return { error: 'Only admins can send password resets.' }
+  }
+
+  const admin = createAdminClient()
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://ecclesiahub.store'
+
+  const { data, error } = await admin.auth.admin.generateLink({
+    type: 'recovery',
+    email,
+    options: { redirectTo: `${siteUrl}/auth/callback?next=/admin/settings` },
+  })
+  if (error) return { error: error.message }
+
+  await sendPasswordResetEmail(email, {
+    name: name || email.split('@')[0],
+    email,
+    resetLink: data.properties.action_link,
+  }).catch(() => {})
+
+  return { success: true }
 }
