@@ -126,6 +126,7 @@ export default function OrdersManager({ orders: initial }: { orders: Order[] }) 
   const [dateFrom, setDateFrom] = useState('')
   const [dateTo, setDateTo] = useState('')
   const [showDatePicker, setShowDatePicker] = useState(false)
+  const [showStatusDropdown, setShowStatusDropdown] = useState(false)
   const [sortBy, setSortBy] = useState<'newest' | 'oldest' | 'total_high' | 'total_low'>('newest')
   const [showSortDropdown, setShowSortDropdown] = useState(false)
   const [selected, setSelected] = useState<Set<string>>(new Set())
@@ -255,21 +256,38 @@ export default function OrdersManager({ orders: initial }: { orders: Order[] }) 
 
         <div className="w-px h-6 bg-gray-200 dark:bg-gray-700" />
 
-        {/* Status filter */}
-        <div className="flex items-center gap-1.5 flex-wrap">
-          {(['all', 'pending', 'paid', 'processing', 'shipped', 'delivered', 'cancelled', 'refunded'] as const).map(s => (
-            <button
-              key={s}
-              type="button"
-              onClick={() => setStatusFilter(s)}
-              className={`px-3 py-1.5 text-xs rounded-lg capitalize font-medium transition-colors ${statusFilter === s ? 'bg-gray-900 dark:bg-white text-white dark:text-gray-900' : 'text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800'}`}
-            >
-              {s === 'all' ? 'All' : s}
-              <span className={`ml-1.5 ${statusFilter === s ? 'text-white/60 dark:text-gray-900/60' : 'text-gray-400 dark:text-gray-600'}`}>
-                {tabCounts[s] ?? 0}
-              </span>
-            </button>
-          ))}
+        {/* Status filter dropdown */}
+        <div className="relative">
+          {showStatusDropdown && <div className="fixed inset-0 z-10" onClick={() => setShowStatusDropdown(false)} />}
+          <button
+            type="button"
+            onClick={() => { setShowStatusDropdown(p => !p); setShowSortDropdown(false); setShowDatePicker(false) }}
+            className={`flex items-center gap-2 px-3 py-2 text-sm rounded-lg border transition-colors ${statusFilter !== 'all' ? 'border-gray-900 dark:border-white text-gray-900 dark:text-white' : 'border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800'}`}
+          >
+            <span className="capitalize">{statusFilter === 'all' ? 'All statuses' : statusFilter}</span>
+            <span className={`text-xs ${statusFilter !== 'all' ? 'text-gray-900/50 dark:text-white/50' : 'text-gray-400 dark:text-gray-600'}`}>{tabCounts[statusFilter] ?? 0}</span>
+            <svg className="w-3.5 h-3.5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
+            </svg>
+          </button>
+          {showStatusDropdown && (
+            <div className="absolute left-0 top-full mt-1 z-20 w-48 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl shadow-lg py-1 overflow-hidden">
+              {(['all', 'pending', 'paid', 'processing', 'shipped', 'delivered', 'cancelled', 'refunded'] as const).map(s => (
+                <button
+                  key={s}
+                  type="button"
+                  onClick={() => { setStatusFilter(s); setShowStatusDropdown(false) }}
+                  className={`flex items-center justify-between w-full px-3 py-2.5 text-sm capitalize transition-colors ${statusFilter === s ? 'text-gray-900 dark:text-white font-medium bg-gray-50 dark:bg-gray-800' : 'text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800'}`}
+                >
+                  <span className="flex items-center gap-2">
+                    {s !== 'all' && <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${STATUS_COLORS[s]?.dot ?? 'bg-gray-400'}`} />}
+                    {s === 'all' ? 'All statuses' : s}
+                  </span>
+                  <span className={`text-xs ${statusFilter === s ? 'text-gray-500 dark:text-gray-400' : 'text-gray-400 dark:text-gray-600'}`}>{tabCounts[s] ?? 0}</span>
+                </button>
+              ))}
+            </div>
+          )}
         </div>
 
         <div className="ml-auto flex items-center gap-2">
@@ -278,7 +296,7 @@ export default function OrdersManager({ orders: initial }: { orders: Order[] }) 
             {showSortDropdown && <div className="fixed inset-0 z-10" onClick={() => setShowSortDropdown(false)} />}
             <button
               type="button"
-              onClick={() => { setShowSortDropdown(p => !p); setShowDatePicker(false) }}
+              onClick={() => { setShowSortDropdown(p => !p); setShowDatePicker(false); setShowStatusDropdown(false) }}
               className={`flex items-center gap-2 px-3 py-2 text-sm rounded-lg border transition-colors ${sortBy !== 'newest' ? 'border-gray-900 dark:border-white text-gray-900 dark:text-white' : 'border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800'}`}
             >
               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
