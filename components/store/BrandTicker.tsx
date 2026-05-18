@@ -30,7 +30,7 @@ export default async function BrandTicker() {
 
   return (
     <div className="w-full px-3 md:px-5 pb-3">
-      <div className="overflow-hidden rounded-2xl py-8 bg-[#4A0F1C] dark:bg-white">
+      <div className="overflow-hidden rounded-2xl py-10 bg-[#4A0F1C] dark:bg-white">
         <div className="flex items-center gap-10 ticker-track" style={{ animationDuration: `${duration}s` }}>
           {doubled.map((brand, i) => (
             <span key={`${brand.id}-${i}`} className="flex items-center gap-10 shrink-0">
