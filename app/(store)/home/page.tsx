@@ -25,10 +25,9 @@ export default async function HomePage() {
   ])
 
   const widgetConfig = heroWidget?.config as { hero_image?: string; product_id?: string; category_id?: string } | null
-  const heroImage = widgetConfig?.hero_image ?? featured?.find(p => p.thumbnail)?.thumbnail ?? null
 
-  // Fetch the widget-selected product directly — don't limit to the is_featured list
-  let heroProductRaw: typeof featured extends (infer T)[] | null ? T | null : never = null
+  // Resolve hero product — fetch directly by ID if not in the featured list
+  let heroProductRaw: (typeof featured extends (infer T)[] | null ? T : never) | null = null
   if (widgetConfig?.product_id) {
     const inFeatured = featured?.find(p => p.id === widgetConfig.product_id)
     if (inFeatured) {
@@ -46,6 +45,9 @@ export default async function HomePage() {
     heroProductRaw = featured?.[0] ?? null
   }
 
+  // Hero background: explicit upload first, then the selected product thumbnail, then nothing
+  const heroImage = widgetConfig?.hero_image ?? heroProductRaw?.thumbnail ?? null
+
   const featuredProduct = heroProductRaw ? {
     ...heroProductRaw,
     categories: Array.isArray(heroProductRaw.categories)
@@ -55,13 +57,9 @@ export default async function HomePage() {
 
   return (
     <div>
-      {/* Hero */}
       <HeroSection heroImage={heroImage} featuredProduct={featuredProduct} />
-
-      {/* Brand ticker */}
       <BrandTicker />
 
-      {/* Featured products */}
       {!!featured?.length && (
         <section className="max-w-7xl mx-auto px-4 md:px-8 pb-20">
           <div className="flex items-center justify-between mb-8">
@@ -84,7 +82,6 @@ export default async function HomePage() {
         </section>
       )}
 
-      {/* CTA strip */}
       <section className="max-w-7xl mx-auto px-4 md:px-8 pb-16">
         <div className="bg-[#4A0F1C] rounded-3xl px-8 md:px-14 py-12 flex flex-col md:flex-row items-center justify-between gap-6">
           <div>
