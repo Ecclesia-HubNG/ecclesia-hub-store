@@ -20,7 +20,7 @@ export default function HeroSection({
   const productIsBackground = !!(heroImage && heroImage === featuredProduct?.thumbnail)
 
   return (
-    <section className="w-full px-3 md:px-5 pt-4 pb-4">
+    <section className="w-full px-3 md:px-5 pt-4 pb-1">
       <div className="relative overflow-hidden rounded-3xl min-h-[520px] md:min-h-[720px]">
 
         {/* ── Background ── */}
