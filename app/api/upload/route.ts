@@ -13,9 +13,13 @@ export async function OPTIONS() {
   return new NextResponse(null, { status: 204, headers: CORS_HEADERS })
 }
 
+const ALLOWED_FOLDERS = ['products', 'brands', 'categories', 'homepage', 'featured', 'general']
+
 export async function POST(req: NextRequest) {
   const formData = await req.formData()
   const file = formData.get('file') as File | null
+  const folderParam = (formData.get('folder') as string | null) ?? 'products'
+  const folder = ALLOWED_FOLDERS.includes(folderParam) ? folderParam : 'products'
 
   if (!file || !file.size) {
     return NextResponse.json({ error: 'No file provided' }, { status: 400, headers: CORS_HEADERS })
@@ -30,7 +34,7 @@ export async function POST(req: NextRequest) {
   }
 
   const ext = file.name.split('.').pop()?.toLowerCase() ?? 'jpg'
-  const key = `products/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`
+  const key = `${folder}/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`
   const buffer = Buffer.from(await file.arrayBuffer())
 
   await r2.send(
@@ -46,11 +50,10 @@ export async function POST(req: NextRequest) {
   const base = R2_PUBLIC_URL.replace(/\/$/, '')
   const url = `${base}/${key}`
 
-  // Record in media library (non-blocking — don't fail upload if this fails)
   try {
     const admin = createAdminClient()
     await admin.from('media_assets').insert({
-      url, key, name: file.name, size: file.size, mime_type: file.type, folder: 'products',
+      url, key, name: file.name, size: file.size, mime_type: file.type, folder,
     })
   } catch {}
 

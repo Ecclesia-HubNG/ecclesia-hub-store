@@ -246,6 +246,7 @@ export default function ProductForm({
     if (!item.file) return
     const fd = new FormData()
     fd.append('file', item.file)
+    fd.append('folder', 'products')
     const res = await fetch('/api/upload', { method: 'POST', body: fd })
     const json = await res.json()
     if (!res.ok) {

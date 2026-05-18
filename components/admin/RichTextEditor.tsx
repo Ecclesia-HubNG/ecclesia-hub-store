@@ -8,7 +8,7 @@ import Image from '@tiptap/extension-image'
 import Color from '@tiptap/extension-color'
 import { TextStyle } from '@tiptap/extension-text-style'
 import { useRef } from 'react'
-import { uploadEmailAsset } from '@/lib/actions/upload'
+import { uploadMedia } from '@/lib/actions/media'
 
 // ── Toolbar ───────────────────────────────────────────────────────────────────
 const COLORS = ['#111111', '#4A0F1C', '#1d4ed8', '#15803d', '#b45309', '#7c3aed', '#be123c', '#666666']
@@ -220,7 +220,7 @@ export default function RichTextEditor({
     if (!file || !editorRef.current) return
     const fd = new FormData()
     fd.append('file', file)
-    const res = await uploadEmailAsset(fd)
+    const res = await uploadMedia(fd, 'general')
     if (res.url) editorRef.current.chain().focus().setImage({ src: res.url }).run()
     else alert(`Upload failed: ${res.error}`)
     e.target.value = ''

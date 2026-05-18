@@ -39,7 +39,10 @@ export default function MediaLibrary({ initialAssets, onSelect }: Props) {
   const [deleting, setDeleting] = useState<string | null>(null)
   const [isPending, startTransition] = useTransition()
 
-  const folders = ['all', ...Array.from(new Set(assets.map(a => a.folder))).sort()]
+  const KNOWN_FOLDERS = ['products', 'brands', 'categories', 'homepage', 'featured', 'general']
+  const dynamicFolders = Array.from(new Set(assets.map(a => a.folder)))
+  const allFolders = ['all', ...Array.from(new Set([...KNOWN_FOLDERS, ...dynamicFolders])).sort()]
+  const folders = allFolders
 
   const filtered = assets.filter(a => {
     const matchFolder = folder === 'all' || a.folder === folder

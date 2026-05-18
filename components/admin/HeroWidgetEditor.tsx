@@ -73,7 +73,7 @@ export default function HeroWidgetEditor({ initialConfig, products, categories, 
 
     const fd = new FormData()
     fd.append('file', file)
-    const result = await uploadMedia(fd, 'hero')
+    const result = await uploadMedia(fd, 'homepage')
     setUploading(false)
 
     if (result.error) {

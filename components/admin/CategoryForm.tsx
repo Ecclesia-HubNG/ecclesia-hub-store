@@ -87,6 +87,7 @@ export default function CategoryForm({
     setImagePreview(preview)
     const fd = new FormData()
     fd.append('file', file)
+    fd.append('folder', 'categories')
     const res = await fetch('/api/upload', { method: 'POST', body: fd })
     const json = await res.json()
     setUploading(false)
