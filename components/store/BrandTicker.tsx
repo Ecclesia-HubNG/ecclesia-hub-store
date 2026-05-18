@@ -21,8 +21,10 @@ export default async function BrandTicker() {
       ? dbBrands
       : FALLBACK_BRANDS.map((name, i) => ({ id: String(i), name }))
 
-  // Duplicate for seamless loop
-  const doubled = [...items, ...items]
+  // Repeat enough times so the first half always fills any screen width, then double for seamless loop
+  const copies = Math.max(2, Math.ceil(12 / items.length))
+  const repeated = Array.from({ length: copies }, () => items).flat()
+  const doubled = [...repeated, ...repeated]
 
   return (
     <div className="w-full px-3 md:px-5 py-3">
