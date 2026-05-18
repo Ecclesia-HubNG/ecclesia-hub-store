@@ -1,3 +1,4 @@
+import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
 
 const FALLBACK_BRANDS = [
@@ -10,13 +11,13 @@ export default async function BrandTicker() {
   const supabase = createClient()
   const { data: dbBrands } = await supabase
     .from('brands')
-    .select('id, name, logo')
+    .select('id, name, slug, logo')
     .order('name')
 
   const hasLogos = dbBrands?.some(b => b.logo)
 
   // Use DB brands if any exist, otherwise fall back to static names
-  const items: { id: string; name: string; logo?: string | null }[] =
+  const items: { id: string; name: string; slug?: string; logo?: string | null }[] =
     dbBrands?.length
       ? dbBrands
       : FALLBACK_BRANDS.map((name, i) => ({ id: String(i), name }))
@@ -35,13 +36,22 @@ export default async function BrandTicker() {
           {doubled.map((brand, i) => (
             <span key={`${brand.id}-${i}`} className="flex items-center gap-10 shrink-0">
               {hasLogos && brand.logo ? (
-                <img
-                  src={brand.logo}
-                  alt={brand.name}
-                  className="h-6 w-auto object-contain opacity-50 hover:opacity-80 transition-opacity grayscale"
-                />
+                <Link href={brand.slug ? `/brands/${brand.slug}` : '/shop'}>
+                  <img
+                    src={brand.logo}
+                    alt={brand.name}
+                    className="h-6 w-auto object-contain opacity-50 hover:opacity-100 transition-opacity grayscale hover:grayscale-0"
+                  />
+                </Link>
+              ) : brand.slug ? (
+                <Link
+                  href={`/brands/${brand.slug}`}
+                  className="text-sm font-semibold tracking-[0.1em] uppercase text-white/70 dark:text-[#4A0F1C]/60 hover:text-white dark:hover:text-[#4A0F1C] underline-offset-4 hover:underline whitespace-nowrap transition-colors"
+                >
+                  {brand.name}
+                </Link>
               ) : (
-                <span className="text-sm font-semibold tracking-[0.1em] uppercase text-white/80 hover:text-white dark:text-[#4A0F1C]/70 dark:hover:text-[#4A0F1C] transition-colors cursor-default whitespace-nowrap">
+                <span className="text-sm font-semibold tracking-[0.1em] uppercase text-white/70 dark:text-[#4A0F1C]/60 whitespace-nowrap">
                   {brand.name}
                 </span>
               )}
