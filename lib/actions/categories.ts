@@ -2,7 +2,6 @@
 
 import { createAdminClient } from '@/lib/supabase/admin'
 import { revalidatePath } from 'next/cache'
-import { redirect } from 'next/navigation'
 
 function slugify(s: string) {
   return s.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '')
@@ -34,6 +33,8 @@ export async function updateCategory(id: string, _: unknown, formData: FormData)
   const { error } = await supabase.from('categories').update(parseForm(formData)).eq('id', id)
   if (error) return { error: error.message }
   revalidatePath('/admin/categories')
+  revalidatePath('/', 'page')
+  revalidatePath('/home', 'page')
   return { success: true as const }
 }
 
