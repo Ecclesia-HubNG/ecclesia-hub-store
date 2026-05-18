@@ -9,18 +9,6 @@ type Product = { id: string; name: string; slug: string; thumbnail: string | nul
 type Category = { id: string; name: string; slug: string; image: string | null; is_featured: boolean }
 type Brand = { id: string; name: string; slug: string; logo: string | null; is_featured: boolean }
 
-function Toggle({ on, onChange, pending }: { on: boolean; onChange: () => void; pending: boolean }) {
-  return (
-    <button
-      type="button"
-      onClick={onChange}
-      disabled={pending}
-      className={`relative inline-flex h-5 w-9 shrink-0 items-center rounded-full transition-colors duration-200 disabled:opacity-60 ${on ? 'bg-gray-900 dark:bg-white' : 'bg-gray-200 dark:bg-gray-700'}`}
-    >
-      <span className={`inline-block h-3.5 w-3.5 rounded-full bg-white dark:bg-gray-900 shadow transform transition-transform duration-200 ${on ? 'translate-x-4' : 'translate-x-0.5'}`} />
-    </button>
-  )
-}
 
 function Thumb({ src, alt }: { src: string | null; alt: string }) {
   return (
@@ -48,7 +36,8 @@ export default function FeaturedManager({
   initialBrands: Brand[]
 }) {
   const router = useRouter()
-  const [isPending, startTransition] = useTransition()
+  const [, startTransition] = useTransition()
+  const [pendingIds, setPendingIds] = useState<Set<string>>(new Set())
   const [tab, setTab] = useState<Tab>('products')
 
   const [products, setProducts] = useState(initialProducts)
@@ -64,10 +53,12 @@ export default function FeaturedManager({
     if (type === 'products') setProducts(p => p.map(x => x.id === id ? { ...x, is_featured: next } : x))
     if (type === 'categories') setCategories(p => p.map(x => x.id === id ? { ...x, is_featured: next } : x))
     if (type === 'brands') setBrands(p => p.map(x => x.id === id ? { ...x, is_featured: next } : x))
+    setPendingIds(s => new Set(s).add(id))
     startTransition(async () => {
       if (type === 'products') await toggleProductFeatured(id, next)
       if (type === 'categories') await toggleCategoryFeatured(id, next)
       if (type === 'brands') await toggleBrandFeatured(id, next)
+      setPendingIds(s => { const n = new Set(s); n.delete(id); return n })
       router.refresh()
     })
   }
@@ -160,11 +151,11 @@ export default function FeaturedManager({
                   </div>
                   <button
                     type="button"
-                    disabled={isPending}
+                    disabled={pendingIds.has(item.id)}
                     onClick={() => toggle(tab, item.id, false)}
                     className="shrink-0 text-xs font-medium px-3 py-1.5 bg-gray-900 dark:bg-white text-white dark:text-gray-900 rounded-lg hover:bg-gray-700 dark:hover:bg-gray-100 transition-colors disabled:opacity-50"
                   >
-                    Feature
+                    {pendingIds.has(item.id) ? 'Adding…' : 'Feature'}
                   </button>
                 </li>
               ))}
@@ -195,11 +186,11 @@ export default function FeaturedManager({
                 <Link href={editHref(item.id)} className="text-xs text-gray-400 dark:text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 transition-colors shrink-0">Edit</Link>
                 <button
                   type="button"
-                  disabled={isPending}
+                  disabled={pendingIds.has(item.id)}
                   onClick={() => toggle(tab, item.id, true)}
                   className="shrink-0 text-xs text-red-400 hover:text-red-600 transition-colors disabled:opacity-50"
                 >
-                  Remove
+                  {pendingIds.has(item.id) ? '…' : 'Remove'}
                 </button>
               </li>
             ))}
