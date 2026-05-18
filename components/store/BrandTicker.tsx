@@ -21,15 +21,17 @@ export default async function BrandTicker() {
       ? dbBrands
       : FALLBACK_BRANDS.map((name, i) => ({ id: String(i), name }))
 
-  // Repeat enough times so the first half always fills any screen width, then double for seamless loop
-  const copies = Math.max(2, Math.ceil(12 / items.length))
+  // Repeat enough that one half fills any realistic screen (target ≥ 30 items)
+  const copies = Math.max(6, Math.ceil(30 / items.length))
   const repeated = Array.from({ length: copies }, () => items).flat()
   const doubled = [...repeated, ...repeated]
+  // ~2 s per item gives comfortable reading speed regardless of list size
+  const duration = repeated.length * 2
 
   return (
     <div className="w-full px-3 md:px-5 py-3">
       <div className="overflow-hidden rounded-2xl border border-gray-100 bg-white py-5">
-        <div className="flex items-center gap-10 ticker-track">
+        <div className="flex items-center gap-10 ticker-track" style={{ animationDuration: `${duration}s` }}>
           {doubled.map((brand, i) => (
             <span key={`${brand.id}-${i}`} className="flex items-center gap-10 shrink-0">
               {hasLogos && brand.logo ? (

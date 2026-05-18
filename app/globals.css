@@ -31,6 +31,7 @@ body {
   to   { transform: translateX(-50%); }
 }
 .ticker-track {
-  animation: ticker 28s linear infinite;
+  animation: ticker linear infinite;
   width: max-content;
+  will-change: transform;
 }
