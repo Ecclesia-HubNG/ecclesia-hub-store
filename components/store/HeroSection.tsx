@@ -25,12 +25,7 @@ export default function HeroSection({
 
         {/* ── Background ── */}
         {heroImage ? (
-          <img
-            src={heroImage}
-            alt=""
-            className={`absolute inset-0 w-full h-full ${productIsBackground ? 'object-contain p-8 md:p-16' : 'object-cover'}`}
-            style={productIsBackground ? { background: 'linear-gradient(145deg, #120307 0%, #3A0B15 35%, #6B1A2A 65%, #A8545F 88%, #D4849A 100%)' } : undefined}
-          />
+          <img src={heroImage} alt="" className="absolute inset-0 w-full h-full object-cover" />
         ) : (
           <div
             className="absolute inset-0"
