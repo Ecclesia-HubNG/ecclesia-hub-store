@@ -2,6 +2,7 @@ import { createClient } from '@/lib/supabase/server'
 import Link from 'next/link'
 import ProductCard from '@/components/store/ProductCard'
 import HeroSection from '@/components/store/HeroSection'
+import BrandTicker from '@/components/store/BrandTicker'
 
 export default async function HomePage() {
   const supabase = createClient()
@@ -24,6 +25,9 @@ export default async function HomePage() {
     <div>
       {/* Hero */}
       <HeroSection heroImage={heroImage} featuredProduct={featuredProduct} />
+
+      {/* Brand ticker */}
+      <BrandTicker />
 
       {/* Featured products */}
       {!!featured?.length && (

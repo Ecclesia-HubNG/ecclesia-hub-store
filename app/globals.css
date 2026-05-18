@@ -25,3 +25,12 @@ body {
 .animate-in {
   animation: megaFadeSlide 0.15s ease-out;
 }
+
+@keyframes ticker {
+  from { transform: translateX(0); }
+  to   { transform: translateX(-50%); }
+}
+.ticker-track {
+  animation: ticker 28s linear infinite;
+  width: max-content;
+}
