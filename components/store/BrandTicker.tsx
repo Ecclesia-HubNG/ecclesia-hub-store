@@ -37,11 +37,11 @@ export default async function BrandTicker() {
                   className="h-6 w-auto object-contain opacity-50 hover:opacity-80 transition-opacity grayscale"
                 />
               ) : (
-                <span className="text-sm font-semibold tracking-[0.1em] uppercase text-gray-300 hover:text-gray-500 transition-colors cursor-default whitespace-nowrap">
+                <span className="text-sm font-semibold tracking-[0.1em] uppercase text-gray-400 hover:text-gray-700 transition-colors cursor-default whitespace-nowrap">
                   {brand.name}
                 </span>
               )}
-              <span className="w-1 h-1 rounded-full bg-gray-200 shrink-0" />
+              <span className="w-1 h-1 rounded-full bg-gray-300 shrink-0" />
             </span>
           ))}
         </div>
