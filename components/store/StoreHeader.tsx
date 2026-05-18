@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useCart } from '@/lib/cart-context'
 import { createClient } from '@/lib/supabase/client'
+import ThemeToggle from '@/components/store/ThemeToggle'
 
 // ── Mega menu data ─────────────────────────────────────────────────────────────
 const SHOP_COLUMNS = [
@@ -263,8 +264,8 @@ export default function StoreHeader() {
 
       {/* ── Sticky header ── */}
       <header className="sticky top-0 z-40 bg-white border-b border-gray-100">
-        {/* Main bar */}
-        <div className="max-w-7xl mx-auto px-5 md:px-8 h-16 flex items-center gap-3">
+        {/* Main bar — aligned with hero card edges */}
+        <div className="px-4 md:px-6 h-16 flex items-center gap-3">
 
           {/* Mobile: hamburger */}
           <button
@@ -351,8 +352,11 @@ export default function StoreHeader() {
               )}
             </div>
 
+            {/* Dark / light toggle */}
+            <ThemeToggle />
+
             {/* Cart */}
-            <Link href="/cart" aria-label="Cart" className="relative p-2.5 text-gray-500 hover:text-gray-900 transition-colors">
+            <Link href="/cart" aria-label="Cart" className="relative p-2.5 text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white transition-colors">
               <BagIcon />
               {count > 0 && (
                 <span className="absolute top-1.5 right-1.5 min-w-[15px] h-[15px] bg-[#4A0F1C] text-white text-[8px] font-bold rounded-full flex items-center justify-center px-1 leading-none">
@@ -370,7 +374,7 @@ export default function StoreHeader() {
             onMouseLeave={scheduleMegaClose}
             className="absolute top-full left-0 right-0 bg-white border-t border-gray-100 shadow-2xl z-50 animate-in"
           >
-            <div className="max-w-7xl mx-auto px-8 py-8">
+            <div className="px-6 md:px-8 py-8 max-w-[1400px]">
               <div className="grid grid-cols-[1fr_1fr_1fr_272px] gap-10">
                 {/* Link columns */}
                 {SHOP_COLUMNS.map((col, ci) => (
@@ -379,7 +383,7 @@ export default function StoreHeader() {
                       <Link
                         href="/shop"
                         onClick={() => setMegaOpen(false)}
-                        className="block text-xs font-bold uppercase tracking-widest text-gray-900 hover:text-[#4A0F1C] mb-4 transition-colors"
+                        className="block text-[10px] font-bold uppercase tracking-widest text-gray-900 hover:text-[#4A0F1C] mb-4 transition-colors"
                       >
                         {col.heading}
                       </Link>
@@ -387,14 +391,15 @@ export default function StoreHeader() {
                     {ci !== 0 && (
                       <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-4">{col.heading}</p>
                     )}
-                    <ul className="space-y-3">
+                    <ul className="space-y-1">
                       {col.links.map(link => (
                         <li key={link.label}>
                           <Link
                             href={link.href}
                             onClick={() => setMegaOpen(false)}
-                            className="text-sm text-gray-600 hover:text-[#4A0F1C] transition-colors"
+                            className="group flex items-center gap-1.5 px-2 py-1.5 -mx-2 rounded-lg text-sm text-gray-600 hover:text-[#4A0F1C] hover:bg-[#4A0F1C]/5 transition-all"
                           >
+                            <span className="w-0 group-hover:w-1.5 h-1.5 rounded-full bg-[#4A0F1C] transition-all duration-200 overflow-hidden shrink-0" />
                             {link.label}
                           </Link>
                         </li>

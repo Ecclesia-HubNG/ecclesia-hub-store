@@ -1,4 +1,5 @@
 import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 import Link from 'next/link'
 import ProductCard from '@/components/store/ProductCard'
 import HeroSection from '@/components/store/HeroSection'
@@ -6,19 +7,37 @@ import BrandTicker from '@/components/store/BrandTicker'
 
 export default async function HomePage() {
   const supabase = createClient()
+  const admin = createAdminClient()
 
-  const { data: featured } = await supabase
-    .from('products')
-    .select('id, name, slug, price, compare_at_price, thumbnail, stock, categories(name)')
-    .eq('is_featured', true)
-    .eq('is_active', true)
-    .limit(4)
+  const [{ data: featured }, { data: heroWidget }] = await Promise.all([
+    supabase
+      .from('products')
+      .select('id, name, slug, price, compare_at_price, thumbnail, stock, categories(name)')
+      .eq('is_featured', true)
+      .eq('is_active', true)
+      .limit(4),
+    admin
+      .from('homepage_widgets')
+      .select('config')
+      .eq('type', 'hero')
+      .eq('is_active', true)
+      .maybeSingle(),
+  ])
 
-  const heroImage = featured?.find(p => p.thumbnail)?.thumbnail ?? null
-  const raw = featured?.[0] ?? null
-  const featuredProduct = raw ? {
-    ...raw,
-    categories: Array.isArray(raw.categories) ? (raw.categories[0] ?? null) : raw.categories,
+  // Hero: widget settings override, otherwise fall back to first featured product
+  const widgetConfig = heroWidget?.config as { hero_image?: string; product_id?: string; category_id?: string } | null
+  const heroImage = widgetConfig?.hero_image ?? featured?.find(p => p.thumbnail)?.thumbnail ?? null
+
+  // Hero featured product: use widget-picked product_id, or first featured
+  let heroProductRaw = widgetConfig?.product_id
+    ? featured?.find(p => p.id === widgetConfig.product_id) ?? featured?.[0]
+    : featured?.[0]
+
+  const featuredProduct = heroProductRaw ? {
+    ...heroProductRaw,
+    categories: Array.isArray(heroProductRaw.categories)
+      ? (heroProductRaw.categories[0] ?? null)
+      : heroProductRaw.categories,
   } : null
 
   return (
