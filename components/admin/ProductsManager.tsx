@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useMemo, useTransition } from 'react'
+import { useState, useMemo, useTransition, useEffect } from 'react'
 import { createPortal } from 'react-dom'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
@@ -325,6 +325,7 @@ export function ProductsManager({
 
   // Quick edit
   const [editingProduct, setEditingProduct] = useState<Product | null>(null)
+  const [overrides, setOverrides] = useState<Record<string, Product>>({})
   const [qName, setQName] = useState('')
   const [qPrice, setQPrice] = useState('')
   const [qCompare, setQCompare] = useState('')
@@ -365,7 +366,7 @@ export function ProductsManager({
     const reader = new FileReader()
     reader.onload = ev => {
       const text = ev.target?.result as string
-      const rows = parseImportCSV(text, products, format)
+      const rows = parseImportCSV(text, mergedProducts, format)
       setImportRows(rows)
       setImportDone('')
       setShowImportPicker(false)
@@ -415,31 +416,51 @@ export function ProductsManager({
   const handleSave = () => {
     if (!editingProduct) return
     setSaveError('')
+    const updates = {
+      name: qName,
+      price: parseFloat(qPrice) || 0,
+      compare_at_price: qCompare ? parseFloat(qCompare) : null,
+      stock: parseInt(qStock) || 0,
+      category_id: qCategoryId || null,
+      brand_id: qBrandId || null,
+      is_active: qActive,
+      is_featured: qFeatured,
+    }
     startSave(async () => {
-      const result = await quickUpdateProduct(editingProduct.id, {
-        name: qName,
-        price: parseFloat(qPrice) || 0,
-        compare_at_price: qCompare ? parseFloat(qCompare) : null,
-        stock: parseInt(qStock) || 0,
-        category_id: qCategoryId || null,
-        brand_id: qBrandId || null,
-        is_active: qActive,
-        is_featured: qFeatured,
-      })
+      const result = await quickUpdateProduct(editingProduct.id, updates)
       if (result?.error) { setSaveError(result.error); return }
+      setOverrides(prev => ({ ...prev, [editingProduct.id]: { ...editingProduct, ...updates } }))
       closeQuickEdit()
       router.refresh()
     })
   }
 
+  // When server refreshes with new products, clear overrides for products that now match
+  useEffect(() => {
+    setOverrides(prev => {
+      const next = { ...prev }
+      let changed = false
+      products.forEach(p => {
+        if (next[p.id]) { delete next[p.id]; changed = true }
+      })
+      return changed ? next : prev
+    })
+  }, [products])
+
+  // Merge server products with any local optimistic overrides
+  const mergedProducts = useMemo(
+    () => products.map(p => overrides[p.id] ?? p),
+    [products, overrides]
+  )
+
   // Stats
-  const total = products.length
-  const inStock = products.filter(p => p.stock > 0).length
-  const outOfStock = products.filter(p => p.stock === 0).length
+  const total = mergedProducts.length
+  const inStock = mergedProducts.filter(p => p.stock > 0).length
+  const outOfStock = mergedProducts.filter(p => p.stock === 0).length
 
   // Filtered list
   const filtered = useMemo(() => {
-    return products.filter(p => {
+    return mergedProducts.filter(p => {
       if (search) {
         const q = search.toLowerCase()
         if (!p.name.toLowerCase().includes(q) && !p.slug.includes(q)) return false
@@ -456,7 +477,7 @@ export function ProductsManager({
       if (dateTo && new Date(p.created_at) > new Date(dateTo + 'T23:59:59')) return false
       return true
     })
-  }, [products, search, status, stockFilter, categoryId, dateFrom, dateTo])
+  }, [mergedProducts, search, status, stockFilter, categoryId, dateFrom, dateTo])
 
   const sorted = useMemo(() => {
     return [...filtered].sort((a, b) => {
@@ -836,9 +857,9 @@ export function ProductsManager({
       {filtered.length === 0 ? (
         <div className="text-center py-20 border-2 border-dashed border-gray-200 dark:border-gray-800 rounded-xl">
           <p className="text-sm text-gray-400 dark:text-gray-600">
-            {products.length === 0 ? 'No products yet.' : 'No products match your filters.'}
+            {mergedProducts.length === 0 ? 'No products yet.' : 'No products match your filters.'}
           </p>
-          {products.length === 0 && (
+          {mergedProducts.length === 0 && (
             <Link href="/admin/products/new" className="text-sm text-gray-900 dark:text-white font-medium mt-2 inline-block hover:underline">
               Add your first product →
             </Link>
@@ -1232,16 +1253,16 @@ export function ProductsManager({
                       </svg>
                     </div>
                   )}
-                  <div className="min-w-0">
+                  <div className="min-w-0 flex-1">
                     <p className="text-sm font-medium text-gray-900 dark:text-white truncate">{editingProduct.name}</p>
                     <p className="text-xs text-gray-400 dark:text-gray-500 font-mono mt-0.5 truncate">{editingProduct.slug}</p>
                   </div>
-                  <Link
-                    href={`/admin/products/${editingProduct.id}/edit`}
-                    className="ml-auto shrink-0 text-xs text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors whitespace-nowrap"
-                  >
-                    Full edit →
-                  </Link>
+                  <div className="shrink-0 text-right">
+                    <p className="text-sm font-semibold text-gray-900 dark:text-white">₦{fmt(editingProduct.price)}</p>
+                    {editingProduct.compare_at_price && (
+                      <p className="text-xs text-gray-400 dark:text-gray-500 line-through">₦{fmt(editingProduct.compare_at_price)}</p>
+                    )}
+                  </div>
                 </div>
 
                 {/* Name */}
@@ -1316,22 +1337,32 @@ export function ProductsManager({
           </div>
 
           {/* Footer */}
-          <div className="px-6 py-4 border-t border-gray-100 dark:border-gray-800 flex gap-3 shrink-0">
-            <button
-              type="button"
-              onClick={closeQuickEdit}
-              className="flex-1 px-4 py-2.5 text-sm font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-800 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
-            >
-              Cancel
-            </button>
-            <button
-              type="button"
-              onClick={handleSave}
-              disabled={isSaving}
-              className="flex-1 px-4 py-2.5 text-sm font-medium text-white bg-gray-900 dark:bg-white dark:text-gray-900 rounded-lg hover:bg-gray-700 dark:hover:bg-gray-100 transition-colors disabled:opacity-60"
-            >
-              {isSaving ? 'Saving…' : 'Save changes'}
-            </button>
+          <div className="px-6 py-4 border-t border-gray-100 dark:border-gray-800 flex flex-col gap-3 shrink-0">
+            <div className="flex gap-3">
+              <button
+                type="button"
+                onClick={closeQuickEdit}
+                className="flex-1 px-4 py-2.5 text-sm font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-800 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleSave}
+                disabled={isSaving}
+                className="flex-1 px-4 py-2.5 text-sm font-medium text-white bg-gray-900 dark:bg-white dark:text-gray-900 rounded-lg hover:bg-gray-700 dark:hover:bg-gray-100 transition-colors disabled:opacity-60"
+              >
+                {isSaving ? 'Saving…' : 'Save changes'}
+              </button>
+            </div>
+            {editingProduct && (
+              <Link
+                href={`/admin/products/${editingProduct.id}/edit`}
+                className="text-xs text-center text-gray-400 dark:text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 transition-colors"
+              >
+                Open full editor →
+              </Link>
+            )}
           </div>
         </div>
       </>
