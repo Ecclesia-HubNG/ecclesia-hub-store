@@ -267,14 +267,21 @@ export default function HeroWidgetEditor({ initialConfig, products, categories, 
             <path strokeLinecap="round" strokeLinejoin="round" d="m4.5 12.75 6 6 9-13.5" />
           </svg>
         </span>
-        Saved
-        <button
-          type="button"
-          onClick={() => setToast(false)}
-          className="ml-1 text-white/40 hover:text-white transition-colors text-base leading-none"
-        >
-          ×
-        </button>
+        Saved — homepage updated
+        <button type="button" onClick={() => setToast(false)} className="ml-1 text-white/40 hover:text-white transition-colors text-base leading-none">×</button>
+      </div>
+
+      {/* Error toast */}
+      <div
+        className={`fixed top-5 left-1/2 -translate-x-1/2 z-50 flex items-center gap-3 px-4 py-3 bg-red-600 text-white text-sm rounded-xl shadow-xl transition-all duration-300 ease-out whitespace-nowrap ${
+          saveError ? 'translate-y-0 opacity-100' : '-translate-y-4 opacity-0 pointer-events-none'
+        }`}
+      >
+        <svg className="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126ZM12 15.75h.007v.008H12v-.008Z" />
+        </svg>
+        {saveError || 'Save failed'}
+        <button type="button" onClick={() => setSaveError('')} className="ml-1 text-white/60 hover:text-white transition-colors text-base leading-none">×</button>
       </div>
 
       {/* Hero Image */}
@@ -448,7 +455,6 @@ export default function HeroWidgetEditor({ initialConfig, products, categories, 
           )}
           {uploading ? 'Uploading image…' : isPending ? 'Saving…' : 'Save changes'}
         </button>
-        {saveError && <p className="text-sm text-red-500 dark:text-red-400">{saveError}</p>}
       </div>
     </div>
   )

@@ -30,15 +30,19 @@ export async function uploadMedia(
   const base = R2_PUBLIC_URL.replace(/\/$/, '')
   const url = `${base}/${key}`
 
-  const admin = createAdminClient()
-  const { data, error } = await admin
-    .from('media_assets')
-    .insert({ url, key, name: file.name, size: file.size, mime_type: file.type, folder })
-    .select('id')
-    .single()
-
-  if (error) return { error: error.message }
-  return { url, id: data.id }
+  // Record in media_assets — non-blocking, R2 upload already succeeded
+  try {
+    const admin = createAdminClient()
+    const { data } = await admin
+      .from('media_assets')
+      .upsert({ url, key, name: file.name, size: file.size, mime_type: file.type, folder }, { onConflict: 'key' })
+      .select('id')
+      .single()
+    return { url, id: data?.id }
+  } catch {
+    // DB record failed but file is safely on R2 — still return the URL
+    return { url }
+  }
 }
 
 export async function deleteMedia(id: string, key: string) {

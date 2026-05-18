@@ -37,6 +37,6 @@ export async function upsertHeroWidget(config: {
       .insert({ type: 'hero', config, position: 0, is_active: true })
     if (error) throw new Error(error.message)
   }
-  revalidatePath('/')
-  revalidatePath('/home')
+  revalidatePath('/', 'page')
+  revalidatePath('/home', 'page')
 }
