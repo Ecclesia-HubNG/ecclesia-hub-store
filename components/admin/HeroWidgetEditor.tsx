@@ -180,6 +180,28 @@ export default function HeroWidgetEditor({ initialConfig, products, categories, 
   const [saveError, setSaveError] = useState('')
   const [isPending, startTransition] = useTransition()
 
+  const resizeImage = (file: File, maxDim = 2000): Promise<File> =>
+    new Promise((resolve) => {
+      const img = new Image()
+      const blobUrl = URL.createObjectURL(file)
+      img.onload = () => {
+        URL.revokeObjectURL(blobUrl)
+        const { width, height } = img
+        if (width <= maxDim && height <= maxDim) { resolve(file); return }
+        const scale = Math.min(maxDim / width, maxDim / height)
+        const canvas = document.createElement('canvas')
+        canvas.width = Math.round(width * scale)
+        canvas.height = Math.round(height * scale)
+        canvas.getContext('2d')!.drawImage(img, 0, 0, canvas.width, canvas.height)
+        canvas.toBlob(
+          blob => resolve(blob ? new File([blob], file.name.replace(/\.[^.]+$/, '.jpg'), { type: 'image/jpeg' }) : file),
+          'image/jpeg', 0.85
+        )
+      }
+      img.onerror = () => { URL.revokeObjectURL(blobUrl); resolve(file) }
+      img.src = blobUrl
+    })
+
   const uploadFile = async (file: File) => {
     if (!file.type.startsWith('image/')) {
       setUploadError('Only image files allowed')
@@ -193,8 +215,9 @@ export default function HeroWidgetEditor({ initialConfig, products, categories, 
     setUploadError('')
     setImagePreview(URL.createObjectURL(file))
 
+    const resized = await resizeImage(file, 2000)
     const fd = new FormData()
-    fd.append('file', file)
+    fd.append('file', resized)
     fd.append('folder', 'homepage')
     const res = await fetch('/api/upload', { method: 'POST', body: fd })
     const result = await res.json() as { url?: string; error?: string }
