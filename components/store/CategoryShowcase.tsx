@@ -20,7 +20,7 @@ export default function CategoryShowcase({ categories }: { categories: Category[
   if (!categories.length) return null
 
   return (
-    <section className="max-w-7xl mx-auto px-4 md:px-8 py-12">
+    <section className="w-full px-3 md:px-5 py-12">
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <h2 className="text-xl font-bold text-gray-900 dark:text-white">Shop Top Categories</h2>
