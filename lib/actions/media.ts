@@ -1,5 +1,5 @@
 'use server'
-import { PutObjectCommand, DeleteObjectCommand } from '@aws-sdk/client-s3'
+import { PutObjectCommand, DeleteObjectCommand, ListObjectsV2Command } from '@aws-sdk/client-s3'
 import { r2, R2_BUCKET, R2_PUBLIC_URL } from '@/lib/r2'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { revalidatePath } from 'next/cache'
@@ -44,20 +44,50 @@ export async function uploadMedia(
 export async function deleteMedia(id: string, key: string) {
   await r2.send(new DeleteObjectCommand({ Bucket: R2_BUCKET, Key: key }))
 
-  const admin = createAdminClient()
-  const { error } = await admin.from('media_assets').delete().eq('id', id)
-  if (error) throw new Error(error.message)
+  // id === key means the item exists only in R2, not in the DB
+  if (id !== key) {
+    const admin = createAdminClient()
+    const { error } = await admin.from('media_assets').delete().eq('id', id)
+    if (error) throw new Error(error.message)
+  }
   revalidatePath('/admin/media')
 }
 
 export async function getMediaAssets(folder?: string) {
+  const base = R2_PUBLIC_URL.replace(/\/$/, '')
   const admin = createAdminClient()
-  let query = admin
-    .from('media_assets')
-    .select('id, url, key, name, size, mime_type, folder, created_at')
-    .order('created_at', { ascending: false })
 
-  if (folder) query = query.eq('folder', folder)
-  const { data } = await query
-  return data ?? []
+  // Pull DB records and R2 object listing in parallel
+  const [{ data: dbRows }, r2List] = await Promise.all([
+    admin
+      .from('media_assets')
+      .select('id, url, key, name, size, mime_type, folder, created_at')
+      .order('created_at', { ascending: false }),
+    r2.send(new ListObjectsV2Command({ Bucket: R2_BUCKET, MaxKeys: 1000 })),
+  ])
+
+  const dbByKey = new Map((dbRows ?? []).map(r => [r.key, r]))
+
+  // Build merged list: DB record if exists, otherwise synthesise from R2 object
+  const merged = (r2List.Contents ?? [])
+    .filter(obj => obj.Key && /\.(jpe?g|png|webp|gif|avif|svg)$/i.test(obj.Key))
+    .map(obj => {
+      const key = obj.Key!
+      if (dbByKey.has(key)) return dbByKey.get(key)!
+      const segments = key.split('/')
+      return {
+        id: key,          // use key as id for R2-only items
+        url: `${base}/${key}`,
+        key,
+        name: segments[segments.length - 1],
+        size: obj.Size ?? null,
+        mime_type: null,
+        folder: segments.length > 1 ? segments[0] : 'general',
+        created_at: obj.LastModified?.toISOString() ?? new Date().toISOString(),
+      }
+    })
+    .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+
+  if (folder) return merged.filter(a => a.folder === folder)
+  return merged
 }
