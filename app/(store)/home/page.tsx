@@ -1,15 +1,18 @@
+export const dynamic = 'force-dynamic'
+
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import Link from 'next/link'
 import ProductCard from '@/components/store/ProductCard'
 import HeroSection from '@/components/store/HeroSection'
 import BrandTicker from '@/components/store/BrandTicker'
+import CategoryShowcase from '@/components/store/CategoryShowcase'
 
 export default async function HomePage() {
   const supabase = createClient()
   const admin = createAdminClient()
 
-  const [{ data: featured }, { data: heroWidget }] = await Promise.all([
+  const [{ data: featured }, { data: heroWidget }, { data: categories }] = await Promise.all([
     supabase
       .from('products')
       .select('id, name, slug, price, compare_at_price, thumbnail, stock, categories(name)')
@@ -22,6 +25,10 @@ export default async function HomePage() {
       .eq('type', 'hero')
       .eq('is_active', true)
       .maybeSingle(),
+    supabase
+      .from('categories')
+      .select('id, name, slug, image')
+      .order('name'),
   ])
 
   const widgetConfig = heroWidget?.config as { hero_image?: string; product_id?: string; category_id?: string } | null
@@ -59,6 +66,8 @@ export default async function HomePage() {
     <div>
       <HeroSection heroImage={heroImage} featuredProduct={featuredProduct} />
       <BrandTicker />
+
+      <CategoryShowcase categories={categories ?? []} />
 
       {!!featured?.length && (
         <section className="max-w-7xl mx-auto px-4 md:px-8 pb-20">
