@@ -17,7 +17,7 @@ export default function HeroSection({
 }) {
   return (
     <section className="w-full px-3 md:px-5 pt-4 pb-10">
-      <div className="relative overflow-hidden rounded-3xl min-h-[520px] md:min-h-[600px]">
+      <div className="relative overflow-hidden rounded-3xl min-h-[520px] md:min-h-[720px]">
 
         {/* ── Background ── */}
         {heroImage ? (
@@ -34,7 +34,7 @@ export default function HeroSection({
         <div className="absolute inset-0 bg-gradient-to-r from-black/40 via-transparent to-transparent" />
 
         {/* ── All content, inside the card ── */}
-        <div className="relative z-10 flex flex-col justify-between p-7 md:p-10 min-h-[520px] md:min-h-[600px]">
+        <div className="relative z-10 flex flex-col justify-between p-7 md:p-10 min-h-[520px] md:min-h-[720px]">
 
           {/* ── TOP ROW ── */}
           <div className="flex items-start justify-between gap-4">
