@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useMemo, useTransition } from 'react'
+import { createPortal } from 'react-dom'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { deleteProduct, duplicateProduct, quickUpdateProduct, bulkImportProducts, bulkDeleteProducts, toggleProductActive } from '@/lib/actions/products'
@@ -348,6 +349,7 @@ export function ProductsManager({
 
   // Row actions dropdown
   const [openActionId, setOpenActionId] = useState<string | null>(null)
+  const [actionMenuPos, setActionMenuPos] = useState<{ top: number; right: number } | null>(null)
 
   // CSV import
   const [showImportPicker, setShowImportPicker] = useState(false)
@@ -927,40 +929,24 @@ export function ProductsManager({
 
                       {/* Dots menu */}
                       <div className="relative">
-                        {openActionId === product.id && (
-                          <div className="fixed inset-0 z-10" onClick={() => setOpenActionId(null)} />
-                        )}
                         <button
                           type="button"
-                          onClick={() => setOpenActionId(prev => prev === product.id ? null : product.id)}
+                          onClick={e => {
+                            if (openActionId === product.id) {
+                              setOpenActionId(null)
+                              setActionMenuPos(null)
+                            } else {
+                              const rect = (e.currentTarget as HTMLElement).getBoundingClientRect()
+                              setOpenActionId(product.id)
+                              setActionMenuPos({ top: rect.bottom + 4, right: window.innerWidth - rect.right })
+                            }
+                          }}
                           className="w-8 h-8 flex items-center justify-center rounded-lg bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700 hover:text-gray-700 dark:hover:text-gray-200 transition-colors"
                         >
                           <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
                             <circle cx="5" cy="12" r="1.5" /><circle cx="12" cy="12" r="1.5" /><circle cx="19" cy="12" r="1.5" />
                           </svg>
                         </button>
-                        {openActionId === product.id && (
-                          <div className="absolute right-0 top-full mt-1 z-20 w-36 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl shadow-lg py-1 overflow-hidden">
-                            <Link
-                              href={`/admin/products/${product.id}/edit`}
-                              onClick={() => setOpenActionId(null)}
-                              className="flex items-center gap-2.5 px-3 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
-                            >
-                              <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                                <path strokeLinecap="round" strokeLinejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Z" />
-                              </svg>
-                              Edit
-                            </Link>
-                            <DuplicateButton id={product.id} action={duplicateProduct} label="Duplicate" className="flex items-center gap-2.5 px-3 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors w-full text-left" />
-                            <div className="my-1 border-t border-gray-100 dark:border-gray-800" />
-                            <DeleteButton
-                              id={product.id}
-                              action={deleteProduct}
-                              confirm={`Delete "${product.name}"? This can't be undone.`}
-                              className="flex items-center gap-2.5 px-3 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors w-full text-left"
-                            />
-                          </div>
-                        )}
                       </div>
                     </div>
                   </td>
@@ -1349,6 +1335,42 @@ export function ProductsManager({
           </div>
         </div>
       </>
+
+      {/* Row action dropdown — rendered in a portal to escape overflow:hidden on the table wrapper */}
+      {openActionId && actionMenuPos && createPortal(
+        <>
+          <div className="fixed inset-0 z-[90]" onClick={() => { setOpenActionId(null); setActionMenuPos(null) }} />
+          <div
+            className="fixed z-[100] w-36 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl shadow-lg py-1 overflow-hidden"
+            style={{ top: actionMenuPos.top, right: actionMenuPos.right }}
+          >
+            <Link
+              href={`/admin/products/${openActionId}/edit`}
+              onClick={() => { setOpenActionId(null); setActionMenuPos(null) }}
+              className="flex items-center gap-2.5 px-3 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+            >
+              <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Z" />
+              </svg>
+              Edit
+            </Link>
+            <DuplicateButton
+              id={openActionId}
+              action={duplicateProduct}
+              label="Duplicate"
+              className="flex items-center gap-2.5 px-3 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors w-full text-left"
+            />
+            <div className="my-1 border-t border-gray-100 dark:border-gray-800" />
+            <DeleteButton
+              id={openActionId}
+              action={deleteProduct}
+              confirm={`Delete this product? This can't be undone.`}
+              className="flex items-center gap-2.5 px-3 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors w-full text-left"
+            />
+          </div>
+        </>,
+        document.body
+      )}
     </div>
   )
 }
