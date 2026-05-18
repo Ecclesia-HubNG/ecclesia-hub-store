@@ -7,6 +7,10 @@ export async function middleware(request: NextRequest) {
   // Only run Supabase session logic on admin routes.
   // All public store routes pass through without touching auth.
   if (pathname.startsWith('/admin')) {
+    if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
+      console.error('Missing Supabase env vars — skipping session update')
+      return NextResponse.next()
+    }
     return await updateSession(request)
   }
 
