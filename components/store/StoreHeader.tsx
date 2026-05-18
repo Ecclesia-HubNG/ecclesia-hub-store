@@ -2,44 +2,234 @@
 
 import { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
+import { usePathname } from 'next/navigation'
 import { useCart } from '@/lib/cart-context'
 import { createClient } from '@/lib/supabase/client'
 
-const NAV_LINKS = [
-  { href: '/home', label: 'Home' },
-  { href: '/shop', label: 'Shop' },
-  { href: '/about', label: 'About' },
-  { href: '/account', label: 'Account' },
+// ── Mega menu data ─────────────────────────────────────────────────────────────
+const SHOP_COLUMNS = [
+  {
+    heading: 'Shop All',
+    links: [
+      { label: 'All Products', href: '/shop' },
+      { label: 'New Arrivals', href: '/shop' },
+      { label: 'Bestsellers', href: '/shop' },
+      { label: 'Gift Sets', href: '/shop' },
+      { label: 'Sale', href: '/shop' },
+    ],
+  },
+  {
+    heading: 'Categories',
+    links: [
+      { label: 'Body Care', href: '/category/body-lotion-1778779566716' },
+      { label: 'Fragrance', href: '/category/perfume-oil' },
+      { label: 'Skincare', href: '/shop' },
+      { label: 'Home & Wellness', href: '/shop' },
+      { label: 'Gifts & Accessories', href: '/shop' },
+    ],
+  },
+  {
+    heading: 'Collections',
+    links: [
+      { label: 'The Sanctuary Collection', href: '/shop' },
+      { label: 'Daily Ritual', href: '/shop' },
+      { label: 'Gift Ideas', href: '/shop' },
+      { label: 'Bestsellers', href: '/shop' },
+      { label: 'New Arrivals', href: '/shop' },
+    ],
+  },
 ]
 
+const PLAIN_NAV = [
+  { label: 'Bestsellers', href: '/shop' },
+  { label: 'New Arrivals', href: '/shop' },
+  { label: 'About', href: '/about' },
+]
+
+// ── SVG icons ──────────────────────────────────────────────────────────────────
+function SearchIcon() {
+  return (
+    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z" />
+    </svg>
+  )
+}
+function BagIcon() {
+  return (
+    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 10.5V6a3.75 3.75 0 1 0-7.5 0v4.5m11.356-1.993 1.263 12c.07.665-.45 1.243-1.119 1.243H4.25a1.125 1.125 0 0 1-1.12-1.243l1.264-12A1.125 1.125 0 0 1 5.513 7.5h12.974c.576 0 1.059.435 1.119 1.007Z" />
+    </svg>
+  )
+}
+function PersonIcon() {
+  return (
+    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 6a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0ZM4.501 20.118a7.5 7.5 0 0 1 14.998 0A17.933 17.933 0 0 1 12 21.75c-2.676 0-5.216-.584-7.499-1.632Z" />
+    </svg>
+  )
+}
+function ChevronDown() {
+  return (
+    <svg className="w-3 h-3 ml-0.5 inline" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
+    </svg>
+  )
+}
+
+// ── Mobile drawer ──────────────────────────────────────────────────────────────
+function MobileDrawer({
+  open, onClose, user, onSignOut,
+}: { open: boolean; onClose: () => void; user: any; onSignOut: () => void }) {
+  const [shopOpen, setShopOpen] = useState(false)
+
+  return (
+    <>
+      {/* Backdrop */}
+      <div
+        className={`fixed inset-0 z-50 bg-black/40 backdrop-blur-sm transition-opacity duration-300 ${open ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}
+        onClick={onClose}
+      />
+      {/* Drawer */}
+      <div className={`fixed top-0 left-0 bottom-0 z-50 w-80 max-w-[88vw] bg-white flex flex-col shadow-2xl transition-transform duration-300 ease-out ${open ? 'translate-x-0' : '-translate-x-full'}`}>
+        {/* Header */}
+        <div className="flex items-center justify-between px-6 py-5 border-b border-gray-100">
+          <span className="text-sm font-bold tracking-[0.2em] uppercase text-gray-900">Ecclesia Hub</span>
+          <button type="button" onClick={onClose} aria-label="Close menu" className="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors">
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+
+        {/* Nav */}
+        <nav className="flex-1 overflow-y-auto">
+          {/* Shop — accordion */}
+          <div className="border-b border-gray-100">
+            <button
+              type="button"
+              onClick={() => setShopOpen(p => !p)}
+              className="flex items-center justify-between w-full px-6 py-4 text-sm font-medium text-gray-800 hover:bg-gray-50 transition-colors"
+            >
+              Shop
+              <svg className={`w-4 h-4 text-gray-400 transition-transform duration-200 ${shopOpen ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
+              </svg>
+            </button>
+            {shopOpen && (
+              <div className="bg-gray-50/70 px-6 pb-5 pt-2 space-y-5 border-t border-gray-100">
+                {SHOP_COLUMNS.map(col => (
+                  <div key={col.heading}>
+                    <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-2.5">{col.heading}</p>
+                    <ul className="space-y-2">
+                      {col.links.map(link => (
+                        <li key={link.label}>
+                          <Link href={link.href} onClick={onClose} className="text-sm text-gray-600 hover:text-[#4A0F1C] transition-colors">
+                            {link.label}
+                          </Link>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {PLAIN_NAV.map(item => (
+            <Link
+              key={item.label}
+              href={item.href}
+              onClick={onClose}
+              className="flex items-center justify-between px-6 py-4 text-sm font-medium text-gray-800 hover:bg-gray-50 border-b border-gray-100 transition-colors"
+            >
+              {item.label}
+              <svg className="w-4 h-4 text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5" />
+              </svg>
+            </Link>
+          ))}
+        </nav>
+
+        {/* Footer */}
+        <div className="border-t border-gray-100 p-6 space-y-3">
+          {user ? (
+            <>
+              <Link href="/account" onClick={onClose} className="flex items-center gap-3 text-sm text-gray-700 py-2">
+                <PersonIcon />My Account
+              </Link>
+              <button type="button" onClick={onSignOut} className="flex items-center gap-3 text-sm text-red-500 py-2">
+                Sign out
+              </button>
+            </>
+          ) : (
+            <>
+              <Link href="/account" onClick={onClose} className="flex items-center justify-center w-full px-4 py-2.5 bg-[#4A0F1C] text-white text-sm font-semibold rounded-xl hover:bg-[#3A0B15] transition-colors">
+                Sign in
+              </Link>
+              <p className="text-xs text-center text-gray-400">
+                <Link href="/account" onClick={onClose} className="hover:text-gray-600 transition-colors">Create account</Link>
+              </p>
+            </>
+          )}
+        </div>
+      </div>
+    </>
+  )
+}
+
+// ── Main header ────────────────────────────────────────────────────────────────
 export default function StoreHeader() {
-  const [menuOpen, setMenuOpen] = useState(false)
+  const [announcementVisible, setAnnouncementVisible] = useState(true)
+  const [megaOpen, setMegaOpen] = useState(false)
+  const [mobileOpen, setMobileOpen] = useState(false)
   const [accountOpen, setAccountOpen] = useState(false)
-  const [user, setUser] = useState<{ email?: string; user_metadata?: { full_name?: string } } | null>(null)
+  const [user, setUser] = useState<any>(null)
   const { count } = useCart()
   const accountRef = useRef<HTMLDivElement>(null)
+  const closeTimer = useRef<ReturnType<typeof setTimeout>>()
+  const pathname = usePathname()
   const supabase = createClient()
 
+  // Close everything on route change
+  useEffect(() => {
+    setMegaOpen(false)
+    setMobileOpen(false)
+    setAccountOpen(false)
+  }, [pathname])
+
+  // Auth state
   useEffect(() => {
     supabase.auth.getUser().then(({ data: { user } }) => setUser(user))
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_e, session) => {
       setUser(session?.user ?? null)
     })
     return () => subscription.unsubscribe()
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  // Close dropdown on outside click
+  // Close account dropdown on outside click
   useEffect(() => {
     if (!accountOpen) return
     const handler = (e: MouseEvent) => {
-      if (accountRef.current && !accountRef.current.contains(e.target as Node)) {
-        setAccountOpen(false)
-      }
+      if (accountRef.current && !accountRef.current.contains(e.target as Node)) setAccountOpen(false)
     }
     document.addEventListener('mousedown', handler)
     return () => document.removeEventListener('mousedown', handler)
   }, [accountOpen])
+
+  // Lock body scroll when mobile drawer open
+  useEffect(() => {
+    document.body.style.overflow = mobileOpen ? 'hidden' : ''
+    return () => { document.body.style.overflow = '' }
+  }, [mobileOpen])
+
+  function openMega() {
+    clearTimeout(closeTimer.current)
+    setMegaOpen(true)
+  }
+  function scheduleMegaClose() {
+    closeTimer.current = setTimeout(() => setMegaOpen(false), 120)
+  }
 
   async function signOut() {
     await supabase.auth.signOut()
@@ -49,216 +239,213 @@ export default function StoreHeader() {
 
   return (
     <>
-      <header className="sticky top-0 z-40 bg-white/95 dark:bg-gray-950/95 backdrop-blur-md border-b border-gray-100 dark:border-gray-800/80">
-        <div className="relative h-16 flex items-center px-5 md:px-8">
-
-          {/* ── Left ── */}
-          <div className="flex items-center gap-5 flex-1">
-            {/* Hamburger */}
-            <button
-              type="button"
-              aria-label="Open menu"
-              onClick={() => setMenuOpen(true)}
-              className="flex flex-col justify-center gap-[5px] p-1 text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white transition-colors"
-            >
-              <span className="block w-5 h-px bg-current" />
-              <span className="block w-5 h-px bg-current" />
-              <span className="block w-3.5 h-px bg-current" />
-            </button>
-
-            {/* Search */}
-            <Link
-              href="/shop"
-              className="hidden sm:flex items-center gap-1.5 text-sm text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors"
-            >
-              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z" />
-              </svg>
-              Search
+      {/* ── Announcement bar ── */}
+      {announcementVisible && (
+        <div className="bg-[#4A0F1C] text-white text-xs py-2.5 px-5 flex items-center justify-center relative">
+          <p className="text-center tracking-wide">
+            Free delivery on orders over ₦50,000 &nbsp;·&nbsp;{' '}
+            <Link href="/shop" className="font-semibold underline underline-offset-2 hover:no-underline">
+              Shop Now
             </Link>
-          </div>
-
-          {/* ── Center — Brand ── */}
-          <Link
-            href="/home"
-            className="absolute left-1/2 -translate-x-1/2 whitespace-nowrap"
+          </p>
+          <button
+            type="button"
+            onClick={() => setAnnouncementVisible(false)}
+            aria-label="Dismiss"
+            className="absolute right-4 top-1/2 -translate-y-1/2 p-1 text-white/50 hover:text-white transition-colors"
           >
-            <span className="text-base md:text-lg font-bold tracking-[0.18em] uppercase text-gray-900 dark:text-white select-none">
-              Ecclesia Hub
-            </span>
+            <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+      )}
+
+      {/* ── Sticky header ── */}
+      <header className="sticky top-0 z-40 bg-white border-b border-gray-100">
+        {/* Main bar */}
+        <div className="max-w-7xl mx-auto px-5 md:px-8 h-16 flex items-center gap-3">
+
+          {/* Mobile: hamburger */}
+          <button
+            type="button"
+            aria-label="Open menu"
+            onClick={() => setMobileOpen(true)}
+            className="md:hidden flex flex-col justify-center gap-[5px] p-1.5 text-gray-700 hover:text-gray-900 transition-colors shrink-0"
+          >
+            <span className="block w-5 h-px bg-current" />
+            <span className="block w-5 h-px bg-current" />
+            <span className="block w-3.5 h-px bg-current" />
+          </button>
+
+          {/* Logo */}
+          <Link href="/home" className="shrink-0 text-sm font-bold tracking-[0.22em] uppercase text-gray-900">
+            Ecclesia Hub
           </Link>
 
-          {/* ── Right ── */}
-          <div className="flex items-center gap-1 flex-1 justify-end">
-            {/* Mobile search */}
-            <Link
-              href="/shop"
-              aria-label="Search"
-              className="sm:hidden p-2 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors"
+          {/* Desktop nav — centered */}
+          <nav className="hidden md:flex items-center flex-1 justify-center gap-1">
+            {/* Shop — mega trigger */}
+            <button
+              type="button"
+              onMouseEnter={openMega}
+              onMouseLeave={scheduleMegaClose}
+              onClick={() => setMegaOpen(p => !p)}
+              className={`flex items-center px-3.5 py-2 text-sm font-medium rounded-lg transition-colors ${megaOpen ? 'text-[#4A0F1C] bg-[#4A0F1C]/5' : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'}`}
             >
-              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z" />
-              </svg>
-            </Link>
+              Shop <ChevronDown />
+            </button>
 
-            {/* Cart — shopping bag */}
-            <Link
-              href="/cart"
-              aria-label="Cart"
-              className="relative p-2 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors"
-            >
-              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 10.5V6a3.75 3.75 0 1 0-7.5 0v4.5m11.356-1.993 1.263 12c.07.665-.45 1.243-1.119 1.243H4.25a1.125 1.125 0 0 1-1.12-1.243l1.264-12A1.125 1.125 0 0 1 5.513 7.5h12.974c.576 0 1.059.435 1.119 1.007Z" />
-              </svg>
-              {count > 0 && (
-                <span className="absolute top-0.5 right-0.5 min-w-[16px] h-4 bg-[#4A0F1C] text-white text-[9px] font-bold rounded-full flex items-center justify-center px-1 leading-none">
-                  {count > 99 ? '99+' : count}
-                </span>
-              )}
-            </Link>
-
-            {/* Account dropdown */}
-            <div ref={accountRef} className="relative">
-              <button
-                type="button"
-                aria-label="Account"
-                onClick={() => setAccountOpen(p => !p)}
-                className="p-2 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors"
+            {PLAIN_NAV.map(item => (
+              <Link
+                key={item.label}
+                href={item.href}
+                className="px-3.5 py-2 text-sm font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-50 rounded-lg transition-colors"
               >
-                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 6a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0ZM4.501 20.118a7.5 7.5 0 0 1 14.998 0A17.933 17.933 0 0 1 12 21.75c-2.676 0-5.216-.584-7.499-1.632Z" />
-                </svg>
-              </button>
+                {item.label}
+              </Link>
+            ))}
+          </nav>
 
+          {/* Icons — right */}
+          <div className="flex items-center gap-0.5 ml-auto md:ml-0">
+            {/* Search */}
+            <Link href="/shop" aria-label="Search" className="p-2.5 text-gray-500 hover:text-gray-900 transition-colors hidden sm:block">
+              <SearchIcon />
+            </Link>
+
+            {/* Account */}
+            <div ref={accountRef} className="relative">
+              <button type="button" aria-label="Account" onClick={() => setAccountOpen(p => !p)} className="p-2.5 text-gray-500 hover:text-gray-900 transition-colors">
+                <PersonIcon />
+              </button>
               {accountOpen && (
-                <div className="absolute right-0 top-full mt-2 w-52 bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl shadow-xl overflow-hidden z-50">
+                <div className="absolute right-0 top-full mt-2 w-52 bg-white border border-gray-100 rounded-2xl shadow-xl overflow-hidden z-50">
                   {user ? (
                     <>
-                      {/* Logged-in header */}
-                      <div className="px-4 py-3 border-b border-gray-100 dark:border-gray-800">
-                        <p className="text-xs font-semibold text-gray-900 dark:text-white truncate">
-                          {user.user_metadata?.full_name ?? 'My Account'}
-                        </p>
-                        <p className="text-[11px] text-gray-400 dark:text-gray-500 truncate mt-0.5">{user.email}</p>
+                      <div className="px-4 py-3 border-b border-gray-100">
+                        <p className="text-xs font-semibold text-gray-900 truncate">{user.user_metadata?.full_name ?? 'My Account'}</p>
+                        <p className="text-[11px] text-gray-400 truncate mt-0.5">{user.email}</p>
                       </div>
                       <div className="py-1">
-                        <Link
-                          href="/account"
-                          onClick={() => setAccountOpen(false)}
-                          className="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
-                        >
-                          <svg className="w-4 h-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 6a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0ZM4.501 20.118a7.5 7.5 0 0 1 14.998 0A17.933 17.933 0 0 1 12 21.75c-2.676 0-5.216-.584-7.499-1.632Z" />
-                          </svg>
+                        <Link href="/account" onClick={() => setAccountOpen(false)} className="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors">
                           My Account
                         </Link>
-                        <Link
-                          href="/account"
-                          onClick={() => setAccountOpen(false)}
-                          className="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
-                        >
-                          <svg className="w-4 h-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 10.5V6a3.75 3.75 0 1 0-7.5 0v4.5m11.356-1.993 1.263 12c.07.665-.45 1.243-1.119 1.243H4.25a1.125 1.125 0 0 1-1.12-1.243l1.264-12A1.125 1.125 0 0 1 5.513 7.5h12.974c.576 0 1.059.435 1.119 1.007Z" />
-                          </svg>
+                        <Link href="/orders" onClick={() => setAccountOpen(false)} className="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors">
                           My Orders
                         </Link>
                       </div>
-                      <div className="border-t border-gray-100 dark:border-gray-800 py-1">
-                        <button
-                          type="button"
-                          onClick={signOut}
-                          className="flex items-center gap-3 w-full px-4 py-2.5 text-sm text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
-                        >
-                          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0 0 13.5 3h-6a2.25 2.25 0 0 0-2.25 2.25v13.5A2.25 2.25 0 0 0 7.5 21h6a2.25 2.25 0 0 0 2.25-2.25V15m3 0 3-3m0 0-3-3m3 3H9" />
-                          </svg>
+                      <div className="border-t border-gray-100 py-1">
+                        <button type="button" onClick={signOut} className="flex items-center gap-3 w-full px-4 py-2.5 text-sm text-red-500 hover:bg-red-50 transition-colors">
                           Sign out
                         </button>
                       </div>
                     </>
                   ) : (
                     <div className="py-1">
-                      <Link
-                        href="/account"
-                        onClick={() => setAccountOpen(false)}
-                        className="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
-                      >
-                        <svg className="w-4 h-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                          <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0 0 13.5 3h-6a2.25 2.25 0 0 0-2.25 2.25v13.5A2.25 2.25 0 0 0 7.5 21h6a2.25 2.25 0 0 0 2.25-2.25V15m3 0 3-3m0 0-3-3m3 3H9" />
-                        </svg>
-                        Sign in
-                      </Link>
-                      <Link
-                        href="/account"
-                        onClick={() => setAccountOpen(false)}
-                        className="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
-                      >
-                        <svg className="w-4 h-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                          <path strokeLinecap="round" strokeLinejoin="round" d="M18 7.5v3m0 0v3m0-3h3m-3 0h-3m-2.25-4.125a3.375 3.375 0 1 1-6.75 0 3.375 3.375 0 0 1 6.75 0ZM3 19.235v-.11a6.375 6.375 0 0 1 12.75 0v.109A12.318 12.318 0 0 1 9.374 21c-2.331 0-4.512-.645-6.374-1.766Z" />
-                        </svg>
-                        Create account
-                      </Link>
+                      <Link href="/account" onClick={() => setAccountOpen(false)} className="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors">Sign in</Link>
+                      <Link href="/account" onClick={() => setAccountOpen(false)} className="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors">Create account</Link>
                     </div>
                   )}
                 </div>
               )}
             </div>
+
+            {/* Cart */}
+            <Link href="/cart" aria-label="Cart" className="relative p-2.5 text-gray-500 hover:text-gray-900 transition-colors">
+              <BagIcon />
+              {count > 0 && (
+                <span className="absolute top-1.5 right-1.5 min-w-[15px] h-[15px] bg-[#4A0F1C] text-white text-[8px] font-bold rounded-full flex items-center justify-center px-1 leading-none">
+                  {count > 99 ? '99+' : count}
+                </span>
+              )}
+            </Link>
           </div>
         </div>
+
+        {/* ── Mega menu panel ── */}
+        {megaOpen && (
+          <div
+            onMouseEnter={openMega}
+            onMouseLeave={scheduleMegaClose}
+            className="absolute top-full left-0 right-0 bg-white border-t border-gray-100 shadow-2xl z-50 animate-in"
+          >
+            <div className="max-w-7xl mx-auto px-8 py-8">
+              <div className="grid grid-cols-[1fr_1fr_1fr_272px] gap-10">
+                {/* Link columns */}
+                {SHOP_COLUMNS.map((col, ci) => (
+                  <div key={col.heading}>
+                    {ci === 0 && (
+                      <Link
+                        href="/shop"
+                        onClick={() => setMegaOpen(false)}
+                        className="block text-xs font-bold uppercase tracking-widest text-gray-900 hover:text-[#4A0F1C] mb-4 transition-colors"
+                      >
+                        {col.heading}
+                      </Link>
+                    )}
+                    {ci !== 0 && (
+                      <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-4">{col.heading}</p>
+                    )}
+                    <ul className="space-y-3">
+                      {col.links.map(link => (
+                        <li key={link.label}>
+                          <Link
+                            href={link.href}
+                            onClick={() => setMegaOpen(false)}
+                            className="text-sm text-gray-600 hover:text-[#4A0F1C] transition-colors"
+                          >
+                            {link.label}
+                          </Link>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                ))}
+
+                {/* Editorial panel */}
+                <div className="bg-[#4A0F1C] rounded-2xl p-6 flex flex-col justify-between">
+                  <div>
+                    <p className="text-[10px] font-bold uppercase tracking-widest text-[#D4849A] mb-3">
+                      Faith. Word. Life.
+                    </p>
+                    <h3 className="text-[17px] font-bold text-white leading-snug mb-2.5">
+                      Explore the Collection
+                    </h3>
+                    <p className="text-[13px] text-white/60 leading-relaxed">
+                      Carefully curated products for every believer — delivered to your door across Nigeria.
+                    </p>
+                  </div>
+                  <Link
+                    href="/shop"
+                    onClick={() => setMegaOpen(false)}
+                    className="mt-6 inline-flex items-center justify-center px-4 py-2.5 bg-white text-[#4A0F1C] text-xs font-bold rounded-xl hover:bg-gray-50 transition-colors"
+                  >
+                    Shop All Products
+                  </Link>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
       </header>
 
-      {/* ── Mobile / hamburger menu drawer ── */}
-      {menuOpen && (
-        <div className="fixed inset-0 z-50 flex">
-          {/* Backdrop */}
-          <div
-            className="absolute inset-0 bg-black/40 backdrop-blur-sm"
-            onClick={() => setMenuOpen(false)}
-          />
-
-          {/* Drawer */}
-          <div className="relative w-72 max-w-[85vw] bg-white dark:bg-gray-950 h-full flex flex-col shadow-2xl">
-            {/* Header */}
-            <div className="flex items-center justify-between px-6 h-16 border-b border-gray-100 dark:border-gray-800">
-              <span className="text-sm font-bold tracking-[0.15em] uppercase text-gray-900 dark:text-white">
-                Ecclesia Hub
-              </span>
-              <button
-                type="button"
-                aria-label="Close menu"
-                onClick={() => setMenuOpen(false)}
-                className="p-1.5 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
-              >
-                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" />
-                </svg>
-              </button>
-            </div>
-
-            {/* Nav links */}
-            <nav className="flex-1 px-4 py-6 space-y-1 overflow-y-auto">
-              {NAV_LINKS.map(link => (
-                <Link
-                  key={link.href}
-                  href={link.href}
-                  onClick={() => setMenuOpen(false)}
-                  className="flex items-center justify-between px-3 py-3 text-base font-medium text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-50 dark:hover:bg-gray-800/60 rounded-xl transition-colors"
-                >
-                  {link.label}
-                  <svg className="w-4 h-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5" />
-                  </svg>
-                </Link>
-              ))}
-            </nav>
-
-            {/* Footer */}
-            <div className="px-6 py-5 border-t border-gray-100 dark:border-gray-800">
-              <p className="text-xs text-gray-400 dark:text-gray-600">Faith. Word. Life.</p>
-            </div>
-          </div>
-        </div>
+      {/* Overlay — closes mega on click outside */}
+      {megaOpen && (
+        <div
+          className="fixed inset-0 z-30"
+          onMouseEnter={() => setMegaOpen(false)}
+          onClick={() => setMegaOpen(false)}
+        />
       )}
+
+      {/* Mobile drawer */}
+      <MobileDrawer
+        open={mobileOpen}
+        onClose={() => setMobileOpen(false)}
+        user={user}
+        onSignOut={signOut}
+      />
     </>
   )
 }
