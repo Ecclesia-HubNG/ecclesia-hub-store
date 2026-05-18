@@ -2,7 +2,7 @@
 
 import { useRef, useState, useTransition, useEffect } from 'react'
 import type { DragEvent, ChangeEvent } from 'react'
-import { uploadMedia, getMediaAssets } from '@/lib/actions/media'
+import { getMediaAssets } from '@/lib/actions/media'
 import { upsertHeroWidget } from '@/lib/actions/homepage'
 import MediaLibrary from '@/components/admin/MediaLibrary'
 
@@ -195,11 +195,13 @@ export default function HeroWidgetEditor({ initialConfig, products, categories, 
 
     const fd = new FormData()
     fd.append('file', file)
-    const result = await uploadMedia(fd, 'homepage')
+    fd.append('folder', 'homepage')
+    const res = await fetch('/api/upload', { method: 'POST', body: fd })
+    const result = await res.json() as { url?: string; error?: string }
     setUploading(false)
 
-    if (result.error) {
-      setUploadError(result.error)
+    if (!res.ok || result.error) {
+      setUploadError(result.error ?? 'Upload failed')
       setImagePreview(heroImage)
       return
     }
