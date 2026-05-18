@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import Link from 'next/link'
 import ProductCard from '@/components/store/ProductCard'
+import HeroSection from '@/components/store/HeroSection'
 
 export default async function HomePage() {
   const supabase = createClient()
@@ -12,45 +13,27 @@ export default async function HomePage() {
     .eq('is_active', true)
     .limit(4)
 
+  // Use first featured product's thumbnail as hero image if available
+  const heroImage = featured?.find(p => p.thumbnail)?.thumbnail ?? null
+
   return (
     <div>
       {/* Hero */}
-      <section className="max-w-7xl mx-auto px-8 pt-20 pb-24 text-center">
-        <p className="text-sm font-medium text-gray-400 dark:text-gray-500 tracking-widest uppercase mb-4">
-          Faith. Word. Life.
-        </p>
-        <h1 className="text-5xl font-bold text-gray-900 dark:text-white leading-tight tracking-tight max-w-2xl mx-auto">
-          Resources to grow your faith
-        </h1>
-        <p className="mt-5 text-lg text-gray-500 dark:text-gray-400 max-w-xl mx-auto">
-          Bibles, books, and spiritual resources carefully curated for every believer.
-        </p>
-        <div className="mt-8 flex items-center justify-center gap-4">
-          <Link
-            href="/shop"
-            className="px-6 py-3 bg-gray-900 dark:bg-white text-white dark:text-gray-900 text-sm font-medium rounded-full hover:bg-gray-700 dark:hover:bg-gray-100 transition-colors"
-          >
-            Shop now
-          </Link>
-          <Link
-            href="/about"
-            className="px-6 py-3 text-sm font-medium text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors"
-          >
-            About us →
-          </Link>
-        </div>
-      </section>
+      <HeroSection heroImage={heroImage} />
 
       {/* Featured products */}
       {!!featured?.length && (
-        <section className="max-w-7xl mx-auto px-8 pb-20">
+        <section className="max-w-7xl mx-auto px-4 md:px-8 pb-20">
           <div className="flex items-center justify-between mb-8">
-            <h2 className="text-xl font-semibold text-gray-900 dark:text-white">Featured</h2>
-            <Link href="/shop" className="text-sm text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 transition-colors">
+            <div>
+              <h2 className="text-xl font-bold text-gray-900">Featured Products</h2>
+              <p className="text-sm text-gray-400 mt-0.5">Handpicked favourites</p>
+            </div>
+            <Link href="/shop" className="text-sm font-medium text-[#4A0F1C] hover:text-[#3A0B15] transition-colors">
               View all →
             </Link>
           </div>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6">
             {featured.map(product => (
               <ProductCard
                 key={product.id}
@@ -62,19 +45,20 @@ export default async function HomePage() {
       )}
 
       {/* CTA strip */}
-      <section className="bg-gray-50 dark:bg-gray-900 border-y border-gray-100 dark:border-gray-800">
-        <div className="max-w-7xl mx-auto px-8 py-16 flex flex-col md:flex-row items-center justify-between gap-6">
+      <section className="max-w-7xl mx-auto px-4 md:px-8 pb-16">
+        <div className="bg-[#4A0F1C] rounded-3xl px-8 md:px-14 py-12 flex flex-col md:flex-row items-center justify-between gap-6">
           <div>
-            <h3 className="text-xl font-semibold text-gray-900 dark:text-white">Browse our full collection</h3>
-            <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-              From study Bibles to devotionals — something for every stage of your journey.
+            <p className="text-xs font-bold uppercase tracking-widest text-[#D4849A] mb-2">Faith. Word. Life.</p>
+            <h3 className="text-xl md:text-2xl font-bold text-white">Browse the full collection</h3>
+            <p className="text-sm text-white/60 mt-1.5 max-w-md">
+              Body care and skincare crafted for those who live with intention.
             </p>
           </div>
           <Link
             href="/shop"
-            className="shrink-0 px-6 py-3 bg-gray-900 dark:bg-white text-white dark:text-gray-900 text-sm font-medium rounded-full hover:bg-gray-700 dark:hover:bg-gray-100 transition-colors"
+            className="shrink-0 px-7 py-3 bg-white text-[#4A0F1C] text-sm font-bold rounded-full hover:bg-gray-50 transition-colors shadow-sm"
           >
-            Go to shop
+            Shop Now →
           </Link>
         </div>
       </section>
