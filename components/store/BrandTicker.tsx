@@ -29,7 +29,7 @@ export default async function BrandTicker() {
   const duration = repeated.length * 2
 
   return (
-    <div className="w-full px-3 md:px-5 py-3">
+    <div className="w-full px-3 md:px-5 pb-3">
       <div className="overflow-hidden rounded-2xl py-5 bg-[#4A0F1C] dark:bg-white">
         <div className="flex items-center gap-10 ticker-track" style={{ animationDuration: `${duration}s` }}>
           {doubled.map((brand, i) => (
