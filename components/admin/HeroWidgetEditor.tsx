@@ -66,8 +66,7 @@ export default function HeroWidgetEditor({ initialConfig, products, categories }
     }
     setUploading(true)
     setUploadError('')
-    const preview = URL.createObjectURL(file)
-    setImagePreview(preview)
+    setImagePreview(URL.createObjectURL(file))
 
     const fd = new FormData()
     fd.append('file', file)
@@ -79,8 +78,25 @@ export default function HeroWidgetEditor({ initialConfig, products, categories }
       setImagePreview(heroImage)
       return
     }
-    setHeroImage(result.url ?? null)
-    setImagePreview(result.url ?? null)
+
+    const url = result.url ?? null
+    setHeroImage(url)
+    setImagePreview(url)
+
+    // Auto-save immediately so the hero updates without needing a manual save
+    startTransition(async () => {
+      try {
+        await upsertHeroWidget({
+          hero_image: url,
+          product_id: productId || null,
+          category_id: categoryId || null,
+        })
+        setToast(true)
+        setTimeout(() => setToast(false), 3000)
+      } catch (err) {
+        setSaveError(err instanceof Error ? err.message : 'Failed to save')
+      }
+    })
   }
 
   const handleDrop = (e: DragEvent<HTMLDivElement>) => {

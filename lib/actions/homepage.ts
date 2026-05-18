@@ -9,7 +9,7 @@ export async function getHeroWidget() {
     .select('id, config')
     .eq('type', 'hero')
     .eq('is_active', true)
-    .single()
+    .maybeSingle()
   return data
 }
 
@@ -19,17 +19,23 @@ export async function upsertHeroWidget(config: {
   category_id?: string | null
 }) {
   const supabase = createAdminClient()
-  // Check if exists
   const { data: existing } = await supabase
     .from('homepage_widgets')
     .select('id')
     .eq('type', 'hero')
-    .single()
+    .maybeSingle()
 
   if (existing) {
-    await supabase.from('homepage_widgets').update({ config, is_active: true }).eq('id', existing.id)
+    const { error } = await supabase
+      .from('homepage_widgets')
+      .update({ config, is_active: true })
+      .eq('id', existing.id)
+    if (error) throw new Error(error.message)
   } else {
-    await supabase.from('homepage_widgets').insert({ type: 'hero', config, position: 0, is_active: true })
+    const { error } = await supabase
+      .from('homepage_widgets')
+      .insert({ type: 'hero', config, position: 0, is_active: true })
+    if (error) throw new Error(error.message)
   }
   revalidatePath('/')
   revalidatePath('/home')
