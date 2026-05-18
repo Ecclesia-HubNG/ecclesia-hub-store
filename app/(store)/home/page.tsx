@@ -13,13 +13,17 @@ export default async function HomePage() {
     .eq('is_active', true)
     .limit(4)
 
-  // Use first featured product's thumbnail as hero image if available
   const heroImage = featured?.find(p => p.thumbnail)?.thumbnail ?? null
+  const raw = featured?.[0] ?? null
+  const featuredProduct = raw ? {
+    ...raw,
+    categories: Array.isArray(raw.categories) ? (raw.categories[0] ?? null) : raw.categories,
+  } : null
 
   return (
     <div>
       {/* Hero */}
-      <HeroSection heroImage={heroImage} />
+      <HeroSection heroImage={heroImage} featuredProduct={featuredProduct} />
 
       {/* Featured products */}
       {!!featured?.length && (
