@@ -877,7 +877,7 @@ export function ProductsManager({
                     />
                   </td>
                   <td className="px-4 py-3">
-                    <div className="flex items-center gap-3">
+                    <Link href={`/admin/products/${product.id}/edit`} className="flex items-center gap-3 group/row">
                       {product.thumbnail ? (
                         <img src={product.thumbnail} alt="" className="w-9 h-9 rounded-lg object-cover bg-gray-100 dark:bg-gray-800 shrink-0" />
                       ) : (
@@ -888,10 +888,10 @@ export function ProductsManager({
                         </div>
                       )}
                       <div>
-                        <p className="font-medium text-gray-900 dark:text-white leading-tight">{product.name}</p>
+                        <p className="font-medium text-gray-900 dark:text-white leading-tight group-hover/row:text-[#4A0F1C] dark:group-hover/row:text-[#D4849A] transition-colors">{product.name}</p>
                         <p className="text-xs text-gray-400 dark:text-gray-600 font-mono mt-0.5">{product.slug}</p>
                       </div>
-                    </div>
+                    </Link>
                   </td>
                   <td className="px-4 py-3 text-gray-600 dark:text-gray-400">
                     {product.categories?.name ?? <span className="text-gray-300 dark:text-gray-700">—</span>}
