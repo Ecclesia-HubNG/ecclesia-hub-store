@@ -6,26 +6,31 @@ export default function HeroSection({
   heroImage?: string | null
 }) {
   return (
-    <section className="max-w-7xl mx-auto px-4 md:px-8 pt-6 pb-12">
-      <div className="relative overflow-hidden rounded-3xl bg-[#FAF6F0] grid grid-cols-1 md:grid-cols-2 min-h-[500px]">
+    <section className="w-full px-3 md:px-5 pt-4 pb-10">
+      <div className="relative overflow-hidden rounded-3xl grid grid-cols-1 md:grid-cols-2 min-h-[560px]">
 
-        {/* ── Left: text content ── */}
-        <div className="flex flex-col justify-center px-8 md:px-14 py-14 md:py-0 relative z-10">
+        {/* ── Left: cream panel ── */}
+        <div className="bg-[#FAF6F0] flex flex-col justify-center px-10 md:px-16 py-16 md:py-0">
           {/* Tag */}
-          <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full w-fit mb-7" style={{ backgroundColor: 'rgba(74,15,28,0.07)' }}>
+          <div
+            className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full w-fit mb-8"
+            style={{ backgroundColor: 'rgba(74,15,28,0.07)' }}
+          >
             <span className="w-1.5 h-1.5 rounded-full bg-[#4A0F1C]" />
-            <span className="text-[10px] font-bold uppercase tracking-widest text-[#4A0F1C]">New Collection</span>
+            <span className="text-[10px] font-bold uppercase tracking-widest text-[#4A0F1C]">
+              New Collection
+            </span>
           </div>
 
           {/* Headline */}
-          <h1 className="text-[2.6rem] md:text-[3rem] lg:text-[3.5rem] font-bold text-gray-900 leading-[1.06] tracking-tight mb-5">
+          <h1 className="text-[2.8rem] md:text-[3.2rem] lg:text-[3.8rem] font-bold text-gray-900 leading-[1.05] tracking-tight mb-6">
             Radiant skin<br />
             for the<br />
             everyday believer.
           </h1>
 
           {/* Description */}
-          <p className="text-sm text-gray-500 max-w-[270px] leading-relaxed mb-9">
+          <p className="text-sm text-gray-500 max-w-[280px] leading-relaxed mb-10">
             Premium body care curated for those who live with intention — delivered across Nigeria.
           </p>
 
@@ -33,61 +38,43 @@ export default function HeroSection({
           <div className="flex items-center gap-3 flex-wrap">
             <Link
               href="/shop"
-              className="px-7 py-3 bg-[#4A0F1C] text-white text-sm font-semibold rounded-full hover:bg-[#3A0B15] transition-colors shadow-sm"
+              className="px-7 py-3.5 bg-[#4A0F1C] text-white text-sm font-semibold rounded-full hover:bg-[#3A0B15] transition-colors"
             >
               Shop Now
             </Link>
             <Link
               href="/shop"
-              className="px-7 py-3 bg-white border border-gray-200 text-gray-700 text-sm font-semibold rounded-full hover:border-gray-400 hover:text-gray-900 transition-colors shadow-sm"
+              className="px-7 py-3.5 border border-gray-300 text-gray-700 text-sm font-semibold rounded-full hover:border-gray-500 hover:text-gray-900 transition-colors bg-white"
             >
               Explore More
             </Link>
           </div>
         </div>
 
-        {/* ── Right: visual panel ── */}
-        <div className="relative hidden md:block overflow-hidden min-h-[420px]">
-          {/* Gradient fill */}
-          <div className="absolute inset-0 bg-gradient-to-br from-[#EDD9C8] via-[#E4BCC6]/70 to-[#4A0F1C]/15" />
+        {/* ── Right: dark brand panel ── */}
+        <div className="relative bg-[#4A0F1C] overflow-hidden min-h-[360px] md:min-h-0">
+          {/* Radial glow */}
+          <div className="absolute inset-0 bg-radial-at-center from-[#6B1A2A] to-[#4A0F1C]" />
 
-          {/* Blurred depth blobs */}
-          <div className="absolute -top-24 -right-24 w-96 h-96 rounded-full bg-[#4A0F1C]/10 blur-3xl" />
-          <div className="absolute bottom-0 left-0 w-72 h-72 rounded-full bg-[#D4849A]/20 blur-2xl" />
+          {/* Decorative rings */}
+          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[420px] h-[420px] rounded-full border border-white/[0.05]" />
+          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[300px] h-[300px] rounded-full border border-white/[0.07]" />
+          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[180px] h-[180px] rounded-full border border-white/[0.10]" />
 
-          {/* Product image (real) or decorative mockup */}
-          {heroImage ? (
+          {/* Centre glow blob */}
+          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-64 h-64 rounded-full bg-[#D4849A]/10 blur-3xl" />
+
+          {/* Product image (if available) */}
+          {heroImage && (
             <img
               src={heroImage}
               alt="Featured product"
-              className="absolute inset-0 w-full h-full object-contain p-10 z-10"
+              className="absolute inset-0 w-full h-full object-contain p-12 z-10 opacity-90"
             />
-          ) : (
-            <div className="absolute inset-0 flex items-center justify-center z-10">
-              <div className="relative">
-                {/* Main card */}
-                <div className="w-44 h-60 rounded-[36px] bg-white/50 backdrop-blur-md shadow-2xl border border-white/70 flex flex-col items-center justify-center gap-4">
-                  {/* Icon ring */}
-                  <div className="w-14 h-14 rounded-full bg-[#4A0F1C]/12 flex items-center justify-center">
-                    <svg className="w-7 h-7 text-[#4A0F1C]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.2}>
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904 9 18.75l-.813-2.846a4.5 4.5 0 0 0-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 0 0 3.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 0 0 3.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 0 0-3.09 3.09Z" />
-                    </svg>
-                  </div>
-                  <div className="text-center px-4">
-                    <p className="text-[11px] font-bold text-[#4A0F1C] tracking-widest uppercase">Ecclesia</p>
-                    <p className="text-[10px] text-gray-400 mt-1 leading-relaxed">Premium Body Care</p>
-                  </div>
-                </div>
-                {/* Decorative dots */}
-                <div className="absolute -top-5 -left-5 w-12 h-12 rounded-full bg-[#D4849A]/25 blur-sm" />
-                <div className="absolute -bottom-4 -right-4 w-9 h-9 rounded-full bg-[#4A0F1C]/15" />
-                <div className="absolute top-8 -right-8 w-5 h-5 rounded-full bg-white/60" />
-              </div>
-            </div>
           )}
 
           {/* ── Floating badge: price ── */}
-          <div className="absolute top-10 right-10 bg-white rounded-2xl shadow-xl px-4 py-3 flex items-center gap-3 z-20">
+          <div className="absolute top-10 right-10 bg-white rounded-2xl shadow-2xl px-4 py-3 flex items-center gap-3 z-20">
             <div>
               <p className="text-[9px] text-gray-400 uppercase tracking-wide leading-none mb-1">Starting from</p>
               <p className="text-[15px] font-bold text-gray-900 leading-none">₦8,500</p>
@@ -99,9 +86,9 @@ export default function HeroSection({
             </div>
           </div>
 
-          {/* ── Floating badge: feature ── */}
-          <div className="absolute bottom-14 right-8 bg-[#4A0F1C] rounded-2xl shadow-xl px-4 py-4 w-[158px] z-20">
-            <p className="text-[11px] text-white/90 font-medium leading-snug">
+          {/* ── Floating badge: tagline ── */}
+          <div className="absolute bottom-12 right-10 border border-white/20 bg-white/10 backdrop-blur-sm rounded-2xl px-5 py-4 w-[172px] z-20">
+            <p className="text-xs text-white font-semibold leading-snug">
               Premium quality,<br />
               delivered across<br />
               Nigeria.
@@ -110,22 +97,33 @@ export default function HeroSection({
               <div className="flex gap-1">
                 <span className="w-1.5 h-1.5 rounded-full bg-[#D4849A]" />
                 <span className="w-1.5 h-1.5 rounded-full bg-[#D4849A]/50" />
-                <span className="w-1.5 h-1.5 rounded-full bg-[#D4849A]/25" />
+                <span className="w-1.5 h-1.5 rounded-full bg-[#D4849A]/20" />
               </div>
               <Link
                 href="/shop"
-                className="w-6 h-6 rounded-full bg-white/15 hover:bg-white/25 flex items-center justify-center transition-colors"
+                className="w-6 h-6 rounded-full bg-white/20 hover:bg-white/30 flex items-center justify-center transition-colors"
               >
-                <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <svg className="w-2.5 h-2.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="m4.5 19.5 15-15m0 0H8.25m11.25 0v11.25" />
                 </svg>
               </Link>
             </div>
           </div>
+
+          {/* ── Bottom-left: stat strip ── */}
+          <div className="absolute bottom-12 left-10 z-20 flex flex-col gap-3">
+            {[
+              { label: 'Products', value: '20+' },
+              { label: 'Delivered', value: '500+' },
+            ].map(s => (
+              <div key={s.label} className="flex items-baseline gap-2">
+                <span className="text-2xl font-bold text-white">{s.value}</span>
+                <span className="text-[11px] text-white/40 uppercase tracking-wider">{s.label}</span>
+              </div>
+            ))}
+          </div>
         </div>
 
-        {/* Mobile: subtle bottom gradient (no right panel on mobile) */}
-        <div className="md:hidden h-2 bg-gradient-to-r from-[#4A0F1C]/5 to-[#D4849A]/10 rounded-b-3xl" />
       </div>
     </section>
   )
