@@ -3,6 +3,7 @@
 import { useFormState } from 'react-dom'
 import { useEffect, useRef, useState, useTransition } from 'react'
 import type { DragEvent, ChangeEvent, FormEvent } from 'react'
+import { resizeImage } from '@/lib/resize-image'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import CategoriesSideList from '@/components/admin/CategoriesSideList'
@@ -81,12 +82,12 @@ export default function CategoryForm({
 
   const uploadFile = async (file: File) => {
     if (!file.type.startsWith('image/')) { setUploadError('Only image files allowed'); return }
-    if (file.size > 10 * 1024 * 1024) { setUploadError('File exceeds 10 MB'); return }
     setUploading(true); setUploadError('')
     const preview = URL.createObjectURL(file)
     setImagePreview(preview)
+    const resized = await resizeImage(file, 2000)
     const fd = new FormData()
-    fd.append('file', file)
+    fd.append('file', resized)
     fd.append('folder', 'categories')
     const res = await fetch('/api/upload', { method: 'POST', body: fd })
     const json = await res.json()

@@ -29,10 +29,6 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Only image files are allowed' }, { status: 400, headers: CORS_HEADERS })
   }
 
-  if (file.size > 10 * 1024 * 1024) {
-    return NextResponse.json({ error: 'File exceeds 10 MB limit' }, { status: 400, headers: CORS_HEADERS })
-  }
-
   const ext = file.name.split('.').pop()?.toLowerCase() ?? 'jpg'
   const key = `${folder}/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`
   const buffer = Buffer.from(await file.arrayBuffer())

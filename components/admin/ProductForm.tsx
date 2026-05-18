@@ -7,6 +7,7 @@ import Link from 'next/link'
 import { createCategoryInline } from '@/lib/actions/categories'
 import { createBrandInline } from '@/lib/actions/brands'
 import { checkDuplicateProduct } from '@/lib/actions/products'
+import { resizeImage } from '@/lib/resize-image'
 
 // ─── Types ────────────────────────────────────────────────
 
@@ -244,8 +245,9 @@ export default function ProductForm({
 
   const uploadImage = async (item: ImageItem) => {
     if (!item.file) return
+    const resized = await resizeImage(item.file, 2000)
     const fd = new FormData()
-    fd.append('file', item.file)
+    fd.append('file', resized)
     fd.append('folder', 'products')
     const res = await fetch('/api/upload', { method: 'POST', body: fd })
     const json = await res.json()
