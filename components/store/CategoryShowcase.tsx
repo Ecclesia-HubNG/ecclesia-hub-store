@@ -39,7 +39,7 @@ export default function CategoryShowcase({ categories }: { categories: Category[
       </div>
 
       {/* Scrollable row — fixed card width so they breathe, hidden scrollbar */}
-      <div className="flex gap-4 overflow-x-auto scrollbar-hide">
+      <div className="flex gap-4 overflow-x-auto scrollbar-hide py-3">
         {categories.map((cat, i) => {
           const fallback = FALLBACK_COLORS[i % FALLBACK_COLORS.length]
           return (
