@@ -30,7 +30,7 @@ export default async function BrandTicker() {
 
   return (
     <div className="w-full px-3 md:px-5 py-3">
-      <div className="overflow-hidden rounded-2xl border border-gray-100 bg-white py-5">
+      <div className="overflow-hidden rounded-2xl py-5 bg-[#4A0F1C] dark:bg-white">
         <div className="flex items-center gap-10 ticker-track" style={{ animationDuration: `${duration}s` }}>
           {doubled.map((brand, i) => (
             <span key={`${brand.id}-${i}`} className="flex items-center gap-10 shrink-0">
@@ -41,11 +41,11 @@ export default async function BrandTicker() {
                   className="h-6 w-auto object-contain opacity-50 hover:opacity-80 transition-opacity grayscale"
                 />
               ) : (
-                <span className="text-sm font-semibold tracking-[0.1em] uppercase text-gray-400 hover:text-gray-700 transition-colors cursor-default whitespace-nowrap">
+                <span className="text-sm font-semibold tracking-[0.1em] uppercase text-white/80 hover:text-white dark:text-[#4A0F1C]/70 dark:hover:text-[#4A0F1C] transition-colors cursor-default whitespace-nowrap">
                   {brand.name}
                 </span>
               )}
-              <span className="w-1 h-1 rounded-full bg-gray-300 shrink-0" />
+              <span className="w-1 h-1 rounded-full bg-white/40 dark:bg-[#4A0F1C]/30 shrink-0" />
             </span>
           ))}
         </div>
