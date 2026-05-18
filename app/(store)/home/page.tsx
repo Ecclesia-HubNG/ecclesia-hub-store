@@ -3,10 +3,10 @@ export const dynamic = 'force-dynamic'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import Link from 'next/link'
-import ProductCard from '@/components/store/ProductCard'
 import HeroSection from '@/components/store/HeroSection'
 import BrandTicker from '@/components/store/BrandTicker'
 import CategoryShowcase from '@/components/store/CategoryShowcase'
+import FeaturedProducts from '@/components/store/FeaturedProducts'
 
 export default async function HomePage() {
   const supabase = createClient()
@@ -18,7 +18,7 @@ export default async function HomePage() {
       .select('id, name, slug, price, compare_at_price, thumbnail, stock, categories(name)')
       .eq('is_featured', true)
       .eq('is_active', true)
-      .limit(4),
+      .limit(8),
     admin
       .from('homepage_widgets')
       .select('config')
@@ -69,29 +69,9 @@ export default async function HomePage() {
 
       <CategoryShowcase categories={categories ?? []} />
 
-      {!!featured?.length && (
-        <section className="max-w-7xl mx-auto px-4 md:px-8 pb-20">
-          <div className="flex items-center justify-between mb-8">
-            <div>
-              <h2 className="text-xl font-bold text-gray-900">Featured Products</h2>
-              <p className="text-sm text-gray-400 mt-0.5">Handpicked favourites</p>
-            </div>
-            <Link href="/shop" className="text-sm font-medium text-[#4A0F1C] hover:text-[#3A0B15] transition-colors">
-              View all →
-            </Link>
-          </div>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6">
-            {featured.map(product => (
-              <ProductCard
-                key={product.id}
-                product={product as typeof product & { categories: { name: string } | null }}
-              />
-            ))}
-          </div>
-        </section>
-      )}
+      <FeaturedProducts products={(featured ?? []) as any} />
 
-      <section className="max-w-7xl mx-auto px-4 md:px-8 pb-16">
+      <section className="w-full px-3 md:px-5 pb-16">
         <div className="bg-[#4A0F1C] rounded-3xl px-8 md:px-14 py-12 flex flex-col md:flex-row items-center justify-between gap-6">
           <div>
             <p className="text-xs font-bold uppercase tracking-widest text-[#D4849A] mb-2">Faith. Word. Life.</p>
