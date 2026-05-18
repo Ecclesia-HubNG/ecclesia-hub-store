@@ -279,82 +279,97 @@ export default function HeroWidgetEditor({ initialConfig, products, categories, 
 
       {/* Hero Image */}
       <Section title="Hero Image" description="Upload the banner image displayed in the hero section of your homepage.">
-        <div>
+        <div className="space-y-3">
+          {/* Preview or drop zone */}
           {imagePreview ? (
             <div className="relative group">
-              <div className="w-full h-48 rounded-xl overflow-hidden bg-gray-50 dark:bg-gray-800 flex items-center justify-center">
+              <div className="w-full h-48 rounded-xl overflow-hidden bg-gray-50 dark:bg-gray-800">
                 <img src={imagePreview} alt="Hero preview" className="w-full h-full object-cover" />
-                {uploading && (
-                  <div className="absolute inset-0 bg-black/50 flex items-center justify-center rounded-xl">
-                    <svg className="w-6 h-6 text-white animate-spin" fill="none" viewBox="0 0 24 24">
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-                    </svg>
-                  </div>
-                )}
               </div>
-              <div className="absolute top-2 right-2 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                <button
-                  type="button"
-                  onClick={() => fileInputRef.current?.click()}
-                  className="px-3 py-1.5 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 text-xs font-medium rounded-lg shadow hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
-                >
-                  Replace
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setHeroImage(null)
-                    setImagePreview(null)
-                  }}
-                  className="px-3 py-1.5 bg-white dark:bg-gray-800 text-red-500 text-xs font-medium rounded-lg shadow hover:bg-red-50 dark:hover:bg-gray-700 transition-colors"
-                >
-                  Remove
-                </button>
-              </div>
+              {!uploading && (
+                <div className="absolute top-2 right-2 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                  <button
+                    type="button"
+                    onClick={() => fileInputRef.current?.click()}
+                    className="px-3 py-1.5 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 text-xs font-medium rounded-lg shadow hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+                  >
+                    Replace
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => { setHeroImage(null); setImagePreview(null) }}
+                    className="px-3 py-1.5 bg-white dark:bg-gray-800 text-red-500 text-xs font-medium rounded-lg shadow hover:bg-red-50 dark:hover:bg-gray-700 transition-colors"
+                  >
+                    Remove
+                  </button>
+                </div>
+              )}
             </div>
           ) : (
             <div
-              onDragOver={e => {
-                e.preventDefault()
-                setDragOver(true)
-              }}
+              onDragOver={e => { e.preventDefault(); setDragOver(true) }}
               onDragLeave={() => setDragOver(false)}
               onDrop={handleDrop}
-              onClick={() => fileInputRef.current?.click()}
-              className={`flex flex-col items-center justify-center gap-2 border-2 border-dashed rounded-xl p-10 cursor-pointer transition-colors ${
-                dragOver
-                  ? 'border-gray-400 bg-gray-100 dark:bg-gray-800'
-                  : 'border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50 hover:border-gray-300 dark:hover:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-800'
+              onClick={() => !uploading && fileInputRef.current?.click()}
+              className={`flex flex-col items-center justify-center gap-2 border-2 border-dashed rounded-xl p-10 transition-colors ${
+                uploading
+                  ? 'border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-800/50 cursor-wait'
+                  : dragOver
+                  ? 'border-gray-400 bg-gray-100 dark:bg-gray-800 cursor-pointer'
+                  : 'border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50 hover:border-gray-300 dark:hover:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-800 cursor-pointer'
               }`}
             >
-              <svg
-                className="w-10 h-10 text-gray-300 dark:text-gray-600"
-                fill="none"
-                viewBox="0 0 24 24"
-                strokeWidth={1}
-                stroke="currentColor"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  d="m2.25 15.75 5.159-5.159a2.25 2.25 0 0 1 3.182 0l5.159 5.159m-1.5-1.5 1.409-1.409a2.25 2.25 0 0 1 3.182 0l2.909 2.909m-18 3.75h16.5a1.5 1.5 0 0 0 1.5-1.5V6a1.5 1.5 0 0 0-1.5-1.5H3.75A1.5 1.5 0 0 0 2.25 6v12a1.5 1.5 0 0 0 1.5 1.5Zm10.5-11.25h.008v.008h-.008V8.25Zm.375 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Z"
-                />
-              </svg>
+              {uploading ? (
+                <svg className="w-8 h-8 text-gray-400 dark:text-gray-500 animate-spin" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                </svg>
+              ) : (
+                <svg className="w-10 h-10 text-gray-300 dark:text-gray-600" fill="none" viewBox="0 0 24 24" strokeWidth={1} stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="m2.25 15.75 5.159-5.159a2.25 2.25 0 0 1 3.182 0l5.159 5.159m-1.5-1.5 1.409-1.409a2.25 2.25 0 0 1 3.182 0l2.909 2.909m-18 3.75h16.5a1.5 1.5 0 0 0 1.5-1.5V6a1.5 1.5 0 0 0-1.5-1.5H3.75A1.5 1.5 0 0 0 2.25 6v12a1.5 1.5 0 0 0 1.5 1.5Zm10.5-11.25h.008v.008h-.008V8.25Zm.375 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Z" />
+                </svg>
+              )}
               <p className="text-sm font-medium text-gray-600 dark:text-gray-400">
-                Drop image here, or{' '}
-                <span className="text-gray-900 dark:text-white underline underline-offset-2">browse</span>
+                {uploading ? 'Uploading image…' : <>Drop image here, or <span className="text-gray-900 dark:text-white underline underline-offset-2">browse</span></>}
               </p>
-              <p className="text-xs text-gray-400 dark:text-gray-600">PNG, JPG, WebP up to 10 MB</p>
+              {!uploading && <p className="text-xs text-gray-400 dark:text-gray-600">PNG, JPG, WebP up to 10 MB</p>}
             </div>
           )}
+
+          {/* Inline upload / save status */}
+          {uploading && (
+            <div className="flex items-center gap-2 px-3 py-2 bg-blue-50 dark:bg-blue-950/30 border border-blue-100 dark:border-blue-900 rounded-lg">
+              <svg className="w-4 h-4 text-blue-500 dark:text-blue-400 animate-spin shrink-0" fill="none" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+              </svg>
+              <span className="text-sm text-blue-700 dark:text-blue-300">Uploading image to Cloudflare R2…</span>
+            </div>
+          )}
+          {isPending && !uploading && (
+            <div className="flex items-center gap-2 px-3 py-2 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg">
+              <svg className="w-4 h-4 text-gray-400 animate-spin shrink-0" fill="none" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+              </svg>
+              <span className="text-sm text-gray-500 dark:text-gray-400">Saving to homepage…</span>
+            </div>
+          )}
+          {uploadError && (
+            <div className="flex items-center gap-2 px-3 py-2 bg-red-50 dark:bg-red-950/30 border border-red-100 dark:border-red-900 rounded-lg">
+              <svg className="w-4 h-4 text-red-500 shrink-0" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126ZM12 15.75h.007v.008H12v-.008Z" />
+              </svg>
+              <span className="text-sm text-red-600 dark:text-red-400">{uploadError}</span>
+            </div>
+          )}
+
           <input ref={fileInputRef} type="file" accept="image/*" onChange={handleFileInput} className="hidden" />
-          {uploadError && <p className="text-xs text-red-500 dark:text-red-400 mt-2">{uploadError}</p>}
 
           <button
             type="button"
             onClick={() => setShowPicker(true)}
-            className="mt-3 text-sm text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 underline underline-offset-2 transition-colors"
+            className="text-sm text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 underline underline-offset-2 transition-colors"
           >
             Or pick from media library
           </button>
