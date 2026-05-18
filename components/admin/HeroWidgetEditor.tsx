@@ -1,10 +1,132 @@
 'use client'
 
-import { useRef, useState, useTransition } from 'react'
+import { useRef, useState, useTransition, useEffect } from 'react'
 import type { DragEvent, ChangeEvent } from 'react'
 import { uploadMedia, getMediaAssets } from '@/lib/actions/media'
 import { upsertHeroWidget } from '@/lib/actions/homepage'
 import MediaLibrary from '@/components/admin/MediaLibrary'
+
+type Product = { id: string; name: string; thumbnail: string | null }
+
+function ProductPicker({
+  products,
+  value,
+  onChange,
+}: {
+  products: Product[]
+  value: string
+  onChange: (id: string) => void
+}) {
+  const [open, setOpen] = useState(false)
+  const [search, setSearch] = useState('')
+  const ref = useRef<HTMLDivElement>(null)
+
+  const selected = products.find(p => p.id === value) ?? null
+  const filtered = products.filter(p =>
+    p.name.toLowerCase().includes(search.toLowerCase())
+  )
+
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false)
+    }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [])
+
+  return (
+    <div ref={ref} className="relative">
+      {/* Trigger */}
+      <button
+        type="button"
+        onClick={() => { setOpen(p => !p); setSearch('') }}
+        className="w-full flex items-center gap-3 px-3 py-2.5 border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-left hover:border-gray-300 dark:hover:border-gray-600 transition-colors"
+      >
+        {selected ? (
+          <>
+            {selected.thumbnail ? (
+              <img src={selected.thumbnail} alt="" className="w-8 h-8 rounded-md object-cover shrink-0" />
+            ) : (
+              <div className="w-8 h-8 rounded-md bg-gray-100 dark:bg-gray-700 shrink-0" />
+            )}
+            <span className="text-sm font-medium text-gray-900 dark:text-white flex-1 truncate">{selected.name}</span>
+            <button
+              type="button"
+              onClick={e => { e.stopPropagation(); onChange(''); setOpen(false) }}
+              className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition-colors"
+            >
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </>
+        ) : (
+          <>
+            <span className="text-sm text-gray-400 dark:text-gray-500 flex-1">— None selected —</span>
+            <svg className="w-4 h-4 text-gray-400 shrink-0" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
+            </svg>
+          </>
+        )}
+      </button>
+
+      {/* Dropdown */}
+      {open && (
+        <div className="absolute top-full left-0 right-0 mt-1 z-30 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl shadow-xl overflow-hidden">
+          <div className="p-2 border-b border-gray-100 dark:border-gray-800">
+            <input
+              autoFocus
+              type="text"
+              placeholder="Search products…"
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              className="w-full px-3 py-2 text-sm bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-gray-900 dark:text-gray-100 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-900/10 dark:focus:ring-white/10"
+            />
+          </div>
+          <div className="overflow-y-auto max-h-56">
+            <button
+              type="button"
+              onClick={() => { onChange(''); setOpen(false) }}
+              className={`w-full flex items-center gap-3 px-3 py-2 text-sm transition-colors ${
+                !value ? 'bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-white font-medium' : 'text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800'
+              }`}
+            >
+              <div className="w-8 h-8 rounded-md border-2 border-dashed border-gray-200 dark:border-gray-700 shrink-0" />
+              None
+            </button>
+            {filtered.length === 0 && (
+              <p className="px-3 py-4 text-sm text-center text-gray-400">No products match</p>
+            )}
+            {filtered.map(p => (
+              <button
+                key={p.id}
+                type="button"
+                onClick={() => { onChange(p.id); setOpen(false) }}
+                className={`w-full flex items-center gap-3 px-3 py-2 text-sm transition-colors ${
+                  value === p.id ? 'bg-[#4A0F1C]/5 dark:bg-[#4A0F1C]/20' : 'hover:bg-gray-50 dark:hover:bg-gray-800'
+                }`}
+              >
+                {p.thumbnail ? (
+                  <img src={p.thumbnail} alt="" className="w-8 h-8 rounded-md object-cover shrink-0" />
+                ) : (
+                  <div className="w-8 h-8 rounded-md bg-gray-100 dark:bg-gray-700 shrink-0" />
+                )}
+                <span className={`truncate ${value === p.id ? 'font-medium text-[#4A0F1C] dark:text-[#D4849A]' : 'text-gray-700 dark:text-gray-300'}`}>
+                  {p.name}
+                </span>
+                {value === p.id && (
+                  <svg className="w-4 h-4 text-[#4A0F1C] dark:text-[#D4849A] shrink-0 ml-auto" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="m4.5 12.75 6 6 9-13.5" />
+                  </svg>
+                )}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
 
 type HeroConfig = {
   hero_image?: string | null
@@ -274,17 +396,7 @@ export default function HeroWidgetEditor({ initialConfig, products, categories, 
         title="Featured Product"
         description="Select a product to feature in the hero section. Leave empty to show no product."
       >
-        <div>
-          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">Product</label>
-          <select value={productId} onChange={e => setProductId(e.target.value)} className={inputCls}>
-            <option value="">— None —</option>
-            {products.map(p => (
-              <option key={p.id} value={p.id}>
-                {p.name}
-              </option>
-            ))}
-          </select>
-        </div>
+        <ProductPicker products={products} value={productId} onChange={setProductId} />
       </Section>
 
       {/* Featured Category */}

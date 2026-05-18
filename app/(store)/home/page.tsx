@@ -24,14 +24,27 @@ export default async function HomePage() {
       .maybeSingle(),
   ])
 
-  // Hero: widget settings override, otherwise fall back to first featured product
   const widgetConfig = heroWidget?.config as { hero_image?: string; product_id?: string; category_id?: string } | null
   const heroImage = widgetConfig?.hero_image ?? featured?.find(p => p.thumbnail)?.thumbnail ?? null
 
-  // Hero featured product: use widget-picked product_id, or first featured
-  let heroProductRaw = widgetConfig?.product_id
-    ? featured?.find(p => p.id === widgetConfig.product_id) ?? featured?.[0]
-    : featured?.[0]
+  // Fetch the widget-selected product directly — don't limit to the is_featured list
+  let heroProductRaw: typeof featured extends (infer T)[] | null ? T | null : never = null
+  if (widgetConfig?.product_id) {
+    const inFeatured = featured?.find(p => p.id === widgetConfig.product_id)
+    if (inFeatured) {
+      heroProductRaw = inFeatured
+    } else {
+      const { data: specific } = await supabase
+        .from('products')
+        .select('id, name, slug, price, compare_at_price, thumbnail, stock, categories(name)')
+        .eq('id', widgetConfig.product_id)
+        .eq('is_active', true)
+        .maybeSingle()
+      heroProductRaw = specific ?? featured?.[0] ?? null
+    }
+  } else {
+    heroProductRaw = featured?.[0] ?? null
+  }
 
   const featuredProduct = heroProductRaw ? {
     ...heroProductRaw,
