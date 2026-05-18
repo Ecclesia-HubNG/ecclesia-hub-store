@@ -38,15 +38,18 @@ export default function CategoryShowcase({ categories }: { categories: Category[
         </Link>
       </div>
 
-      {/* Scrollable row */}
-      <div className="flex gap-4 overflow-x-auto pb-2 snap-x snap-mandatory scrollbar-hide">
+      {/* Grid: equal columns that fill the width, scrolls horizontally if there are many */}
+      <div
+        className="grid gap-4 overflow-x-auto pb-2 scrollbar-hide"
+        style={{ gridTemplateColumns: `repeat(${categories.length}, minmax(180px, 1fr))` }}
+      >
         {categories.map((cat, i) => {
           const fallback = FALLBACK_COLORS[i % FALLBACK_COLORS.length]
           return (
             <Link
               key={cat.id}
               href={`/category/${cat.slug}`}
-              className="group relative shrink-0 w-52 md:w-64 h-80 rounded-2xl overflow-hidden snap-start flex flex-col justify-between p-5 transition-transform duration-300 hover:-translate-y-1 hover:shadow-xl"
+              className="group relative h-80 rounded-2xl overflow-hidden flex flex-col justify-between p-5 transition-transform duration-300 hover:-translate-y-1 hover:shadow-xl"
             >
               {/* Background */}
               {cat.image ? (
