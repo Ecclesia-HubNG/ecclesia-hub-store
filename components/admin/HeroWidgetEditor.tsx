@@ -2,8 +2,9 @@
 
 import { useRef, useState, useTransition } from 'react'
 import type { DragEvent, ChangeEvent } from 'react'
-import { uploadEmailAsset } from '@/lib/actions/upload'
+import { uploadMedia, getMediaAssets } from '@/lib/actions/media'
 import { upsertHeroWidget } from '@/lib/actions/homepage'
+import MediaLibrary from '@/components/admin/MediaLibrary'
 
 type HeroConfig = {
   hero_image?: string | null
@@ -15,6 +16,7 @@ type Props = {
   initialConfig: HeroConfig | null
   products: { id: string; name: string; thumbnail: string | null }[]
   categories: { id: string; name: string }[]
+  mediaAssets: Awaited<ReturnType<typeof getMediaAssets>>
 }
 
 const inputCls =
@@ -40,7 +42,7 @@ function Section({
   )
 }
 
-export default function HeroWidgetEditor({ initialConfig, products, categories }: Props) {
+export default function HeroWidgetEditor({ initialConfig, products, categories, mediaAssets }: Props) {
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   const [heroImage, setHeroImage] = useState<string | null>(initialConfig?.hero_image ?? null)
@@ -51,6 +53,7 @@ export default function HeroWidgetEditor({ initialConfig, products, categories }
   const [uploading, setUploading] = useState(false)
   const [uploadError, setUploadError] = useState('')
   const [dragOver, setDragOver] = useState(false)
+  const [showPicker, setShowPicker] = useState(false)
   const [toast, setToast] = useState(false)
   const [saveError, setSaveError] = useState('')
   const [isPending, startTransition] = useTransition()
@@ -70,7 +73,7 @@ export default function HeroWidgetEditor({ initialConfig, products, categories }
 
     const fd = new FormData()
     fd.append('file', file)
-    const result = await uploadEmailAsset(fd)
+    const result = await uploadMedia(fd, 'hero')
     setUploading(false)
 
     if (result.error) {
@@ -225,8 +228,46 @@ export default function HeroWidgetEditor({ initialConfig, products, categories }
           )}
           <input ref={fileInputRef} type="file" accept="image/*" onChange={handleFileInput} className="hidden" />
           {uploadError && <p className="text-xs text-red-500 dark:text-red-400 mt-2">{uploadError}</p>}
+
+          <button
+            type="button"
+            onClick={() => setShowPicker(true)}
+            className="mt-3 text-sm text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 underline underline-offset-2 transition-colors"
+          >
+            Or pick from media library
+          </button>
         </div>
       </Section>
+
+      {/* Media picker modal */}
+      {showPicker && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+          <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-2xl w-full max-w-4xl max-h-[85vh] flex flex-col">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 dark:border-white/10 shrink-0">
+              <h2 className="text-base font-semibold text-gray-900 dark:text-white">Media Library</h2>
+              <button
+                type="button"
+                onClick={() => setShowPicker(false)}
+                className="w-8 h-8 flex items-center justify-center rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+              >
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+            <div className="overflow-y-auto p-6">
+              <MediaLibrary
+                initialAssets={mediaAssets}
+                onSelect={asset => {
+                  setHeroImage(asset.url)
+                  setImagePreview(asset.url)
+                  setShowPicker(false)
+                }}
+              />
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Featured Product */}
       <Section

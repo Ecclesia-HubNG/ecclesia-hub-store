@@ -1,12 +1,14 @@
 import { createAdminClient } from '@/lib/supabase/admin'
+import { getMediaAssets } from '@/lib/actions/media'
 import HeroWidgetEditor from '@/components/admin/HeroWidgetEditor'
 
 export default async function HomepagePage() {
   const supabase = createAdminClient()
-  const [{ data: widget }, { data: products }, { data: categories }] = await Promise.all([
+  const [{ data: widget }, { data: products }, { data: categories }, mediaAssets] = await Promise.all([
     supabase.from('homepage_widgets').select('config').eq('type', 'hero').eq('is_active', true).maybeSingle(),
     supabase.from('products').select('id, name, thumbnail').eq('is_active', true).order('name'),
     supabase.from('categories').select('id, name').order('name'),
+    getMediaAssets(),
   ])
 
   return (
@@ -22,6 +24,7 @@ export default async function HomepagePage() {
           initialConfig={widget?.config ?? null}
           products={products ?? []}
           categories={categories ?? []}
+          mediaAssets={mediaAssets}
         />
       </div>
     </div>

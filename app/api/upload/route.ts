@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { PutObjectCommand } from '@aws-sdk/client-s3'
 import { r2, R2_BUCKET, R2_PUBLIC_URL } from '@/lib/r2'
+import { createAdminClient } from '@/lib/supabase/admin'
 
 const CORS_HEADERS = {
   'Access-Control-Allow-Origin': '*',
@@ -42,9 +43,16 @@ export async function POST(req: NextRequest) {
     })
   )
 
-  // Ensure no double slash between base URL and key
   const base = R2_PUBLIC_URL.replace(/\/$/, '')
   const url = `${base}/${key}`
+
+  // Record in media library (non-blocking — don't fail upload if this fails)
+  try {
+    const admin = createAdminClient()
+    await admin.from('media_assets').insert({
+      url, key, name: file.name, size: file.size, mime_type: file.type, folder: 'products',
+    })
+  } catch {}
 
   return NextResponse.json({ url }, { headers: CORS_HEADERS })
 }
