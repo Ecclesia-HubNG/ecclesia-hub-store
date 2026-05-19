@@ -5,15 +5,14 @@ export default function PromoBanner() {
     <section className="w-full px-3 md:px-5 pb-16">
       <div className="relative rounded-3xl overflow-hidden min-h-[380px] md:min-h-[420px] flex items-center">
 
-        {/* Background image */}
+        {/* Background — gradient always visible, image on top */}
+        <div className="absolute inset-0 bg-gradient-to-br from-[#1a0a0e] via-[#2d0e16] to-[#4A0F1C]" />
         <div
-          className="absolute inset-0 bg-cover bg-center bg-no-repeat"
+          className="absolute inset-0 bg-cover bg-center bg-no-repeat opacity-30"
           style={{
-            backgroundImage: `url('https://pub-10bc4fec8b2b43a0992e28a4cf1acf41.r2.dev/categories/1779113596296-fn43gmt8l8h.jpg')`,
+            backgroundImage: `url('https://pub-10bc4fec8b2b43a0992e28a4cf1acf41.r2.dev/categories/1779146731953-elrdp41g9gg.jpg')`,
           }}
         />
-        {/* Dark overlay so image doesn't fight the card */}
-        <div className="absolute inset-0 bg-black/40" />
 
         {/* Promo card — right-aligned */}
         <div className="relative z-10 ml-auto mr-6 md:mr-14 w-full max-w-xs md:max-w-sm bg-[#4A0F1C] rounded-2xl px-8 py-10 flex flex-col gap-4">
