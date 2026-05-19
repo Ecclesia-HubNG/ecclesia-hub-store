@@ -124,7 +124,7 @@ export default function ProductOfMonth({ product }: Props) {
         </div>
 
         {/* ── Right: details ── */}
-        <div className="flex flex-col px-8 md:px-10 py-7">
+        <div className="flex flex-col justify-center px-8 md:px-10 py-7">
 
           {/* Brand */}
           <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-[#6B1A2A] dark:text-[#D4849A] mb-1.5">
