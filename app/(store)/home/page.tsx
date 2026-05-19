@@ -8,6 +8,7 @@ import BrandTicker from '@/components/store/BrandTicker'
 import CategoryShowcase from '@/components/store/CategoryShowcase'
 import FeaturedProducts from '@/components/store/FeaturedProducts'
 import ProductOfMonth from '@/components/store/ProductOfMonth'
+import CategoryDeals from '@/components/store/CategoryDeals'
 
 export default async function HomePage() {
   const supabase = createClient()
@@ -129,6 +130,8 @@ export default async function HomePage() {
           </Link>
         </div>
       </section>
+
+      <CategoryDeals />
     </div>
   )
 }
