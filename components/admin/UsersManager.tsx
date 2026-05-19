@@ -3,6 +3,7 @@
 import { useState, useMemo, useTransition, useRef, useEffect } from 'react'
 import { createPortal } from 'react-dom'
 import { updateUserName, setUserRole, setUserBanned, deleteUser, inviteStaffMember, sendPasswordReset } from '@/lib/actions/users'
+import { sendInboxMessage } from '@/lib/actions/inbox'
 import { ROLES, ROLE_LABELS, ROLE_COLORS, ROLE_DESCRIPTIONS, assignableRoles, isSuperAdmin } from '@/lib/roles'
 
 type AuthUser = {
@@ -244,12 +245,13 @@ function ChangeRoleModal({ user, currentUserRole, onClose }: {
 }
 
 // ── Row action menu ──────────────────────────────────────────────────────────
-function ActionMenu({ user, currentUserRole, onEdit, onDelete, onChangeRole }: {
+function ActionMenu({ user, currentUserRole, onEdit, onDelete, onChangeRole, onMessage }: {
   user: AuthUser
   currentUserRole: string
   onEdit: () => void
   onDelete: () => void
   onChangeRole: () => void
+  onMessage: () => void
 }) {
   const [open, setOpen] = useState(false)
   const [menuStyle, setMenuStyle] = useState({ top: 0, right: 0 })
@@ -331,6 +333,17 @@ function ActionMenu({ user, currentUserRole, onEdit, onDelete, onChangeRole }: {
         <>
           <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
           <div ref={menuRef} className="fixed z-50 w-52 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl shadow-xl py-1 overflow-hidden" style={menuStyle}>
+
+            {/* Send message */}
+            <button type="button" onClick={() => { setOpen(false); onMessage() }}
+              className="flex items-center gap-2.5 w-full px-3.5 py-2.5 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
+              <svg className="w-4 h-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M21.75 6.75v10.5a2.25 2.25 0 0 1-2.25 2.25h-15a2.25 2.25 0 0 1-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0 0 19.5 4.5h-15a2.25 2.25 0 0 0-2.25 2.25m19.5 0v.243a2.25 2.25 0 0 1-1.07 1.916l-7.5 4.615a2.25 2.25 0 0 1-2.36 0L3.32 8.91a2.25 2.25 0 0 1-1.07-1.916V6.75" />
+              </svg>
+              Send message
+            </button>
+
+            <div className="h-px bg-gray-100 dark:bg-gray-800 my-1" />
 
             {/* Edit name */}
             <button type="button" onClick={() => { setOpen(false); onEdit() }}
@@ -459,6 +472,87 @@ function EditModal({ user, onClose }: { user: AuthUser; onClose: () => void }) {
   )
 }
 
+// ── Send Message modal ────────────────────────────────────────────────────────
+function SendMessageModal({ user, onClose }: { user: AuthUser; onClose: () => void }) {
+  const [pending, startTransition] = useTransition()
+  const [subject, setSubject] = useState('')
+  const [body, setBody] = useState('')
+  const [done, setDone] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const name = user.user_metadata?.full_name || user.email?.split('@')[0] || 'this user'
+
+  function handleSubmit(e: React.FormEvent) {
+    e.preventDefault()
+    setError(null)
+    startTransition(async () => {
+      const res = await sendInboxMessage(user.id, subject, body)
+      if (res?.error) { setError(res.error); return }
+      setDone(true)
+      setTimeout(onClose, 1200)
+    })
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose} />
+      <div className="relative bg-white dark:bg-gray-900 rounded-2xl w-full max-w-md shadow-2xl overflow-hidden">
+
+        <div className="flex items-center justify-between px-6 py-5 border-b border-gray-100 dark:border-gray-800">
+          <div>
+            <h2 className="text-base font-semibold text-gray-900 dark:text-white">Send message</h2>
+            <p className="text-xs text-gray-400 mt-0.5">To: {name} · {user.email}</p>
+          </div>
+          <button type="button" onClick={onClose} className="p-1.5 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" /></svg>
+          </button>
+        </div>
+
+        <form onSubmit={handleSubmit} className="p-6 space-y-4">
+          {error && (
+            <div className="px-3.5 py-3 bg-red-50 dark:bg-red-950/40 border border-red-100 dark:border-red-900/50 rounded-xl text-sm text-red-600 dark:text-red-400">
+              {error}
+            </div>
+          )}
+          <div>
+            <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1.5">Subject</label>
+            <input
+              type="text"
+              required
+              value={subject}
+              onChange={e => setSubject(e.target.value)}
+              placeholder="e.g. Your order has been updated"
+              className="w-full px-3.5 py-2.5 text-sm bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#4A0F1C]/30 focus:border-[#4A0F1C]/50 transition-colors"
+            />
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1.5">Message</label>
+            <textarea
+              required
+              rows={5}
+              value={body}
+              onChange={e => setBody(e.target.value)}
+              placeholder="Write your message…"
+              className="w-full px-3.5 py-2.5 text-sm bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#4A0F1C]/30 focus:border-[#4A0F1C]/50 transition-colors resize-none"
+            />
+          </div>
+          <div className="flex gap-2 pt-1">
+            <button type="button" onClick={onClose} className="flex-1 px-4 py-2.5 text-sm font-medium text-gray-600 dark:text-gray-400 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-xl transition-colors">
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={pending || !subject.trim() || !body.trim()}
+              className={`flex-1 px-4 py-2.5 text-sm font-semibold rounded-xl transition-colors disabled:opacity-50 ${done ? 'bg-green-600 text-white' : 'bg-[#4A0F1C] hover:bg-[#3A0B15] text-white'}`}
+            >
+              {done ? '✓ Sent' : pending ? 'Sending…' : 'Send message'}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  )
+}
+
 // ── Delete confirm modal ─────────────────────────────────────────────────────
 function DeleteModal({ user, onClose }: { user: AuthUser; onClose: () => void }) {
   const [pending, startTransition] = useTransition()
@@ -523,6 +617,7 @@ export default function UsersManager({
   const [editUser, setEditUser] = useState<AuthUser | null>(null)
   const [deleteTarget, setDeleteTarget] = useState<AuthUser | null>(null)
   const [changeRoleTarget, setChangeRoleTarget] = useState<AuthUser | null>(null)
+  const [sendMessageTarget, setSendMessageTarget] = useState<AuthUser | null>(null)
   const [showInviteModal, setShowInviteModal] = useState(false)
 
   const canInvite = currentUserRole === 'super_admin' || currentUserRole === 'admin'
@@ -568,6 +663,7 @@ export default function UsersManager({
       {editUser && <EditModal user={editUser} onClose={() => setEditUser(null)} />}
       {deleteTarget && <DeleteModal user={deleteTarget} onClose={() => setDeleteTarget(null)} />}
       {changeRoleTarget && <ChangeRoleModal user={changeRoleTarget} currentUserRole={currentUserRole} onClose={() => setChangeRoleTarget(null)} />}
+      {sendMessageTarget && <SendMessageModal user={sendMessageTarget} onClose={() => setSendMessageTarget(null)} />}
       {showInviteModal && <InviteModal currentUserRole={currentUserRole} onClose={() => setShowInviteModal(false)} />}
 
       {/* Header */}
@@ -766,6 +862,7 @@ export default function UsersManager({
                         onEdit={() => setEditUser(user)}
                         onDelete={() => setDeleteTarget(user)}
                         onChangeRole={() => setChangeRoleTarget(user)}
+                        onMessage={() => setSendMessageTarget(user)}
                       />
                     </td>
                   </tr>

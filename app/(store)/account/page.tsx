@@ -5,9 +5,11 @@ import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import { useWishlist } from '@/lib/wishlist-context'
 import ProductCard from '@/components/store/ProductCard'
+import { markMessagesRead } from '@/lib/actions/inbox'
 
 type Tab = 'signin' | 'signup'
-type AccountTab = 'orders' | 'wishlist'
+type AccountTab = 'orders' | 'wishlist' | 'inbox'
+type InboxMessage = { id: string; subject: string; body: string; read_at: string | null; created_at: string }
 
 const STATUS_LABEL: Record<string, string> = {
   pending: 'Pending', paid: 'Paid', processing: 'Processing',
@@ -40,6 +42,8 @@ export default function AccountPage() {
   const { items: wishlistIds, ready: wishlistReady } = useWishlist()
   const [wishlistProducts, setWishlistProducts] = useState<WishlistProduct[]>([])
   const [wishlistLoading, setWishlistLoading] = useState(false)
+  const [messages, setMessages] = useState<InboxMessage[]>([])
+  const [messagesLoading, setMessagesLoading] = useState(false)
   const [pending, startTransition] = useTransition()
   const [msg, setMsg] = useState<{ type: 'error' | 'success'; text: string } | null>(null)
 
@@ -78,6 +82,28 @@ export default function AccountPage() {
       })
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [accountTab, wishlistIds, wishlistReady])
+
+  useEffect(() => {
+    if (accountTab !== 'inbox' || !user) return
+    setMessagesLoading(true)
+    supabase
+      .from('inbox_messages')
+      .select('id, subject, body, read_at, created_at')
+      .eq('user_id', user.id)
+      .order('created_at', { ascending: false })
+      .then(({ data }) => {
+        const msgs = (data ?? []) as InboxMessage[]
+        setMessages(msgs)
+        setMessagesLoading(false)
+        const unread = msgs.filter(m => !m.read_at).map(m => m.id)
+        if (unread.length) {
+          markMessagesRead(unread).then(() => {
+            setMessages(prev => prev.map(m => unread.includes(m.id) ? { ...m, read_at: new Date().toISOString() } : m))
+          })
+        }
+      })
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [accountTab, user])
 
   function handleSignIn(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
@@ -161,6 +187,7 @@ export default function AccountPage() {
           {([
             { id: 'orders', label: 'Orders', count: orders.length },
             { id: 'wishlist', label: 'Wishlist', count: wishlistIds.length },
+            { id: 'inbox', label: 'Inbox', count: messages.filter(m => !m.read_at).length },
           ] as { id: AccountTab; label: string; count: number }[]).map(t => (
             <button
               key={t.id}
@@ -262,6 +289,57 @@ export default function AccountPage() {
             <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
               {wishlistProducts.map(product => (
                 <ProductCard key={product.id} product={product} />
+              ))}
+            </div>
+          )
+        )}
+
+        {/* Inbox tab */}
+        {accountTab === 'inbox' && (
+          messagesLoading ? (
+            <div className="space-y-3">
+              {[...Array(3)].map((_, i) => (
+                <div key={i} className="p-4 rounded-2xl bg-gray-50 dark:bg-gray-900 animate-pulse">
+                  <div className="h-4 bg-gray-200 dark:bg-gray-800 rounded w-1/3 mb-2" />
+                  <div className="h-3 bg-gray-200 dark:bg-gray-800 rounded w-2/3" />
+                </div>
+              ))}
+            </div>
+          ) : messages.length === 0 ? (
+            <div className="text-center py-16 bg-gray-50 dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800">
+              <div className="w-12 h-12 rounded-full bg-[#4A0F1C]/10 flex items-center justify-center mx-auto mb-3">
+                <svg className="w-5 h-5 text-[#4A0F1C] dark:text-[#E8C4CB]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M21.75 6.75v10.5a2.25 2.25 0 0 1-2.25 2.25h-15a2.25 2.25 0 0 1-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0 0 19.5 4.5h-15a2.25 2.25 0 0 0-2.25 2.25m19.5 0v.243a2.25 2.25 0 0 1-1.07 1.916l-7.5 4.615a2.25 2.25 0 0 1-2.36 0L3.32 8.91a2.25 2.25 0 0 1-1.07-1.916V6.75" />
+                </svg>
+              </div>
+              <p className="text-sm text-gray-500 dark:text-gray-400">No messages yet</p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {messages.map(msg => (
+                <div
+                  key={msg.id}
+                  className={`p-4 rounded-2xl border transition-colors ${
+                    msg.read_at
+                      ? 'bg-white dark:bg-gray-900 border-gray-100 dark:border-gray-800'
+                      : 'bg-[#4A0F1C]/5 dark:bg-[#4A0F1C]/10 border-[#4A0F1C]/20 dark:border-[#E8C4CB]/20'
+                  }`}
+                >
+                  <div className="flex items-start justify-between gap-3 mb-1.5">
+                    <p className={`text-sm font-semibold ${msg.read_at ? 'text-gray-800 dark:text-gray-200' : 'text-[#4A0F1C] dark:text-[#E8C4CB]'}`}>
+                      {msg.subject || '(No subject)'}
+                    </p>
+                    <div className="flex items-center gap-2 shrink-0">
+                      {!msg.read_at && (
+                        <span className="w-2 h-2 rounded-full bg-[#4A0F1C] dark:bg-[#E8C4CB]" />
+                      )}
+                      <span className="text-[11px] text-gray-400 dark:text-gray-500">
+                        {new Date(msg.created_at).toLocaleDateString('en', { day: 'numeric', month: 'short', year: 'numeric' })}
+                      </span>
+                    </div>
+                  </div>
+                  <p className="text-sm text-gray-600 dark:text-gray-400 leading-relaxed whitespace-pre-wrap">{msg.body}</p>
+                </div>
               ))}
             </div>
           )
