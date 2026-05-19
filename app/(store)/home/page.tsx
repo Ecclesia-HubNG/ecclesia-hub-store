@@ -9,6 +9,7 @@ import CategoryShowcase from '@/components/store/CategoryShowcase'
 import FeaturedProducts from '@/components/store/FeaturedProducts'
 import ProductOfMonth from '@/components/store/ProductOfMonth'
 import CategoryDeals from '@/components/store/CategoryDeals'
+import DealsOfTheDay from '@/components/store/DealsOfTheDay'
 
 export default async function HomePage() {
   const supabase = createClient()
@@ -132,6 +133,7 @@ export default async function HomePage() {
       </section>
 
       <CategoryDeals />
+      <DealsOfTheDay />
     </div>
   )
 }
