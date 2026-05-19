@@ -82,18 +82,18 @@ export default function ProductOfMonth({ product }: Props) {
       </div>
 
       {/* Card — full-width two-column */}
-      <div className="rounded-3xl overflow-hidden border border-gray-100 dark:border-gray-800 shadow-sm bg-white dark:bg-gray-900 grid md:grid-cols-2 min-h-[520px]">
+      <div className="rounded-3xl overflow-hidden border border-gray-100 dark:border-gray-800 shadow-sm bg-white dark:bg-gray-900 grid md:grid-cols-2">
 
         {/* ── Left: image ── */}
         <div className="relative bg-[#F5F3F0] dark:bg-gray-800">
           {/* Main image — fills the column */}
-          <div className="w-full h-full min-h-[380px] md:min-h-0">
+          <div className="w-full h-full min-h-[260px] md:min-h-0">
             {images[activeImg] ? (
               <img
                 src={images[activeImg]}
                 alt={product.name}
                 className="w-full h-full object-cover"
-                style={{ minHeight: 380 }}
+                style={{ minHeight: 260 }}
               />
             ) : (
               <div className="w-full h-full flex items-center justify-center">
@@ -126,7 +126,7 @@ export default function ProductOfMonth({ product }: Props) {
         </div>
 
         {/* ── Right: details ── */}
-        <div className="flex flex-col justify-center px-8 md:px-12 py-10 md:py-12">
+        <div className="flex flex-col justify-center px-8 md:px-10 py-7 md:py-8">
 
           {/* Brand */}
           <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-[#6B1A2A] dark:text-[#D4849A] mb-3">
