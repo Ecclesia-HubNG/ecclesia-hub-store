@@ -2,7 +2,7 @@
 
 export const dynamic = 'force-dynamic'
 
-import { useState, useTransition } from 'react'
+import { useState, useTransition, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { useCart } from '@/lib/cart-context'
 import { createOrder } from '@/lib/actions/customer-orders'
@@ -70,10 +70,11 @@ export default function CheckoutPage() {
     })
   }
 
-  if (items.length === 0) {
-    router.replace('/cart')
-    return null
-  }
+  useEffect(() => {
+    if (items.length === 0) router.replace('/cart')
+  }, [items.length, router])
+
+  if (items.length === 0) return null
 
   return (
     <div className="max-w-7xl mx-auto px-8 py-10">
