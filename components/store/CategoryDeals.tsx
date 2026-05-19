@@ -59,21 +59,23 @@ export default async function CategoryDeals() {
                 )}
               </div>
 
-              {/* Image */}
-              <div className="mt-auto h-80 overflow-hidden">
-                {product.thumbnail ? (
-                  <img
-                    src={product.thumbnail}
-                    alt={product.name}
-                    className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
-                  />
-                ) : (
-                  <div className="w-full h-full flex items-center justify-center opacity-20">
-                    <svg className="w-16 h-16" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1}>
-                      <path strokeLinecap="round" strokeLinejoin="round" d="m2.25 15.75 5.159-5.159a2.25 2.25 0 0 1 3.182 0l5.159 5.159m-1.5-1.5 1.409-1.409a2.25 2.25 0 0 1 3.182 0l2.909 2.909" />
-                    </svg>
-                  </div>
-                )}
+              {/* Image — inner rounded card like ProductCard */}
+              <div className="px-2.5 pb-2.5 mt-auto">
+                <div className="rounded-[14px] overflow-hidden bg-[#F5F3F0] h-80">
+                  {product.thumbnail ? (
+                    <img
+                      src={product.thumbnail}
+                      alt={product.name}
+                      className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                    />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center opacity-20">
+                      <svg className="w-16 h-16" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="m2.25 15.75 5.159-5.159a2.25 2.25 0 0 1 3.182 0l5.159 5.159m-1.5-1.5 1.409-1.409a2.25 2.25 0 0 1 3.182 0l2.909 2.909" />
+                      </svg>
+                    </div>
+                  )}
+                </div>
               </div>
             </Link>
           )
