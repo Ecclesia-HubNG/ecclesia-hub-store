@@ -1,5 +1,5 @@
 import Link from 'next/link'
-import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 
 const AVATAR_COLORS = [
   'bg-rose-100 text-rose-700',
@@ -13,7 +13,7 @@ const AVATAR_COLORS = [
 ]
 
 export default async function BrandShowcase() {
-  const supabase = createClient()
+  const supabase = createAdminClient()
 
   const { data: brands } = await supabase
     .from('brands')
@@ -34,7 +34,7 @@ export default async function BrandShowcase() {
           </h2>
         </div>
         <Link
-          href="/brands"
+          href="/shop"
           className="text-sm font-semibold text-[#4A0F1C] dark:text-[#D4849A] hover:underline underline-offset-2 flex items-center gap-1 shrink-0"
         >
           View All
