@@ -209,13 +209,6 @@ export default function ScratchAndWin() {
                       onTouchEnd={() => { isDrawing.current = false }}
                     />
 
-                    {/* Revealed state overlay */}
-                    {revealed && (
-                      <div className="h-[180px] flex flex-col items-center justify-center gap-2 p-6">
-                        <span className="text-4xl font-black" style={{ color: prize.color }}>{prize.label}</span>
-                        <p className="text-white/70 text-xs text-center">{prize.description}</p>
-                      </div>
-                    )}
                   </div>
 
                   {/* Progress + action */}
