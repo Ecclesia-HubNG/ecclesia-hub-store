@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useCart } from '@/lib/cart-context'
+import { useWishlist } from '@/lib/wishlist-context'
 import { createClient } from '@/lib/supabase/client'
 import ThemeToggle from '@/components/store/ThemeToggle'
 
@@ -186,6 +187,7 @@ export default function StoreHeader() {
   const [accountOpen, setAccountOpen] = useState(false)
   const [user, setUser] = useState<any>(null)
   const { count } = useCart()
+  const { count: wishlistCount } = useWishlist()
   const accountRef = useRef<HTMLDivElement>(null)
   const closeTimer = useRef<ReturnType<typeof setTimeout>>()
   const pathname = usePathname()
@@ -335,6 +337,10 @@ export default function StoreHeader() {
                         <Link href="/orders" onClick={() => setAccountOpen(false)} className="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors">
                           My Orders
                         </Link>
+                        <Link href="/wishlist" onClick={() => setAccountOpen(false)} className="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors">
+                          My Wishlist
+                          {wishlistCount > 0 && <span className="ml-auto text-[10px] font-bold text-[#4A0F1C]">{wishlistCount}</span>}
+                        </Link>
                       </div>
                       <div className="border-t border-gray-100 py-1">
                         <button type="button" onClick={signOut} className="flex items-center gap-3 w-full px-4 py-2.5 text-sm text-red-500 hover:bg-red-50 transition-colors">
@@ -351,6 +357,18 @@ export default function StoreHeader() {
                 </div>
               )}
             </div>
+
+            {/* Wishlist */}
+            <Link href="/wishlist" aria-label="Wishlist" className="relative p-2.5 text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white transition-colors">
+              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12z" />
+              </svg>
+              {wishlistCount > 0 && (
+                <span className="absolute top-1.5 right-1.5 min-w-[15px] h-[15px] bg-[#4A0F1C] text-white text-[8px] font-bold rounded-full flex items-center justify-center px-1 leading-none">
+                  {wishlistCount > 99 ? '99+' : wishlistCount}
+                </span>
+              )}
+            </Link>
 
             {/* Dark / light toggle */}
             <ThemeToggle />
