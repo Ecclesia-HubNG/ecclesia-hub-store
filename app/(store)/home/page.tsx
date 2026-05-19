@@ -72,7 +72,7 @@ export default async function HomePage() {
       <FeaturedProducts products={(featured ?? []) as any} />
 
       <section className="w-full px-3 md:px-5 pb-16">
-        <div className="relative bg-[#4A0F1C] rounded-3xl px-8 md:px-14 py-14 overflow-hidden flex flex-col md:flex-row items-center justify-between gap-8">
+        <div className="relative bg-[#4A0F1C] rounded-3xl px-8 md:px-14 py-12 overflow-hidden flex flex-col md:flex-row items-center justify-between gap-6">
 
           {/* ── background layers ── */}
           <div className="absolute inset-0 pointer-events-none select-none">
@@ -97,24 +97,19 @@ export default async function HomePage() {
               <div className="w-5 h-px bg-[#D4849A]/70" />
               <p className="text-[10px] font-bold uppercase tracking-[0.22em] text-[#D4849A]">Glow. Nourish. Thrive.</p>
             </div>
-            <h3 className="text-2xl md:text-3xl font-bold text-white leading-tight">
-              Browse the full<br className="hidden md:block" /> collection
-            </h3>
-            <p className="text-sm text-white/50 mt-3 max-w-sm leading-relaxed">
-              Body care and skincare crafted for those<br className="hidden md:block" /> who live with intention.
+            <h3 className="text-xl md:text-2xl font-bold text-white">Browse the full collection</h3>
+            <p className="text-sm text-white/60 mt-1.5 max-w-md">
+              Body care and skincare crafted for those who live with intention.
             </p>
           </div>
 
           {/* ── CTA ── */}
-          <div className="relative z-10 flex flex-col items-center md:items-end gap-3 shrink-0">
-            <Link
-              href="/shop"
-              className="px-8 py-3.5 bg-white text-[#4A0F1C] text-sm font-bold rounded-full hover:bg-[#FDF6F7] transition-all duration-200 hover:shadow-2xl hover:-translate-y-0.5 shadow-lg"
-            >
-              Shop Now →
-            </Link>
-            <p className="text-[11px] text-white/30 tracking-wide">Free delivery over ₦50,000</p>
-          </div>
+          <Link
+            href="/shop"
+            className="relative z-10 shrink-0 px-7 py-3 bg-white text-[#4A0F1C] text-sm font-bold rounded-full hover:bg-gray-50 transition-colors shadow-sm"
+          >
+            Shop Now →
+          </Link>
         </div>
       </section>
     </div>
