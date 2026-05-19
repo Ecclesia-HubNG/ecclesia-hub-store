@@ -24,11 +24,19 @@ export default async function CategoryDeals() {
 
   return (
     <section className="w-full px-3 md:px-5 pb-16">
-      <div className="mb-6">
-        <p className="text-[10px] font-bold uppercase tracking-[0.25em] text-[#6B1A2A] dark:text-[#D4849A] mb-1">Limited time</p>
-        <h2 className="text-2xl md:text-3xl font-black uppercase tracking-tight text-gray-900 dark:text-white">
-          Get Up to 70% Off
-        </h2>
+      <div className="flex items-end justify-between mb-6">
+        <div>
+          <p className="text-[10px] font-bold uppercase tracking-[0.25em] text-[#6B1A2A] dark:text-[#D4849A] mb-1">Limited time</p>
+          <h2 className="text-2xl md:text-3xl font-black uppercase tracking-tight text-gray-900 dark:text-white">
+            Get Up to 70% Off
+          </h2>
+        </div>
+        <a href="/sale" className="text-sm font-semibold text-[#4A0F1C] dark:text-[#D4849A] hover:underline underline-offset-2 flex items-center gap-1 shrink-0">
+          View All
+          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+          </svg>
+        </a>
       </div>
 
       {/* Mobile: single column scroll, Desktop: 4-col grid */}

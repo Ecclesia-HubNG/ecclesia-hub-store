@@ -34,7 +34,7 @@ export default async function BrandShowcase() {
           </h2>
         </div>
         <Link
-          href="/shop"
+          href="/brands"
           className="text-sm font-semibold text-[#4A0F1C] dark:text-[#D4849A] hover:underline underline-offset-2 flex items-center gap-1 shrink-0"
         >
           View All
