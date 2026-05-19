@@ -31,7 +31,8 @@ export default async function CategoryDeals() {
         </h2>
       </div>
 
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+      {/* Mobile: single column scroll, Desktop: 4-col grid */}
+      <div className="flex flex-col gap-4 sm:grid sm:grid-cols-2 md:grid-cols-4">
         {products.map((product, i) => {
           const { bg, accent } = PALETTES[i % PALETTES.length]
           const savings = product.compare_at_price
@@ -42,26 +43,26 @@ export default async function CategoryDeals() {
             <Link
               key={product.id}
               href={`/product/${product.slug}`}
-              className="group flex flex-col rounded-2xl overflow-hidden hover:shadow-lg transition-shadow duration-300"
+              className="group flex sm:flex-col rounded-2xl overflow-hidden hover:shadow-lg transition-shadow duration-300"
               style={{ backgroundColor: bg }}
             >
               {/* Text block */}
-              <div className="px-5 pt-5 pb-4">
-                <p className="text-sm font-semibold text-gray-700 mb-0.5">Save</p>
+              <div className="flex-1 sm:flex-none px-4 pt-4 pb-3 sm:px-5 sm:pt-5 sm:pb-4 flex flex-col justify-center sm:justify-start">
+                <p className="text-xs sm:text-sm font-semibold text-gray-700 mb-0.5">Save</p>
                 {savings && (
-                  <p className="text-3xl font-black mb-2" style={{ color: accent }}>
+                  <p className="text-2xl sm:text-3xl font-black mb-1.5" style={{ color: accent }}>
                     ₦{savings.toLocaleString('en')}
                   </p>
                 )}
-                <p className="text-sm font-bold text-gray-800 leading-snug line-clamp-1">{product.name}</p>
+                <p className="text-sm font-bold text-gray-800 leading-snug line-clamp-2">{product.name}</p>
                 {product.short_description && (
-                  <p className="text-[13px] text-gray-500 leading-snug mt-1 line-clamp-2">{product.short_description}</p>
+                  <p className="hidden sm:block text-[13px] text-gray-500 leading-snug mt-1 line-clamp-2">{product.short_description}</p>
                 )}
               </div>
 
               {/* Image — inner rounded card like ProductCard */}
-              <div className="px-2.5 pb-2.5 mt-auto">
-                <div className="rounded-[14px] overflow-hidden bg-[#F5F3F0] h-80">
+              <div className="w-36 shrink-0 p-2 sm:w-auto sm:px-2.5 sm:pb-2.5 sm:mt-auto">
+                <div className="rounded-[14px] overflow-hidden bg-[#F5F3F0] h-full sm:h-52 md:h-64 aspect-square sm:aspect-auto">
                   {product.thumbnail ? (
                     <img
                       src={product.thumbnail}
