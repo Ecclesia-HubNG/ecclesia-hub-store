@@ -11,7 +11,7 @@ import ProductOfMonth from '@/components/store/ProductOfMonth'
 import CategoryDeals from '@/components/store/CategoryDeals'
 import DealsOfTheDay from '@/components/store/DealsOfTheDay'
 import BrandShowcase from '@/components/store/BrandShowcase'
-import PromoBanner from '@/components/store/PromoBanner'
+import ScratchAndWin from '@/components/store/ScratchAndWin'
 
 export default async function HomePage() {
   const supabase = createClient()
@@ -137,7 +137,7 @@ export default async function HomePage() {
       <CategoryDeals />
       <DealsOfTheDay />
       <BrandShowcase />
-      <PromoBanner />
+      <ScratchAndWin />
     </div>
   )
 }
