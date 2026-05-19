@@ -85,9 +85,8 @@ export default function ProductOfMonth({ product }: Props) {
       <div className="rounded-3xl overflow-hidden border border-gray-100 dark:border-gray-800 shadow-sm bg-white dark:bg-gray-900 grid md:grid-cols-2">
 
         {/* ── Left: image ── */}
-        <div className="relative bg-[#F5F3F0] dark:bg-gray-800 self-stretch">
-          {/* Main image — fills the column */}
-          <div className="absolute inset-0">
+        <div className="relative bg-[#F5F3F0] dark:bg-gray-800">
+          <div className="aspect-[4/3] w-full">
             {images[activeImg] ? (
               <img
                 src={images[activeImg]}
@@ -125,7 +124,7 @@ export default function ProductOfMonth({ product }: Props) {
         </div>
 
         {/* ── Right: details ── */}
-        <div className="flex flex-col justify-center px-8 md:px-10 py-6">
+        <div className="flex flex-col px-8 md:px-10 py-7">
 
           {/* Brand */}
           <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-[#6B1A2A] dark:text-[#D4849A] mb-1.5">
