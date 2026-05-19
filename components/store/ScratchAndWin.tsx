@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState, useCallback } from 'react'
 import Link from 'next/link'
+import { checkScratchEligibility } from '@/lib/actions/scratch'
 
 const PRIZES = [
   { label: '10% OFF', code: 'SCRATCH10', description: '10% off your next order', color: '#D4849A' },
@@ -27,12 +28,14 @@ export default function ScratchAndWin() {
   const [copied, setCopied] = useState(false)
   const [alreadyPlayed, setAlreadyPlayed] = useState(false)
   const [pct, setPct] = useState(0)
+  const [eligibility, setEligibility] = useState<{ eligible: boolean; reason: string | null; minAmount: number } | null>(null)
 
-  // Check if already played today
+  // Check eligibility + already played
   useEffect(() => {
     if (typeof window !== 'undefined') {
       setAlreadyPlayed(localStorage.getItem(SCRATCH_KEY) === todayStr())
     }
+    checkScratchEligibility().then(setEligibility)
   }, [])
 
   // Draw silver scratch overlay
@@ -175,15 +178,64 @@ export default function ScratchAndWin() {
           <div className="flex items-center justify-center px-8 md:px-14 pb-12 md:py-16">
             <div className="w-full max-w-sm">
 
-              {alreadyPlayed ? (
-                <div className="bg-white/[0.07] border border-white/10 rounded-2xl p-8 text-center">
-                  <p className="text-white font-bold text-lg mb-2">Come back tomorrow</p>
-                  <p className="text-white/50 text-sm">You've already used your scratch card today. A new one will be ready at midnight.</p>
-                  <Link href="/shop" className="mt-5 inline-flex px-6 py-2.5 bg-white text-[#4A0F1C] text-sm font-bold rounded-full hover:bg-gray-100 transition-colors">
+              {/* Loading */}
+              {!eligibility && (
+                <div className="bg-white/[0.07] border border-white/10 rounded-2xl p-8 flex items-center justify-center h-48">
+                  <div className="w-8 h-8 rounded-full border-2 border-white/20 border-t-white animate-spin" />
+                </div>
+              )}
+
+              {/* Not logged in */}
+              {eligibility?.reason === 'login' && (
+                <div className="bg-white/[0.07] border border-white/10 rounded-2xl p-8 text-center space-y-4">
+                  <div className="w-12 h-12 rounded-full bg-white/10 mx-auto flex items-center justify-center">
+                    <svg className="w-6 h-6 text-white/60" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 1 0-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 0 0 2.25-2.25v-6.75a2.25 2.25 0 0 0-2.25-2.25H6.75a2.25 2.25 0 0 0-2.25 2.25v6.75a2.25 2.25 0 0 0 2.25 2.25Z" />
+                    </svg>
+                  </div>
+                  <div>
+                    <p className="text-white font-bold mb-1">Sign in to play</p>
+                    <p className="text-white/50 text-sm">Create an account and make a purchase to unlock your daily scratch card.</p>
+                  </div>
+                  <Link href="/auth" className="inline-flex px-6 py-2.5 bg-white text-[#4A0F1C] text-sm font-bold rounded-full hover:bg-gray-100 transition-colors">
+                    Sign in
+                  </Link>
+                </div>
+              )}
+
+              {/* No qualifying order */}
+              {eligibility?.reason === 'no_order' && (
+                <div className="bg-white/[0.07] border border-white/10 rounded-2xl p-8 text-center space-y-4">
+                  <div className="w-12 h-12 rounded-full bg-white/10 mx-auto flex items-center justify-center">
+                    <svg className="w-6 h-6 text-[#D4849A]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904 9 18.75l-.813-2.846a4.5 4.5 0 0 0-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 0 0 3.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 0 0 3.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 0 0-3.09 3.09Z" />
+                    </svg>
+                  </div>
+                  <div>
+                    <p className="text-white font-bold mb-1">Unlock your scratch card</p>
+                    <p className="text-white/50 text-sm">
+                      Make a purchase of <span className="text-[#D4849A] font-semibold">₦{eligibility.minAmount.toLocaleString('en')}+</span> to earn a daily scratch card.
+                    </p>
+                  </div>
+                  <Link href="/shop" className="inline-flex px-6 py-2.5 bg-white text-[#4A0F1C] text-sm font-bold rounded-full hover:bg-gray-100 transition-colors">
                     Shop now
                   </Link>
                 </div>
-              ) : (
+              )}
+
+              {/* Already played today */}
+              {eligibility?.eligible && alreadyPlayed && (
+                <div className="bg-white/[0.07] border border-white/10 rounded-2xl p-8 text-center space-y-3">
+                  <p className="text-white font-bold text-lg">Come back tomorrow</p>
+                  <p className="text-white/50 text-sm">You've already scratched today. A new card unlocks at midnight.</p>
+                  <Link href="/shop" className="inline-flex mt-2 px-6 py-2.5 bg-white text-[#4A0F1C] text-sm font-bold rounded-full hover:bg-gray-100 transition-colors">
+                    Keep shopping
+                  </Link>
+                </div>
+              )}
+
+              {/* Eligible + not played — show scratch card */}
+              {eligibility?.eligible && !alreadyPlayed && (
                 <div className="bg-white/[0.07] border border-white/10 rounded-2xl overflow-hidden">
 
                   {/* Prize behind the scratch layer */}
