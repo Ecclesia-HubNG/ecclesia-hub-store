@@ -653,6 +653,10 @@ export default function ProductForm({
                 <input name="is_featured" type="checkbox" defaultChecked={product?.is_featured ?? false} className="w-4 h-4 rounded border-gray-300 accent-gray-900" />
                 <div><p className="text-sm font-medium text-gray-700 dark:text-gray-300">Featured</p><p className="text-xs text-gray-400 dark:text-gray-600">Show on homepage</p></div>
               </label>
+              <label className="flex items-center gap-3 cursor-pointer">
+                <input name="is_product_of_month" type="checkbox" defaultChecked={(product as any)?.is_product_of_month ?? false} className="w-4 h-4 rounded border-gray-300 accent-gray-900" />
+                <div><p className="text-sm font-medium text-gray-700 dark:text-gray-300">Product of the Month</p><p className="text-xs text-gray-400 dark:text-gray-600">Highlighted buy section on homepage</p></div>
+              </label>
             </div>
             <SubmitButton label={anyUploading ? 'Uploading images…' : submitLabel} pending={saving || anyUploading} />
             <Link href="/admin/products" className="block text-center mt-2.5 text-sm text-gray-400 dark:text-gray-600 hover:text-gray-700 dark:hover:text-gray-300 transition-colors">Cancel</Link>

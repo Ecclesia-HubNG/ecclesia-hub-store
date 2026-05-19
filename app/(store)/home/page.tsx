@@ -7,12 +7,13 @@ import HeroSection from '@/components/store/HeroSection'
 import BrandTicker from '@/components/store/BrandTicker'
 import CategoryShowcase from '@/components/store/CategoryShowcase'
 import FeaturedProducts from '@/components/store/FeaturedProducts'
+import ProductOfMonth from '@/components/store/ProductOfMonth'
 
 export default async function HomePage() {
   const supabase = createClient()
   const admin = createAdminClient()
 
-  const [{ data: featured }, { data: heroWidget }, { data: categories }] = await Promise.all([
+  const [{ data: featured }, { data: heroWidget }, { data: categories }, { data: potmRaw }] = await Promise.all([
     supabase
       .from('products')
       .select('id, name, slug, price, compare_at_price, thumbnail, stock, categories(name)')
@@ -29,6 +30,12 @@ export default async function HomePage() {
       .from('categories')
       .select('id, name, slug, image')
       .order('name'),
+    supabase
+      .from('products')
+      .select('id, name, slug, price, compare_at_price, thumbnail, images, stock, variants, categories(name), brands(name)')
+      .eq('is_product_of_month', true)
+      .eq('is_active', true)
+      .maybeSingle(),
   ])
 
   const widgetConfig = heroWidget?.config as { hero_image?: string; product_id?: string; category_id?: string } | null
@@ -70,6 +77,16 @@ export default async function HomePage() {
       <CategoryShowcase categories={categories ?? []} />
 
       <FeaturedProducts products={(featured ?? []) as any} />
+
+      {potmRaw && (
+        <ProductOfMonth product={{
+          ...potmRaw,
+          images: (potmRaw.images ?? []) as string[],
+          variants: (potmRaw.variants ?? []) as any,
+          categories: Array.isArray(potmRaw.categories) ? (potmRaw.categories[0] ?? null) : potmRaw.categories,
+          brand: Array.isArray((potmRaw as any).brands) ? ((potmRaw as any).brands[0] ?? null) : (potmRaw as any).brands,
+        }} />
+      )}
 
       <section className="w-full px-3 md:px-5 pb-16">
         <div className="relative bg-[#4A0F1C] rounded-3xl px-8 md:px-14 py-12 overflow-hidden flex flex-col md:flex-row items-center justify-between gap-6">
