@@ -95,7 +95,7 @@ export default async function HomePage() {
           <div className="relative z-10">
             <div className="flex items-center gap-2.5 mb-3">
               <div className="w-5 h-px bg-[#D4849A]/70" />
-              <p className="text-[10px] font-bold uppercase tracking-[0.22em] text-[#D4849A]">Faith. Word. Life.</p>
+              <p className="text-[10px] font-bold uppercase tracking-[0.22em] text-[#D4849A]">Glow. Nourish. Thrive.</p>
             </div>
             <h3 className="text-2xl md:text-3xl font-bold text-white leading-tight">
               Browse the full<br className="hidden md:block" /> collection

@@ -550,13 +550,13 @@ export default function StoreHeader() {
                 <div className="bg-[#4A0F1C] rounded-2xl p-6 flex flex-col justify-between">
                   <div>
                     <p className="text-[10px] font-bold uppercase tracking-widest text-[#D4849A] mb-3">
-                      Faith. Word. Life.
+                      Glow. Nourish. Thrive.
                     </p>
                     <h3 className="text-[17px] font-bold text-white leading-snug mb-2.5">
                       Explore the Collection
                     </h3>
                     <p className="text-[13px] text-white/60 leading-relaxed">
-                      Carefully curated products for every believer — delivered to your door across Nigeria.
+                      Premium body care and skincare — crafted with intention, delivered across Nigeria.
                     </p>
                   </div>
                   <Link
