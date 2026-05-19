@@ -1,12 +1,140 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import Link from 'next/link'
-import { usePathname } from 'next/navigation'
+import Image from 'next/image'
+import { usePathname, useRouter } from 'next/navigation'
 import { useCart } from '@/lib/cart-context'
 import { useWishlist } from '@/lib/wishlist-context'
 import { createClient } from '@/lib/supabase/client'
 import ThemeToggle from '@/components/store/ThemeToggle'
+
+// ── Search overlay ─────────────────────────────────────────────────────────────
+type SearchProduct = { id: string; name: string; slug: string; price: number; thumbnail: string | null; categories: { name: string } | null }
+
+function SearchOverlay({ onClose }: { onClose: () => void }) {
+  const [query, setQuery] = useState('')
+  const [results, setResults] = useState<SearchProduct[]>([])
+  const [loading, setLoading] = useState(false)
+  const [focused, setFocused] = useState(-1)
+  const inputRef = useRef<HTMLInputElement>(null)
+  const debounce = useRef<ReturnType<typeof setTimeout>>()
+  const router = useRouter()
+  const supabase = createClient()
+
+  useEffect(() => { inputRef.current?.focus() }, [])
+
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose()
+      if (e.key === 'ArrowDown') setFocused(p => Math.min(p + 1, results.length - 1))
+      if (e.key === 'ArrowUp') setFocused(p => Math.max(p - 1, -1))
+      if (e.key === 'Enter' && focused >= 0 && results[focused]) {
+        router.push(`/product/${results[focused].slug}`)
+        onClose()
+      }
+    }
+    window.addEventListener('keydown', handler)
+    return () => window.removeEventListener('keydown', handler)
+  }, [focused, results, onClose, router])
+
+  const search = useCallback((q: string) => {
+    clearTimeout(debounce.current)
+    if (!q.trim()) { setResults([]); setLoading(false); return }
+    setLoading(true)
+    debounce.current = setTimeout(async () => {
+      const { data } = await supabase
+        .from('products')
+        .select('id, name, slug, price, thumbnail, categories(name)')
+        .ilike('name', `%${q.trim()}%`)
+        .eq('is_active', true)
+        .limit(6)
+      setResults((data ?? []).map((p: any) => ({ ...p, categories: Array.isArray(p.categories) ? (p.categories[0] ?? null) : p.categories })))
+      setLoading(false)
+    }, 280)
+  }, [supabase])
+
+  useEffect(() => { search(query) }, [query, search])
+
+  const fmt = (n: number) => '₦' + n.toLocaleString('en')
+
+  return (
+    <div className="fixed inset-0 z-50 flex flex-col" onClick={onClose}>
+      {/* Backdrop */}
+      <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
+
+      {/* Panel */}
+      <div
+        className="relative bg-white dark:bg-gray-950 w-full shadow-2xl"
+        onClick={e => e.stopPropagation()}
+        style={{ animation: 'slideDown 0.2s ease-out' }}
+      >
+        {/* Input row */}
+        <div className="flex items-center gap-3 px-5 md:px-8 h-16 border-b border-gray-100 dark:border-gray-800 max-w-3xl mx-auto">
+          <svg className="w-5 h-5 text-gray-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z" />
+          </svg>
+          <input
+            ref={inputRef}
+            type="text"
+            value={query}
+            onChange={e => { setQuery(e.target.value); setFocused(-1) }}
+            placeholder="Search products…"
+            className="flex-1 text-base text-gray-900 dark:text-white placeholder-gray-400 bg-transparent focus:outline-none"
+          />
+          {loading && <div className="w-4 h-4 border-2 border-gray-200 border-t-gray-500 rounded-full animate-spin shrink-0" />}
+          <button type="button" onClick={onClose} className="shrink-0 p-1.5 rounded-lg text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+
+        {/* Results */}
+        {results.length > 0 && (
+          <div className="max-w-3xl mx-auto px-2 md:px-5 py-3 pb-4 space-y-0.5">
+            {results.map((p, i) => (
+              <Link
+                key={p.id}
+                href={`/product/${p.slug}`}
+                onClick={onClose}
+                className={`flex items-center gap-4 px-3 py-2.5 rounded-xl transition-colors ${focused === i ? 'bg-gray-100 dark:bg-gray-800' : 'hover:bg-gray-50 dark:hover:bg-gray-800/60'}`}
+                onMouseEnter={() => setFocused(i)}
+              >
+                <div className="w-11 h-11 rounded-xl overflow-hidden bg-[#F8EEF0] dark:bg-[#2a1a1d] shrink-0">
+                  {p.thumbnail
+                    ? <Image src={p.thumbnail} alt={p.name} width={44} height={44} className="w-full h-full object-cover" />
+                    : <div className="w-full h-full" />}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium text-gray-900 dark:text-white truncate">{p.name}</p>
+                  {p.categories && <p className="text-xs text-gray-400 mt-0.5">{p.categories.name}</p>}
+                </div>
+                <p className="text-sm font-semibold text-[#4A0F1C] dark:text-[#E8C4CB] shrink-0">{fmt(p.price)}</p>
+              </Link>
+            ))}
+            <div className="pt-2 px-3">
+              <Link
+                href={`/shop?q=${encodeURIComponent(query)}`}
+                onClick={onClose}
+                className="text-xs font-medium text-[#4A0F1C] dark:text-[#D4849A] hover:underline"
+              >
+                See all results for &ldquo;{query}&rdquo; →
+              </Link>
+            </div>
+          </div>
+        )}
+
+        {/* Empty state */}
+        {!loading && query.trim() && results.length === 0 && (
+          <div className="max-w-3xl mx-auto px-5 py-6 text-sm text-gray-400">
+            No products found for &ldquo;{query}&rdquo;
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
 
 // ── Mega menu data ─────────────────────────────────────────────────────────────
 const SHOP_COLUMNS = [
@@ -185,6 +313,7 @@ export default function StoreHeader() {
   const [megaOpen, setMegaOpen] = useState(false)
   const [mobileOpen, setMobileOpen] = useState(false)
   const [accountOpen, setAccountOpen] = useState(false)
+  const [searchOpen, setSearchOpen] = useState(false)
   const [user, setUser] = useState<any>(null)
   const { count } = useCart()
   const { count: wishlistCount } = useWishlist()
@@ -198,6 +327,7 @@ export default function StoreHeader() {
     setMegaOpen(false)
     setMobileOpen(false)
     setAccountOpen(false)
+    setSearchOpen(false)
   }, [pathname])
 
   // Auth state
@@ -242,6 +372,8 @@ export default function StoreHeader() {
 
   return (
     <>
+      {searchOpen && <SearchOverlay onClose={() => setSearchOpen(false)} />}
+
       {/* ── Announcement bar ── */}
       {announcementVisible && (
         <div className="bg-[#4A0F1C] text-white text-xs py-2.5 px-5 flex items-center justify-center relative">
@@ -313,9 +445,9 @@ export default function StoreHeader() {
           {/* Icons — right */}
           <div className="flex items-center gap-0.5 ml-auto md:ml-0">
             {/* Search */}
-            <Link href="/shop" aria-label="Search" className="p-2.5 text-gray-500 hover:text-gray-900 transition-colors hidden sm:block">
+            <button type="button" aria-label="Search" onClick={() => setSearchOpen(true)} className="p-2.5 text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white transition-colors hidden sm:block">
               <SearchIcon />
-            </Link>
+            </button>
 
             {/* Account */}
             <div ref={accountRef} className="relative">
@@ -357,18 +489,6 @@ export default function StoreHeader() {
                 </div>
               )}
             </div>
-
-            {/* Wishlist */}
-            <Link href="/wishlist" aria-label="Wishlist" className="relative p-2.5 text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white transition-colors">
-              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12z" />
-              </svg>
-              {wishlistCount > 0 && (
-                <span className="absolute top-1.5 right-1.5 min-w-[15px] h-[15px] bg-[#4A0F1C] text-white text-[8px] font-bold rounded-full flex items-center justify-center px-1 leading-none">
-                  {wishlistCount > 99 ? '99+' : wishlistCount}
-                </span>
-              )}
-            </Link>
 
             {/* Dark / light toggle */}
             <ThemeToggle />
