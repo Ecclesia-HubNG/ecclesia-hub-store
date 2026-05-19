@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useMemo, useTransition, useEffect } from 'react'
+import { useState, useMemo, useTransition } from 'react'
 import { createPortal } from 'react-dom'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
@@ -434,18 +434,6 @@ export function ProductsManager({
       router.refresh()
     })
   }
-
-  // When server refreshes with new products, clear overrides for products that now match
-  useEffect(() => {
-    setOverrides(prev => {
-      const next = { ...prev }
-      let changed = false
-      products.forEach(p => {
-        if (next[p.id]) { delete next[p.id]; changed = true }
-      })
-      return changed ? next : prev
-    })
-  }, [products])
 
   // Merge server products with any local optimistic overrides
   const mergedProducts = useMemo(
