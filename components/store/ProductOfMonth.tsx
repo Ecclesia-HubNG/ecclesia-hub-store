@@ -82,7 +82,7 @@ export default function ProductOfMonth({ product }: Props) {
       </div>
 
       {/* Card — full-width two-column */}
-      <div className="max-w-6xl mx-auto rounded-3xl overflow-hidden border border-gray-100 dark:border-gray-800 shadow-sm bg-white dark:bg-gray-900 grid md:grid-cols-2 min-h-[520px]">
+      <div className="rounded-3xl overflow-hidden border border-gray-100 dark:border-gray-800 shadow-sm bg-white dark:bg-gray-900 grid md:grid-cols-2 min-h-[520px]">
 
         {/* ── Left: image ── */}
         <div className="relative bg-[#F5F3F0] dark:bg-gray-800">
