@@ -1,58 +1,29 @@
 import Link from 'next/link'
+import { createClient } from '@/lib/supabase/server'
 
-type Deal = {
-  label: string
-  amount: string
-  description: string
-  image: string
-  href: string
-  bg: string
-  accent: string
-}
-
-const DEALS: Deal[] = [
-  {
-    label: 'Save',
-    amount: '₦3,000',
-    description: 'Deeply nourish your skin with our bestselling body lotions.',
-    image: 'https://pub-10bc4fec8b2b43a0992e28a4cf1acf41.r2.dev/categories/1779112624846-xd2jtns8tyr.jpg',
-    href: '/shop?category=body-lotion-1778779566716',
-    bg: '#FEF3EC',
-    accent: '#C4622D',
-  },
-  {
-    label: 'Save',
-    amount: '₦5,000',
-    description: 'Brighten and firm with our concentrated face serums.',
-    image: 'https://pub-10bc4fec8b2b43a0992e28a4cf1acf41.r2.dev/categories/1779146731953-elrdp41g9gg.jpg',
-    href: '/shop?category=face-serum',
-    bg: '#FDEEF1',
-    accent: '#B03050',
-  },
-  {
-    label: 'Save',
-    amount: '₦2,000',
-    description: 'Gentle, skin-loving body washes for your daily ritual.',
-    image: 'https://pub-10bc4fec8b2b43a0992e28a4cf1acf41.r2.dev/categories/1779113596296-fn43gmt8l8h.jpg',
-    href: '/shop?category=body-wash',
-    bg: '#FFFBEA',
-    accent: '#9A7D0A',
-  },
-  {
-    label: 'Save',
-    amount: '₦4,000',
-    description: 'Long-lasting, alcohol-free scents crafted for your skin.',
-    image: 'https://pub-10bc4fec8b2b43a0992e28a4cf1acf41.r2.dev/categories/1779146304123-a37twwgkbq.jpg',
-    href: '/shop?category=perfume-oil',
-    bg: '#EEF0FE',
-    accent: '#3D52C4',
-  },
+const PALETTES = [
+  { bg: '#FEF3EC', accent: '#C4622D' },
+  { bg: '#FDEEF1', accent: '#B03050' },
+  { bg: '#FFFBEA', accent: '#9A7D0A' },
+  { bg: '#EEF0FE', accent: '#3D52C4' },
 ]
 
-export default function CategoryDeals() {
+export default async function CategoryDeals() {
+  const supabase = createClient()
+
+  const { data: products } = await supabase
+    .from('products')
+    .select('id, name, slug, price, compare_at_price, thumbnail, short_description')
+    .eq('is_active', true)
+    .not('compare_at_price', 'is', null)
+    .gt('compare_at_price', 0)
+    .order('compare_at_price', { ascending: false })
+    .limit(4)
+
+  if (!products?.length) return null
+
   return (
     <section className="w-full px-3 md:px-5 pb-16">
-      {/* Heading */}
       <div className="mb-6">
         <p className="text-[10px] font-bold uppercase tracking-[0.25em] text-[#6B1A2A] dark:text-[#D4849A] mb-1">Limited time</p>
         <h2 className="text-2xl md:text-3xl font-black uppercase tracking-tight text-gray-900 dark:text-white">
@@ -60,34 +31,53 @@ export default function CategoryDeals() {
         </h2>
       </div>
 
-      {/* Cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        {DEALS.map((deal) => (
-          <Link
-            key={deal.href}
-            href={deal.href}
-            className="group flex flex-col rounded-2xl overflow-hidden hover:shadow-lg transition-shadow duration-300"
-            style={{ backgroundColor: deal.bg }}
-          >
-            {/* Text block */}
-            <div className="px-5 pt-5 pb-4">
-              <p className="text-sm font-semibold text-gray-700 mb-0.5">{deal.label}</p>
-              <p className="text-3xl font-black mb-2" style={{ color: deal.accent }}>
-                {deal.amount}
-              </p>
-              <p className="text-[13px] text-gray-600 leading-snug">{deal.description}</p>
-            </div>
+        {products.map((product, i) => {
+          const { bg, accent } = PALETTES[i % PALETTES.length]
+          const savings = product.compare_at_price
+            ? Math.round(product.compare_at_price - product.price)
+            : null
 
-            {/* Image — fills bottom of card */}
-            <div className="mt-auto h-80 overflow-hidden">
-              <img
-                src={deal.image}
-                alt={deal.label}
-                className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
-              />
-            </div>
-          </Link>
-        ))}
+          return (
+            <Link
+              key={product.id}
+              href={`/product/${product.slug}`}
+              className="group flex flex-col rounded-2xl overflow-hidden hover:shadow-lg transition-shadow duration-300"
+              style={{ backgroundColor: bg }}
+            >
+              {/* Text block */}
+              <div className="px-5 pt-5 pb-4">
+                <p className="text-sm font-semibold text-gray-700 mb-0.5">Save</p>
+                {savings && (
+                  <p className="text-3xl font-black mb-2" style={{ color: accent }}>
+                    ₦{savings.toLocaleString('en')}
+                  </p>
+                )}
+                <p className="text-sm font-bold text-gray-800 leading-snug line-clamp-1">{product.name}</p>
+                {product.short_description && (
+                  <p className="text-[13px] text-gray-500 leading-snug mt-1 line-clamp-2">{product.short_description}</p>
+                )}
+              </div>
+
+              {/* Image */}
+              <div className="mt-auto h-80 overflow-hidden">
+                {product.thumbnail ? (
+                  <img
+                    src={product.thumbnail}
+                    alt={product.name}
+                    className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                  />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center opacity-20">
+                    <svg className="w-16 h-16" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="m2.25 15.75 5.159-5.159a2.25 2.25 0 0 1 3.182 0l5.159 5.159m-1.5-1.5 1.409-1.409a2.25 2.25 0 0 1 3.182 0l2.909 2.909" />
+                    </svg>
+                  </div>
+                )}
+              </div>
+            </Link>
+          )
+        })}
       </div>
     </section>
   )
