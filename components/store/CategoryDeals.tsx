@@ -79,7 +79,7 @@ export default function CategoryDeals() {
             </div>
 
             {/* Image — fills bottom of card */}
-            <div className="mt-auto h-64 overflow-hidden">
+            <div className="mt-auto h-80 overflow-hidden">
               <img
                 src={deal.image}
                 alt={deal.label}
