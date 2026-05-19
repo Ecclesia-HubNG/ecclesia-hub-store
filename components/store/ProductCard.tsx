@@ -26,99 +26,90 @@ export default function ProductCard({ product, showCategory = true }: { product:
   return (
     <Link
       href={`/product/${product.slug}`}
-      className="group flex flex-col bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 hover:border-gray-200 dark:hover:border-gray-700 hover:shadow-lg transition-all duration-200 overflow-hidden"
+      className="group flex flex-col rounded-[20px] overflow-hidden bg-white dark:bg-[#1a1a1a] shadow-sm hover:shadow-xl transition-all duration-300 hover:-translate-y-1"
     >
-      {/* Image */}
-      <div className="relative aspect-square bg-gray-50 dark:bg-gray-800 overflow-hidden">
+      {/* Image area */}
+      <div className="relative overflow-hidden bg-[#F8EEF0] dark:bg-[#2a1a1d]" style={{ aspectRatio: '4/4.2' }}>
         {product.thumbnail ? (
           <img
             src={product.thumbnail}
             alt={product.name}
-            className={`w-full h-full object-contain p-5 transition-transform duration-500 group-hover:scale-[1.04] ${outOfStock ? 'opacity-50' : ''}`}
+            className={`w-full h-full object-cover transition-transform duration-500 group-hover:scale-[1.06] ${outOfStock ? 'opacity-40' : ''}`}
           />
         ) : (
           <div className="w-full h-full flex items-center justify-center">
-            <svg className="w-14 h-14 text-gray-200 dark:text-gray-700" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={0.8}>
+            <svg className="w-14 h-14 text-[#D4849A]/40" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={0.8}>
               <path strokeLinecap="round" strokeLinejoin="round" d="m2.25 15.75 5.159-5.159a2.25 2.25 0 0 1 3.182 0l5.159 5.159m-1.5-1.5 1.409-1.409a2.25 2.25 0 0 1 3.182 0l2.909 2.909" />
             </svg>
           </div>
         )}
 
+        {/* Heart button */}
+        <button
+          type="button"
+          onClick={e => e.preventDefault()}
+          className="absolute top-3 right-3 w-8 h-8 rounded-full bg-white/80 dark:bg-black/40 backdrop-blur-sm flex items-center justify-center shadow-sm hover:bg-white dark:hover:bg-black/60 transition-colors"
+          aria-label="Save to wishlist"
+        >
+          <svg className="w-4 h-4 text-gray-400 dark:text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12z" />
+          </svg>
+        </button>
+
         {/* Badges */}
-        <div className="absolute top-2.5 left-2.5 flex flex-col gap-1">
+        <div className="absolute top-3 left-3 flex flex-col gap-1.5">
           {outOfStock && (
-            <span className="px-2 py-0.5 bg-gray-800/90 backdrop-blur-sm text-white text-[10px] font-semibold rounded-md tracking-wide">
+            <span className="px-2.5 py-1 bg-gray-900/80 backdrop-blur-sm text-white text-[10px] font-bold rounded-full tracking-wide">
               Sold out
             </span>
           )}
           {!outOfStock && discountPct && (
-            <span className="px-2 py-0.5 bg-[#4A0F1C] text-white text-[10px] font-bold rounded-md">
+            <span className="px-2.5 py-1 bg-[#4A0F1C] text-white text-[10px] font-bold rounded-full">
               {discountPct}% OFF
             </span>
           )}
           {!outOfStock && lowStock && (
-            <span className="px-2 py-0.5 bg-amber-500 text-white text-[10px] font-semibold rounded-md">
-              Only {product.stock} left
+            <span className="px-2.5 py-1 bg-amber-500 text-white text-[10px] font-bold rounded-full">
+              {product.stock} left
             </span>
           )}
         </div>
-
-        {/* Hover CTA */}
-        {!outOfStock && (
-          <div className="absolute inset-x-3 bottom-3 translate-y-3 opacity-0 group-hover:translate-y-0 group-hover:opacity-100 transition-all duration-200">
-            <div className="w-full py-2.5 bg-[#4A0F1C] text-white text-xs font-semibold rounded-xl text-center shadow-lg">
-              View product
-            </div>
-          </div>
-        )}
       </div>
 
       {/* Info */}
-      <div className="flex flex-col flex-1 p-4">
-        {showCategory && product.categories?.name && (
-          <p className="text-[10px] font-bold text-[#6B1A2A] dark:text-[#D4849A] uppercase tracking-widest mb-1">
-            {product.categories.name}
+      <div className="px-4 pt-3.5 pb-4 flex flex-col gap-2.5">
+        {/* Name + category */}
+        <div>
+          <p className="text-sm font-bold text-gray-900 dark:text-white leading-snug line-clamp-1">
+            {product.name}
           </p>
-        )}
-        <p className="text-sm text-gray-800 dark:text-gray-100 font-medium leading-snug line-clamp-2 mb-2.5">
-          {product.name}
-        </p>
-
-        {/* Variants */}
-        {product.variants && product.variants.length > 0 && (
-          <div className="flex flex-col gap-1.5 mb-3">
-            {product.variants.slice(0, 2).map(v => (
-              <div key={v.name} className="flex items-start gap-1.5 flex-wrap">
-                <span className="text-[10px] font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wide shrink-0 pt-px">
-                  {v.name}
-                </span>
-                <div className="flex items-center gap-1 flex-wrap">
-                  {v.options.slice(0, 4).map(opt => (
-                    <span
-                      key={opt.value}
-                      className="px-1.5 py-0.5 bg-gray-100 dark:bg-gray-800 text-[10px] font-medium text-gray-600 dark:text-gray-400 rounded-md leading-none"
-                    >
-                      {opt.value}
-                    </span>
-                  ))}
-                  {v.options.length > 4 && (
-                    <span className="text-[10px] text-gray-400 dark:text-gray-600">+{v.options.length - 4}</span>
-                  )}
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-
-        <div className="flex items-center gap-2 flex-wrap mt-auto">
-          <span className={`text-[15px] font-bold ${outOfStock ? 'text-gray-400 dark:text-gray-600' : 'text-[#4A0F1C] dark:text-[#E8C4CB]'}`}>
-            ₦{product.price.toLocaleString('en')}
-          </span>
-          {!outOfStock && discountPct && product.compare_at_price && (
-            <span className="text-xs text-gray-400 dark:text-gray-600 line-through">
-              ₦{product.compare_at_price.toLocaleString('en')}
-            </span>
+          {showCategory && product.categories?.name && (
+            <p className="text-[11px] text-gray-400 dark:text-gray-500 mt-0.5 line-clamp-1">
+              {product.categories.name}
+            </p>
           )}
+        </div>
+
+        {/* Price + Buy row */}
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex items-baseline gap-1.5 min-w-0">
+            <span className={`text-[15px] font-bold leading-none ${outOfStock ? 'text-gray-400 dark:text-gray-600' : 'text-gray-900 dark:text-white'}`}>
+              ₦{product.price.toLocaleString('en')}
+            </span>
+            {!outOfStock && discountPct && product.compare_at_price && (
+              <span className="text-[11px] text-gray-400 dark:text-gray-600 line-through leading-none">
+                ₦{product.compare_at_price.toLocaleString('en')}
+              </span>
+            )}
+          </div>
+
+          <span className={`shrink-0 px-4 py-1.5 rounded-full text-xs font-bold transition-colors duration-200 ${
+            outOfStock
+              ? 'bg-gray-100 dark:bg-gray-800 text-gray-400 dark:text-gray-600'
+              : 'bg-[#4A0F1C] text-white group-hover:bg-[#6B1A2A]'
+          }`}>
+            {outOfStock ? 'Sold out' : 'Shop'}
+          </span>
         </div>
       </div>
     </Link>
