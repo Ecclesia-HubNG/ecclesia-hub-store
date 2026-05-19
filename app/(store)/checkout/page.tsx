@@ -4,6 +4,7 @@ import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { useCart } from '@/lib/cart-context'
 import { createOrder } from '@/lib/actions/customer-orders'
+import { initializePayment } from '@/lib/actions/paystack'
 
 type Field = 'firstName' | 'lastName' | 'email' | 'phone' | 'address' | 'city' | 'state'
 
@@ -20,7 +21,7 @@ const FIELDS: { key: Field; label: string; placeholder: string; type?: string; h
 const inputCls = 'w-full px-3.5 py-2.5 text-sm bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-600 focus:outline-none focus:ring-2 focus:ring-[#4A0F1C]/20 focus:border-[#4A0F1C]/40 transition-colors'
 
 export default function CheckoutPage() {
-  const { items, total, count, clearCart } = useCart()
+  const { items, total, count } = useCart()
   const router = useRouter()
   const [pending, startTransition] = useTransition()
   const [error, setError] = useState<string | null>(null)
@@ -40,7 +41,7 @@ export default function CheckoutPage() {
     if (missing) { setError('Please fill in all fields.'); return }
 
     startTransition(async () => {
-      const result = await createOrder(items, {
+      const shipping = {
         firstName: form.firstName,
         lastName: form.lastName,
         email: form.email,
@@ -48,15 +49,22 @@ export default function CheckoutPage() {
         address: form.address,
         city: form.city,
         state: form.state,
-      }, total)
+      }
 
-      if ('error' in result) {
-        setError(result.error ?? 'Something went wrong.')
+      const orderResult = await createOrder(items, shipping, total)
+      if ('error' in orderResult) {
+        setError(orderResult.error ?? 'Could not create order.')
         return
       }
 
-      clearCart()
-      router.push(`/orders/${result.orderId}`)
+      const payResult = await initializePayment(orderResult.orderId, shipping.email, total)
+      if ('error' in payResult) {
+        setError(payResult.error ?? 'Could not initialize payment.')
+        return
+      }
+
+      // Hard redirect — Paystack is an external page
+      window.location.href = payResult.authorizationUrl
     })
   }
 
@@ -150,7 +158,7 @@ export default function CheckoutPage() {
                 disabled={pending}
                 className="w-full py-3 bg-[#4A0F1C] text-white text-sm font-semibold rounded-xl hover:bg-[#3A0B15] disabled:opacity-60 disabled:cursor-not-allowed transition-colors"
               >
-                {pending ? 'Placing order…' : 'Place order'}
+                {pending ? 'Redirecting to payment…' : 'Proceed to payment'}
               </button>
               <p className="text-[10px] text-gray-400 text-center mt-3">
                 By placing your order you agree to our terms of service.
