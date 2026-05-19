@@ -92,7 +92,7 @@ export default function ProductCard({ product, showCategory = true }: { product:
       </Link>
 
       {/* Body */}
-      <div className="px-3.5 pt-3 pb-3.5 flex flex-col gap-2">
+      <div className="px-3.5 pt-3 pb-3.5 flex flex-col gap-2 flex-1">
 
         {/* Category pill + stars */}
         <div className="flex items-center justify-between gap-2">
@@ -127,7 +127,7 @@ export default function ProductCard({ product, showCategory = true }: { product:
         </div>
 
         {/* Buttons */}
-        <div className="flex items-center gap-2 mt-0.5">
+        <div className="flex items-center gap-2 mt-auto pt-1">
           <button
             type="button"
             onClick={handleBuyNow}
