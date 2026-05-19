@@ -8,7 +8,7 @@ export default async function DealsOfTheDay() {
     .from('products')
     .select('id, name, slug, price, compare_at_price, thumbnail, stock')
     .eq('is_active', true)
-    .limit(12)
+    .limit(18)
 
   if (!products?.length) return null
 
@@ -33,8 +33,8 @@ export default async function DealsOfTheDay() {
         </Link>
       </div>
 
-      {/* Scrollable row */}
-      <div className="flex gap-4 overflow-x-auto pb-2 scrollbar-hide -mx-3 md:-mx-5 px-3 md:px-5">
+      {/* 4-col × 3-row grid */}
+      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
         {products.map(product => {
           const discountPct = product.compare_at_price && product.compare_at_price > product.price
             ? Math.round((1 - product.price / product.compare_at_price) * 100)
@@ -45,7 +45,7 @@ export default async function DealsOfTheDay() {
             <Link
               key={product.id}
               href={`/product/${product.slug}`}
-              className="group flex flex-col shrink-0 w-44 md:w-52 rounded-2xl bg-white dark:bg-[#1a1a1a] border border-gray-100 dark:border-gray-800 overflow-hidden hover:shadow-md transition-shadow duration-300"
+              className="group flex flex-col rounded-2xl bg-white dark:bg-[#1a1a1a] border border-gray-100 dark:border-gray-800 overflow-hidden hover:shadow-md transition-shadow duration-300"
             >
               {/* Image */}
               <div className="p-2.5 pb-0">
