@@ -82,12 +82,12 @@ export default function ProductOfMonth({ product }: Props) {
       </div>
 
       {/* Card — full-width two-column */}
-      <div className="rounded-3xl overflow-hidden border border-gray-100 dark:border-gray-800 shadow-sm bg-white dark:bg-gray-900 grid md:grid-cols-2 md:h-[480px]">
+      <div className="rounded-3xl overflow-hidden border border-gray-100 dark:border-gray-800 shadow-sm bg-white dark:bg-gray-900 grid md:grid-cols-2">
 
         {/* ── Left: image ── */}
-        <div className="relative bg-[#F5F3F0] dark:bg-gray-800">
+        <div className="relative bg-[#F5F3F0] dark:bg-gray-800 self-stretch">
           {/* Main image — fills the column */}
-          <div className="w-full h-full">
+          <div className="absolute inset-0">
             {images[activeImg] ? (
               <img
                 src={images[activeImg]}
@@ -125,28 +125,28 @@ export default function ProductOfMonth({ product }: Props) {
         </div>
 
         {/* ── Right: details ── */}
-        <div className="flex flex-col justify-center px-8 md:px-10 py-7 md:py-8">
+        <div className="flex flex-col justify-center px-8 md:px-10 py-6">
 
           {/* Brand */}
-          <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-[#6B1A2A] dark:text-[#D4849A] mb-3">
+          <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-[#6B1A2A] dark:text-[#D4849A] mb-1.5">
             {product.brand?.name ?? product.categories?.name ?? 'Ecclesia Hub'}
           </p>
 
           {/* Name */}
-          <h3 className="text-2xl md:text-3xl font-black uppercase tracking-tight text-gray-900 dark:text-white leading-tight mb-4">
+          <h3 className="text-xl md:text-2xl font-black uppercase tracking-tight text-gray-900 dark:text-white leading-tight mb-2">
             {product.name}
           </h3>
 
           {/* Price */}
-          <div className="flex items-baseline gap-3 mb-4">
-            <span className="text-3xl font-bold text-gray-900 dark:text-white">{fmt(resolvedPrice)}</span>
+          <div className="flex items-baseline gap-3 mb-2">
+            <span className="text-2xl font-bold text-gray-900 dark:text-white">{fmt(resolvedPrice)}</span>
             {product.compare_at_price && product.compare_at_price > resolvedPrice && (
               <span className="text-lg text-gray-400 line-through">{fmt(product.compare_at_price)}</span>
             )}
           </div>
 
           {/* Stars */}
-          <div className="flex items-center gap-2 mb-6 pb-6 border-b border-gray-100 dark:border-gray-800">
+          <div className="flex items-center gap-2 mb-4 pb-4 border-b border-gray-100 dark:border-gray-800">
             <div className="flex gap-0.5">
               {[...Array(5)].map((_, i) => (
                 <svg key={i} className="w-4 h-4 text-amber-400" fill="currentColor" viewBox="0 0 20 20">
@@ -187,7 +187,7 @@ export default function ProductOfMonth({ product }: Props) {
           )}
 
           {/* Quantity */}
-          <div className="mb-6">
+          <div className="mb-4">
             <p className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">Quantity:</p>
             <div className="inline-flex items-center border border-gray-200 dark:border-gray-700 rounded-xl overflow-hidden">
               <button type="button" onClick={() => setQty(q => Math.max(1, q - 1))}
@@ -207,7 +207,7 @@ export default function ProductOfMonth({ product }: Props) {
           </div>
 
           {/* Buttons */}
-          <div className="flex flex-col gap-3">
+          <div className="flex flex-col gap-2">
             <button
               type="button"
               disabled={outOfStock}
@@ -230,7 +230,7 @@ export default function ProductOfMonth({ product }: Props) {
             </button>
           </div>
 
-          <Link href={`/product/${product.slug}`} className="text-xs text-center text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 mt-5 underline underline-offset-2 transition-colors">
+          <Link href={`/product/${product.slug}`} className="text-xs text-center text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 mt-3 underline underline-offset-2 transition-colors">
             View full details
           </Link>
         </div>
