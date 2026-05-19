@@ -82,18 +82,17 @@ export default function ProductOfMonth({ product }: Props) {
       </div>
 
       {/* Card — full-width two-column */}
-      <div className="rounded-3xl overflow-hidden border border-gray-100 dark:border-gray-800 shadow-sm bg-white dark:bg-gray-900 grid md:grid-cols-2">
+      <div className="rounded-3xl overflow-hidden border border-gray-100 dark:border-gray-800 shadow-sm bg-white dark:bg-gray-900 grid md:grid-cols-2 md:h-[380px]">
 
         {/* ── Left: image ── */}
         <div className="relative bg-[#F5F3F0] dark:bg-gray-800">
           {/* Main image — fills the column */}
-          <div className="w-full h-full min-h-[260px] md:min-h-0">
+          <div className="w-full h-full">
             {images[activeImg] ? (
               <img
                 src={images[activeImg]}
                 alt={product.name}
                 className="w-full h-full object-cover"
-                style={{ minHeight: 260 }}
               />
             ) : (
               <div className="w-full h-full flex items-center justify-center">
