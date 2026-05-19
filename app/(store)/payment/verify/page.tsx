@@ -1,13 +1,13 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { Suspense, useEffect, useState } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
 import { useCart } from '@/lib/cart-context'
 import { verifyAndFinalizeOrder } from '@/lib/actions/paystack'
 
 type State = 'verifying' | 'success' | 'error'
 
-export default function PaymentVerifyPage() {
+function VerifyContent() {
   const searchParams = useSearchParams()
   const router = useRouter()
   const { clearCart } = useCart()
@@ -33,7 +33,6 @@ export default function PaymentVerifyPage() {
       setState('success')
       setTimeout(() => router.replace(`/orders/${result.orderId}?paid=1`), 1500)
     })
-    // Run only once on mount
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
@@ -81,5 +80,17 @@ export default function PaymentVerifyPage() {
         )}
       </div>
     </div>
+  )
+}
+
+export default function PaymentVerifyPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-[60vh] flex items-center justify-center">
+        <div className="w-14 h-14 rounded-full border-4 border-[#4A0F1C]/20 border-t-[#4A0F1C] animate-spin" />
+      </div>
+    }>
+      <VerifyContent />
+    </Suspense>
   )
 }
