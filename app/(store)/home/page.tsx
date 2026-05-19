@@ -72,20 +72,49 @@ export default async function HomePage() {
       <FeaturedProducts products={(featured ?? []) as any} />
 
       <section className="w-full px-3 md:px-5 pb-16">
-        <div className="bg-[#4A0F1C] rounded-3xl px-8 md:px-14 py-12 flex flex-col md:flex-row items-center justify-between gap-6">
-          <div>
-            <p className="text-xs font-bold uppercase tracking-widest text-[#D4849A] mb-2">Faith. Word. Life.</p>
-            <h3 className="text-xl md:text-2xl font-bold text-white">Browse the full collection</h3>
-            <p className="text-sm text-white/60 mt-1.5 max-w-md">
-              Body care and skincare crafted for those who live with intention.
+        <div className="relative bg-[#4A0F1C] rounded-3xl px-8 md:px-14 py-14 overflow-hidden flex flex-col md:flex-row items-center justify-between gap-8">
+
+          {/* ── background layers ── */}
+          <div className="absolute inset-0 pointer-events-none select-none">
+            {/* blurred colour blobs */}
+            <div className="absolute -right-16 -top-16 w-80 h-80 rounded-full bg-[#7B2234]/50 blur-3xl" />
+            <div className="absolute right-1/3 -bottom-12 w-56 h-56 rounded-full bg-[#2A0810]/70 blur-2xl" />
+            <div className="absolute left-0 bottom-0 w-48 h-48 rounded-full bg-[#3A0B15]/60 blur-2xl" />
+            {/* subtle dot grid */}
+            <div
+              className="absolute inset-0 opacity-[0.045]"
+              style={{ backgroundImage: 'radial-gradient(circle, #fff 1px, transparent 1px)', backgroundSize: '22px 22px' }}
+            />
+            {/* concentric decorative rings */}
+            <div className="absolute -right-10 top-1/2 -translate-y-1/2 w-64 h-64 rounded-full border border-white/[0.07]" />
+            <div className="absolute -right-10 top-1/2 -translate-y-1/2 w-96 h-96 rounded-full border border-white/[0.04]" />
+            <div className="absolute -right-10 top-1/2 -translate-y-1/2 w-[30rem] h-[30rem] rounded-full border border-white/[0.025]" />
+          </div>
+
+          {/* ── content ── */}
+          <div className="relative z-10">
+            <div className="flex items-center gap-2.5 mb-3">
+              <div className="w-5 h-px bg-[#D4849A]/70" />
+              <p className="text-[10px] font-bold uppercase tracking-[0.22em] text-[#D4849A]">Faith. Word. Life.</p>
+            </div>
+            <h3 className="text-2xl md:text-3xl font-bold text-white leading-tight">
+              Browse the full<br className="hidden md:block" /> collection
+            </h3>
+            <p className="text-sm text-white/50 mt-3 max-w-sm leading-relaxed">
+              Body care and skincare crafted for those<br className="hidden md:block" /> who live with intention.
             </p>
           </div>
-          <Link
-            href="/shop"
-            className="shrink-0 px-7 py-3 bg-white text-[#4A0F1C] text-sm font-bold rounded-full hover:bg-gray-50 transition-colors shadow-sm"
-          >
-            Shop Now →
-          </Link>
+
+          {/* ── CTA ── */}
+          <div className="relative z-10 flex flex-col items-center md:items-end gap-3 shrink-0">
+            <Link
+              href="/shop"
+              className="px-8 py-3.5 bg-white text-[#4A0F1C] text-sm font-bold rounded-full hover:bg-[#FDF6F7] transition-all duration-200 hover:shadow-2xl hover:-translate-y-0.5 shadow-lg"
+            >
+              Shop Now →
+            </Link>
+            <p className="text-[11px] text-white/30 tracking-wide">Free delivery over ₦50,000</p>
+          </div>
         </div>
       </section>
     </div>
