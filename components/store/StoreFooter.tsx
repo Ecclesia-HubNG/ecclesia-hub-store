@@ -3,28 +3,40 @@
 import { useState } from 'react'
 import Link from 'next/link'
 
-const LINKS = {
-  Shop: [
-    { label: 'All Products', href: '/shop' },
-    { label: 'Featured', href: '/shop' },
-    { label: 'New Arrivals', href: '/shop' },
-    { label: 'Categories', href: '/shop' },
+const COLUMNS = {
+  'Shop': [
+    { label: 'Body Lotion', href: '/shop?category=body-lotion-1778779566716' },
+    { label: 'Face Serum', href: '/shop?category=face-serum' },
+    { label: 'Body Wash', href: '/shop?category=body-wash' },
+    { label: 'Exfoliant', href: '/shop?category=exfoilant' },
+    { label: 'Sunscreen', href: '/shop?category=sunscreen' },
+    { label: 'Supplements', href: '/shop?category=supplements' },
+    { label: 'Perfume Oil', href: '/shop?category=perfume-oil' },
   ],
-  Company: [
-    { label: 'About Us', href: '/about' },
-    { label: 'Contact', href: '/about' },
-    { label: 'Blog', href: '#' },
+  'About Us': [
+    { label: 'About Ecclesia Hub', href: '/about' },
+    { label: 'News & Blog', href: '#' },
+    { label: 'Careers', href: '#' },
+    { label: 'Press Center', href: '#' },
+    { label: 'Affiliate Program', href: '#' },
+    { label: 'Our Brands', href: '/brands' },
   ],
-  Support: [
-    { label: 'Track Order', href: '/account' },
-    { label: 'Help Center', href: '#' },
+  'Services': [
+    { label: 'Gift Card', href: '#' },
+    { label: 'Shipping & Delivery', href: '/about#delivery' },
+    { label: 'Order Tracking', href: '/account' },
+    { label: 'Account Signup', href: '/auth' },
+    { label: 'Shop by Brand', href: '/brands' },
+    { label: 'Deals of the Day', href: '/deals' },
+  ],
+  'Help': [
+    { label: 'Help Center', href: '/about#faq' },
     { label: 'Returns', href: '#' },
-    { label: 'Shipping Info', href: '#' },
-  ],
-  Legal: [
+    { label: 'Track Orders', href: '/account' },
+    { label: 'Contact Us', href: '/about' },
+    { label: 'Feedback', href: '#' },
     { label: 'Privacy Policy', href: '/privacy' },
     { label: 'Terms of Service', href: '/terms' },
-    { label: 'Cookies', href: '/privacy#4.-cookies' },
   ],
 }
 
@@ -32,74 +44,22 @@ const SOCIALS = [
   {
     label: 'Instagram',
     href: '#',
-    icon: (
-      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-        <path strokeLinecap="round" strokeLinejoin="round" d="M6.827 6.175A2.31 2.31 0 0 1 5.186 7.23c-.38.054-.757.112-1.134.175C2.999 7.58 2.25 8.507 2.25 9.574V18a2.25 2.25 0 0 0 2.25 2.25h15A2.25 2.25 0 0 0 21.75 18V9.574c0-1.067-.75-1.994-1.802-2.169a47.865 47.865 0 0 0-1.134-.175 2.31 2.31 0 0 1-1.64-1.055l-.822-1.316a2.192 2.192 0 0 0-1.736-1.039 48.774 48.774 0 0 0-5.232 0 2.192 2.192 0 0 0-1.736 1.039l-.821 1.316Z" />
-        <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 12.75a4.5 4.5 0 1 1-9 0 4.5 4.5 0 0 1 9 0ZM18.75 10.5h.008v.008h-.008V10.5Z" />
-      </svg>
-    ),
+    icon: <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zM12 0C8.741 0 8.333.014 7.053.072 2.695.272.273 2.69.073 7.052.014 8.333 0 8.741 0 12c0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98C8.333 23.986 8.741 24 12 24c3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98C15.668.014 15.259 0 12 0zm0 5.838a6.162 6.162 0 1 0 0 12.324 6.162 6.162 0 0 0 0-12.324zM12 16a4 4 0 1 1 0-8 4 4 0 0 1 0 8zm6.406-11.845a1.44 1.44 0 1 0 0 2.881 1.44 1.44 0 0 0 0-2.881z"/></svg>,
   },
   {
     label: 'X / Twitter',
     href: '#',
-    icon: (
-      <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
-        <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
-      </svg>
-    ),
+    icon: <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>,
   },
   {
     label: 'Facebook',
     href: '#',
-    icon: (
-      <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
-        <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z" />
-      </svg>
-    ),
+    icon: <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/></svg>,
   },
   {
-    label: 'YouTube',
+    label: 'TikTok',
     href: '#',
-    icon: (
-      <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
-        <path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z" />
-      </svg>
-    ),
-  },
-]
-
-const TRUST = [
-  {
-    icon: (
-      <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-        <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75 11.25 15 15 9.75m-3-7.036A11.959 11.959 0 0 1 3.598 6 11.99 11.99 0 0 0 3 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285Z" />
-      </svg>
-    ),
-    label: 'Secure Checkout',
-  },
-  {
-    icon: (
-      <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-        <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 18.75a1.5 1.5 0 0 1-3 0m3 0a1.5 1.5 0 0 0-3 0m3 0h6m-9 0H3.375a1.125 1.125 0 0 1-1.125-1.125V14.25m17.25 4.5a1.5 1.5 0 0 1-3 0m3 0a1.5 1.5 0 0 0-3 0m3 0h1.125c.621 0 1.129-.504 1.09-1.124a17.902 17.902 0 0 0-3.213-9.193 2.056 2.056 0 0 0-1.58-.86H14.25M16.5 18.75h-2.25m0-11.177v-.958c0-.568-.422-1.048-.987-1.106a48.554 48.554 0 0 0-10.026 0 1.106 1.106 0 0 0-.987 1.106v7.635m12-6.677v6.677m0 4.5v-4.5m0 0h-12" />
-      </svg>
-    ),
-    label: 'Fast Delivery',
-  },
-  {
-    icon: (
-      <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-        <path strokeLinecap="round" strokeLinejoin="round" d="M11.48 3.499a.562.562 0 0 1 1.04 0l2.125 5.111a.563.563 0 0 0 .475.345l5.518.442c.499.04.701.663.321.988l-4.204 3.602a.563.563 0 0 0-.182.557l1.285 5.385a.562.562 0 0 1-.84.61l-4.725-2.885a.562.562 0 0 0-.586 0L6.982 20.54a.562.562 0 0 1-.84-.61l1.285-5.386a.562.562 0 0 0-.182-.557l-4.204-3.602a.562.562 0 0 1 .321-.988l5.518-.442a.563.563 0 0 0 .475-.345L11.48 3.5Z" />
-      </svg>
-    ),
-    label: '4.9/5 Rating',
-  },
-  {
-    icon: (
-      <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-        <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
-      </svg>
-    ),
-    label: '100% Authentic',
+    icon: <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M19.59 6.69a4.83 4.83 0 0 1-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 0 1-2.88 2.5 2.89 2.89 0 0 1-2.89-2.89 2.89 2.89 0 0 1 2.89-2.89c.28 0 .54.04.79.1V9.01a6.33 6.33 0 0 0-.79-.05 6.34 6.34 0 0 0-6.34 6.34 6.34 6.34 0 0 0 6.34 6.34 6.34 6.34 0 0 0 6.33-6.34V8.69a8.18 8.18 0 0 0 4.78 1.52V6.75a4.85 4.85 0 0 1-1.01-.06z"/></svg>,
   },
 ]
 
@@ -109,58 +69,103 @@ export default function StoreFooter() {
 
   function handleSubscribe(e: React.FormEvent) {
     e.preventDefault()
-    if (!email) return
+    if (!email.trim()) return
     setSubscribed(true)
     setEmail('')
     setTimeout(() => setSubscribed(false), 3000)
   }
 
   return (
-    <footer className="px-4 md:px-8 pb-8 mt-16">
-      <div className="bg-gray-900 dark:bg-gray-950 rounded-3xl px-8 md:px-12 pt-12 pb-6">
+    <footer className="px-3 md:px-5 pb-6 mt-4">
+      <div className="bg-white dark:bg-[#111] border border-gray-100 dark:border-gray-800 rounded-3xl px-6 md:px-12 pt-12 pb-6">
 
-        {/* Top section — brand + columns */}
-        <div className="grid grid-cols-1 md:grid-cols-[240px_1fr] gap-10 mb-10">
+        {/* Main grid */}
+        <div className="grid grid-cols-1 lg:grid-cols-[280px_1fr] gap-12 mb-10">
 
-          {/* Brand */}
-          <div>
-            <div className="flex items-center gap-2.5 mb-3">
-              <div className="w-8 h-8 rounded-lg bg-[#4A0F1C] flex items-center justify-center shrink-0">
-                <svg className="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 6.042A8.967 8.967 0 0 0 6 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 0 1 6 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 0 1 6-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0 0 18 18a8.967 8.967 0 0 0-6 2.292m0-14.25v14.25" />
-                </svg>
-              </div>
-              <span className="text-white font-semibold tracking-tight">Ecclesia Hub</span>
+          {/* Left — brand + payments */}
+          <div className="flex flex-col gap-5">
+            <div>
+              <Link href="/" className="inline-flex items-center gap-2.5 mb-3">
+                <div className="w-8 h-8 rounded-lg bg-[#4A0F1C] flex items-center justify-center shrink-0">
+                  <svg className="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904 9 18.75l-.813-2.846a4.5 4.5 0 0 0-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 0 0 3.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 0 0 3.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 0 0-3.09 3.09Z" />
+                  </svg>
+                </div>
+                <span className="text-gray-900 dark:text-white font-black tracking-tight text-lg uppercase">Ecclesia Hub</span>
+              </Link>
+              <p className="text-sm text-gray-500 dark:text-gray-400 leading-relaxed max-w-[220px]">
+                Premium skincare and wellness products, delivered to your door across Nigeria.
+              </p>
             </div>
-            <p className="text-sm text-gray-400 leading-relaxed mb-6 max-w-[200px]">
-              Faith resources for every believer. Bibles, books, and more — delivered to your door.
-            </p>
-            <div className="flex items-center gap-3">
+
+            {/* Social */}
+            <div className="flex items-center gap-2">
               {SOCIALS.map(s => (
-                <a
-                  key={s.label}
-                  href={s.href}
-                  aria-label={s.label}
-                  className="w-8 h-8 rounded-lg bg-gray-800 hover:bg-gray-700 flex items-center justify-center text-gray-400 hover:text-white transition-colors"
-                >
+                <a key={s.label} href={s.href} aria-label={s.label}
+                  className="w-8 h-8 rounded-lg bg-gray-100 dark:bg-gray-800 hover:bg-[#4A0F1C] flex items-center justify-center text-gray-500 hover:text-white transition-colors">
                   {s.icon}
                 </a>
               ))}
             </div>
+
+            {/* Accepted payments */}
+            <div>
+              <p className="text-xs font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest mb-3">Accepted Payments</p>
+              <div className="flex flex-wrap gap-2">
+                {/* Visa */}
+                <div className="h-8 px-3 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg flex items-center">
+                  <svg viewBox="0 0 48 16" className="h-4 w-auto" fill="none">
+                    <text x="0" y="13" fontFamily="Arial" fontWeight="900" fontSize="14" fill="#1A1F71">VISA</text>
+                  </svg>
+                </div>
+                {/* Mastercard */}
+                <div className="h-8 px-2 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg flex items-center gap-0.5">
+                  <div className="w-5 h-5 rounded-full bg-[#EB001B] opacity-90" />
+                  <div className="w-5 h-5 rounded-full bg-[#F79E1B] opacity-90 -ml-2.5" />
+                </div>
+                {/* Paystack */}
+                <div className="h-8 px-3 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg flex items-center">
+                  <span className="text-[11px] font-black text-[#00C3F7]">Pay</span><span className="text-[11px] font-black text-[#011B33]">stack</span>
+                </div>
+                {/* Verve */}
+                <div className="h-8 px-3 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg flex items-center">
+                  <span className="text-[11px] font-black text-[#00425F]">VERVE</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Newsletter */}
+            <div>
+              <p className="text-xs font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest mb-2">Stay updated</p>
+              <form onSubmit={handleSubscribe} className="flex gap-2">
+                <input
+                  type="email"
+                  placeholder="Your email address"
+                  value={email}
+                  onChange={e => setEmail(e.target.value)}
+                  className="flex-1 px-3.5 py-2 text-sm bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#4A0F1C]/20 transition-colors"
+                />
+                <button
+                  type="submit"
+                  className={`px-4 py-2 text-sm font-semibold rounded-xl transition-colors whitespace-nowrap ${
+                    subscribed ? 'bg-green-600 text-white' : 'bg-[#4A0F1C] hover:bg-[#3A0B15] text-white'
+                  }`}
+                >
+                  {subscribed ? 'Done!' : 'Join'}
+                </button>
+              </form>
+            </div>
           </div>
 
-          {/* Link columns */}
+          {/* Right — 4 link columns */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
-            {Object.entries(LINKS).map(([title, links]) => (
+            {Object.entries(COLUMNS).map(([title, links]) => (
               <div key={title}>
-                <p className="text-xs font-bold uppercase tracking-widest text-gray-500 mb-4">{title}</p>
+                <p className="text-xs font-bold uppercase tracking-widest text-gray-900 dark:text-white mb-4">{title}</p>
                 <ul className="space-y-2.5">
                   {links.map(link => (
                     <li key={link.label}>
-                      <Link
-                        href={link.href}
-                        className="text-sm text-gray-400 hover:text-white transition-colors"
-                      >
+                      <Link href={link.href} className="text-sm text-gray-500 dark:text-gray-400 hover:text-[#4A0F1C] dark:hover:text-[#D4849A] transition-colors">
                         {link.label}
                       </Link>
                     </li>
@@ -172,69 +177,25 @@ export default function StoreFooter() {
         </div>
 
         {/* Divider */}
-        <div className="h-px bg-gray-800 mb-6" />
-
-        {/* Trust badges + Newsletter */}
-        <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-5 mb-6">
-          {/* Badges */}
-          <div className="flex flex-wrap items-center gap-2">
-            {TRUST.map(t => (
-              <div
-                key={t.label}
-                className="flex items-center gap-1.5 px-3 py-1.5 bg-gray-800 rounded-full text-gray-300 text-xs font-medium"
-              >
-                <span className="text-[#D4849A]">{t.icon}</span>
-                {t.label}
-              </div>
-            ))}
-          </div>
-
-          {/* Newsletter */}
-          <form onSubmit={handleSubscribe} className="flex gap-2 w-full md:w-auto">
-            <input
-              type="email"
-              placeholder="Get product updates…"
-              value={email}
-              onChange={e => setEmail(e.target.value)}
-              className="flex-1 md:w-56 px-4 py-2 text-sm bg-gray-800 border border-gray-700 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-[#4A0F1C]/40 focus:border-[#4A0F1C]/60 transition-colors"
-            />
-            <button
-              type="submit"
-              className={`px-5 py-2 text-sm font-semibold rounded-xl transition-colors whitespace-nowrap ${
-                subscribed
-                  ? 'bg-green-600 text-white'
-                  : 'bg-[#4A0F1C] hover:bg-[#3A0B15] text-white'
-              }`}
-            >
-              {subscribed ? '✓ Subscribed' : 'Subscribe'}
-            </button>
-          </form>
-        </div>
-
-        {/* Divider */}
-        <div className="h-px bg-gray-800 mb-5" />
+        <div className="h-px bg-gray-100 dark:bg-gray-800 mb-5" />
 
         {/* Bottom bar */}
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-          <p className="text-xs text-gray-600">
-            © {new Date().getFullYear()} Ecclesia Hub. Made with ♥ in Nigeria.
+          <p className="text-xs text-gray-400">
+            © {new Date().getFullYear()} Ecclesia Hub. All rights reserved.
           </p>
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-5">
             {[
               { label: 'Privacy', href: '/privacy' },
               { label: 'Terms', href: '/terms' },
-              { label: 'Sitemap', href: '#' },
-            ].map(({ label, href }, i, arr) => (
-              <span key={label} className="flex items-center gap-4">
-                <Link href={href} className="text-xs text-gray-600 hover:text-gray-400 transition-colors">
-                  {label}
-                </Link>
-                {i < arr.length - 1 && <span className="text-gray-700">·</span>}
-              </span>
+              { label: 'Contact', href: '/about' },
+            ].map(({ label, href }) => (
+              <Link key={label} href={href} className="text-xs text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 transition-colors">
+                {label}
+              </Link>
             ))}
           </div>
         </div>
-
       </div>
     </footer>
   )
