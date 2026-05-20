@@ -77,7 +77,7 @@ export default function StoreFooter() {
 
   return (
     <footer className="px-3 md:px-5 pb-6 mt-4">
-      <div className="bg-white dark:bg-[#111] border border-gray-100 dark:border-gray-800 rounded-3xl px-6 md:px-12 pt-12 pb-6">
+      <div className="bg-[#4A0F1C] rounded-3xl px-6 md:px-12 pt-12 pb-6">
 
         {/* Main grid */}
         <div className="grid grid-cols-1 lg:grid-cols-[280px_1fr] gap-12 mb-10">
@@ -86,14 +86,14 @@ export default function StoreFooter() {
           <div className="flex flex-col gap-5">
             <div>
               <Link href="/" className="inline-flex items-center gap-2.5 mb-3">
-                <div className="w-8 h-8 rounded-lg bg-[#4A0F1C] flex items-center justify-center shrink-0">
+                <div className="w-8 h-8 rounded-lg bg-white/10 flex items-center justify-center shrink-0">
                   <svg className="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
                     <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904 9 18.75l-.813-2.846a4.5 4.5 0 0 0-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 0 0 3.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 0 0 3.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 0 0-3.09 3.09Z" />
                   </svg>
                 </div>
-                <span className="text-gray-900 dark:text-white font-black tracking-tight text-lg uppercase">Ecclesia Hub</span>
+                <span className="text-white font-black tracking-tight text-lg uppercase">Ecclesia Hub</span>
               </Link>
-              <p className="text-sm text-gray-500 dark:text-gray-400 leading-relaxed max-w-[220px]">
+              <p className="text-sm text-white/55 leading-relaxed max-w-[220px]">
                 Premium skincare and wellness products, delivered to your door across Nigeria.
               </p>
             </div>
@@ -102,7 +102,7 @@ export default function StoreFooter() {
             <div className="flex items-center gap-2">
               {SOCIALS.map(s => (
                 <a key={s.label} href={s.href} aria-label={s.label}
-                  className="w-8 h-8 rounded-lg bg-gray-100 dark:bg-gray-800 hover:bg-[#4A0F1C] flex items-center justify-center text-gray-500 hover:text-white transition-colors">
+                  className="w-8 h-8 rounded-lg bg-white/10 hover:bg-white/20 flex items-center justify-center text-white/60 hover:text-white transition-colors">
                   {s.icon}
                 </a>
               ))}
@@ -110,45 +110,45 @@ export default function StoreFooter() {
 
             {/* Accepted payments */}
             <div>
-              <p className="text-xs font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest mb-3">Accepted Payments</p>
+              <p className="text-xs font-bold text-white/40 uppercase tracking-widest mb-3">Accepted Payments</p>
               <div className="flex flex-wrap gap-2">
                 {/* Visa */}
-                <div className="h-8 px-3 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg flex items-center">
+                <div className="h-8 px-3 bg-white/10 border border-white/10 rounded-lg flex items-center">
                   <svg viewBox="0 0 48 16" className="h-4 w-auto" fill="none">
-                    <text x="0" y="13" fontFamily="Arial" fontWeight="900" fontSize="14" fill="#1A1F71">VISA</text>
+                    <text x="0" y="13" fontFamily="Arial" fontWeight="900" fontSize="14" fill="white">VISA</text>
                   </svg>
                 </div>
                 {/* Mastercard */}
-                <div className="h-8 px-2 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg flex items-center gap-0.5">
+                <div className="h-8 px-2 bg-white/10 border border-white/10 rounded-lg flex items-center gap-0.5">
                   <div className="w-5 h-5 rounded-full bg-[#EB001B] opacity-90" />
                   <div className="w-5 h-5 rounded-full bg-[#F79E1B] opacity-90 -ml-2.5" />
                 </div>
                 {/* Paystack */}
-                <div className="h-8 px-3 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg flex items-center">
-                  <span className="text-[11px] font-black text-[#00C3F7]">Pay</span><span className="text-[11px] font-black text-[#011B33]">stack</span>
+                <div className="h-8 px-3 bg-white/10 border border-white/10 rounded-lg flex items-center">
+                  <span className="text-[11px] font-black text-[#00C3F7]">Pay</span><span className="text-[11px] font-black text-white">stack</span>
                 </div>
                 {/* Verve */}
-                <div className="h-8 px-3 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg flex items-center">
-                  <span className="text-[11px] font-black text-[#00425F]">VERVE</span>
+                <div className="h-8 px-3 bg-white/10 border border-white/10 rounded-lg flex items-center">
+                  <span className="text-[11px] font-black text-white">VERVE</span>
                 </div>
               </div>
             </div>
 
             {/* Newsletter */}
             <div>
-              <p className="text-xs font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest mb-2">Stay updated</p>
+              <p className="text-xs font-bold text-white/40 uppercase tracking-widest mb-2">Stay updated</p>
               <form onSubmit={handleSubscribe} className="flex gap-2">
                 <input
                   type="email"
                   placeholder="Your email address"
                   value={email}
                   onChange={e => setEmail(e.target.value)}
-                  className="flex-1 px-3.5 py-2 text-sm bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#4A0F1C]/20 transition-colors"
+                  className="flex-1 px-3.5 py-2 text-sm bg-white/10 border border-white/10 rounded-xl text-white placeholder-white/30 focus:outline-none focus:ring-2 focus:ring-white/20 transition-colors"
                 />
                 <button
                   type="submit"
                   className={`px-4 py-2 text-sm font-semibold rounded-xl transition-colors whitespace-nowrap ${
-                    subscribed ? 'bg-green-600 text-white' : 'bg-[#4A0F1C] hover:bg-[#3A0B15] text-white'
+                    subscribed ? 'bg-green-500 text-white' : 'bg-white text-[#4A0F1C] hover:bg-white/90'
                   }`}
                 >
                   {subscribed ? 'Done!' : 'Join'}
@@ -161,11 +161,11 @@ export default function StoreFooter() {
           <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
             {Object.entries(COLUMNS).map(([title, links]) => (
               <div key={title}>
-                <p className="text-xs font-bold uppercase tracking-widest text-gray-900 dark:text-white mb-4">{title}</p>
+                <p className="text-xs font-bold uppercase tracking-widest text-white mb-4">{title}</p>
                 <ul className="space-y-2.5">
                   {links.map(link => (
                     <li key={link.label}>
-                      <Link href={link.href} className="text-sm text-gray-500 dark:text-gray-400 hover:text-[#4A0F1C] dark:hover:text-[#D4849A] transition-colors">
+                      <Link href={link.href} className="text-sm text-white/50 hover:text-white transition-colors">
                         {link.label}
                       </Link>
                     </li>
@@ -177,11 +177,11 @@ export default function StoreFooter() {
         </div>
 
         {/* Divider */}
-        <div className="h-px bg-gray-100 dark:bg-gray-800 mb-5" />
+        <div className="h-px bg-white/10 mb-5" />
 
         {/* Bottom bar */}
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-          <p className="text-xs text-gray-400">
+          <p className="text-xs text-white/35">
             © {new Date().getFullYear()} Ecclesia Hub. All rights reserved.
           </p>
           <div className="flex items-center gap-5">
@@ -190,7 +190,7 @@ export default function StoreFooter() {
               { label: 'Terms', href: '/terms' },
               { label: 'Contact', href: '/about' },
             ].map(({ label, href }) => (
-              <Link key={label} href={href} className="text-xs text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 transition-colors">
+              <Link key={label} href={href} className="text-xs text-white/35 hover:text-white/70 transition-colors">
                 {label}
               </Link>
             ))}
