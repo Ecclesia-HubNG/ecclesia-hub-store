@@ -15,26 +15,22 @@ const COLUMNS = {
   ],
   'About Us': [
     { label: 'About Ecclesia Hub', href: '/about' },
+    { label: 'Our Brands', href: '/brands' },
     { label: 'News & Blog', href: '#' },
     { label: 'Careers', href: '#' },
-    { label: 'Press Center', href: '#' },
     { label: 'Affiliate Program', href: '#' },
-    { label: 'Our Brands', href: '/brands' },
   ],
   'Services': [
-    { label: 'Gift Card', href: '#' },
     { label: 'Shipping & Delivery', href: '/about#delivery' },
     { label: 'Order Tracking', href: '/account' },
-    { label: 'Account Signup', href: '/auth' },
-    { label: 'Shop by Brand', href: '/brands' },
     { label: 'Deals of the Day', href: '/deals' },
+    { label: 'Shop by Brand', href: '/brands' },
+    { label: 'Gift Card', href: '#' },
   ],
   'Help': [
     { label: 'Help Center', href: '/about#faq' },
     { label: 'Returns', href: '#' },
-    { label: 'Track Orders', href: '/account' },
     { label: 'Contact Us', href: '/about' },
-    { label: 'Feedback', href: '#' },
     { label: 'Privacy Policy', href: '/privacy' },
     { label: 'Terms of Service', href: '/terms' },
   ],
@@ -77,95 +73,35 @@ export default function StoreFooter() {
 
   return (
     <footer className="px-3 md:px-5 pb-6 mt-4">
-      <div className="bg-[#4A0F1C] rounded-3xl px-6 md:px-12 pt-12 pb-6">
+      <div className="bg-[#4A0F1C] rounded-3xl overflow-hidden">
 
-        {/* Main grid */}
-        <div className="grid grid-cols-1 lg:grid-cols-[280px_1fr] gap-12 mb-10">
+        {/* ── Top: brand + nav columns ── */}
+        <div className="px-8 md:px-14 pt-12 pb-10 grid grid-cols-1 lg:grid-cols-[220px_1fr] gap-10">
 
-          {/* Left — brand + payments */}
-          <div className="flex flex-col gap-5">
-            <div>
-              <Link href="/" className="inline-flex items-center gap-2.5 mb-3">
-                <div className="w-8 h-8 rounded-lg bg-white/10 flex items-center justify-center shrink-0">
-                  <svg className="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904 9 18.75l-.813-2.846a4.5 4.5 0 0 0-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 0 0 3.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 0 0 3.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 0 0-3.09 3.09Z" />
-                  </svg>
-                </div>
-                <span className="text-white font-black tracking-tight text-lg uppercase">Ecclesia Hub</span>
-              </Link>
-              <p className="text-sm text-white/55 leading-relaxed max-w-[220px]">
-                Premium skincare and wellness products, delivered to your door across Nigeria.
-              </p>
-            </div>
-
-            {/* Social */}
-            <div className="flex items-center gap-2">
-              {SOCIALS.map(s => (
-                <a key={s.label} href={s.href} aria-label={s.label}
-                  className="w-8 h-8 rounded-lg bg-white/10 hover:bg-white/20 flex items-center justify-center text-white/60 hover:text-white transition-colors">
-                  {s.icon}
-                </a>
-              ))}
-            </div>
-
-            {/* Accepted payments */}
-            <div>
-              <p className="text-xs font-bold text-white/40 uppercase tracking-widest mb-3">Accepted Payments</p>
-              <div className="flex flex-wrap gap-2">
-                {/* Visa */}
-                <div className="h-8 px-3 bg-white/10 border border-white/10 rounded-lg flex items-center">
-                  <svg viewBox="0 0 48 16" className="h-4 w-auto" fill="none">
-                    <text x="0" y="13" fontFamily="Arial" fontWeight="900" fontSize="14" fill="white">VISA</text>
-                  </svg>
-                </div>
-                {/* Mastercard */}
-                <div className="h-8 px-2 bg-white/10 border border-white/10 rounded-lg flex items-center gap-0.5">
-                  <div className="w-5 h-5 rounded-full bg-[#EB001B] opacity-90" />
-                  <div className="w-5 h-5 rounded-full bg-[#F79E1B] opacity-90 -ml-2.5" />
-                </div>
-                {/* Paystack */}
-                <div className="h-8 px-3 bg-white/10 border border-white/10 rounded-lg flex items-center">
-                  <span className="text-[11px] font-black text-[#00C3F7]">Pay</span><span className="text-[11px] font-black text-white">stack</span>
-                </div>
-                {/* Verve */}
-                <div className="h-8 px-3 bg-white/10 border border-white/10 rounded-lg flex items-center">
-                  <span className="text-[11px] font-black text-white">VERVE</span>
-                </div>
+          {/* Brand */}
+          <div className="flex flex-col gap-4">
+            <Link href="/" className="inline-flex items-center gap-2.5">
+              <div className="w-8 h-8 rounded-lg bg-white/10 flex items-center justify-center shrink-0">
+                <svg className="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904 9 18.75l-.813-2.846a4.5 4.5 0 0 0-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 0 0 3.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 0 0 3.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 0 0-3.09 3.09Z" />
+                </svg>
               </div>
-            </div>
-
-            {/* Newsletter */}
-            <div>
-              <p className="text-xs font-bold text-white/40 uppercase tracking-widest mb-2">Stay updated</p>
-              <form onSubmit={handleSubscribe} className="flex gap-2">
-                <input
-                  type="email"
-                  placeholder="Your email address"
-                  value={email}
-                  onChange={e => setEmail(e.target.value)}
-                  className="flex-1 px-3.5 py-2 text-sm bg-white/10 border border-white/10 rounded-xl text-white placeholder-white/30 focus:outline-none focus:ring-2 focus:ring-white/20 transition-colors"
-                />
-                <button
-                  type="submit"
-                  className={`px-4 py-2 text-sm font-semibold rounded-xl transition-colors whitespace-nowrap ${
-                    subscribed ? 'bg-green-500 text-white' : 'bg-white text-[#4A0F1C] hover:bg-white/90'
-                  }`}
-                >
-                  {subscribed ? 'Done!' : 'Join'}
-                </button>
-              </form>
-            </div>
+              <span className="text-white font-black tracking-tight text-base uppercase">Ecclesia Hub</span>
+            </Link>
+            <p className="text-sm text-white/50 leading-relaxed max-w-[200px]">
+              Premium skincare and wellness, delivered across Nigeria.
+            </p>
           </div>
 
-          {/* Right — 4 link columns */}
+          {/* Nav columns */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
             {Object.entries(COLUMNS).map(([title, links]) => (
               <div key={title}>
-                <p className="text-xs font-bold uppercase tracking-widest text-white mb-4">{title}</p>
+                <p className="text-[10px] font-bold uppercase tracking-widest text-white/40 mb-4">{title}</p>
                 <ul className="space-y-2.5">
                   {links.map(link => (
                     <li key={link.label}>
-                      <Link href={link.href} className="text-sm text-white/50 hover:text-white transition-colors">
+                      <Link href={link.href} className="text-sm text-white/60 hover:text-white transition-colors">
                         {link.label}
                       </Link>
                     </li>
@@ -176,26 +112,93 @@ export default function StoreFooter() {
           </div>
         </div>
 
-        {/* Divider */}
-        <div className="h-px bg-white/10 mb-5" />
+        {/* ── Bottom card ── */}
+        <div className="mx-3 mb-3 bg-[#F9F0E8] rounded-2xl px-8 md:px-12 py-8">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-8">
 
-        {/* Bottom bar */}
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-          <p className="text-xs text-white/35">
-            © {new Date().getFullYear()} Ecclesia Hub. All rights reserved.
-          </p>
-          <div className="flex items-center gap-5">
-            {[
-              { label: 'Privacy', href: '/privacy' },
-              { label: 'Terms', href: '/terms' },
-              { label: 'Contact', href: '/about' },
-            ].map(({ label, href }) => (
-              <Link key={label} href={href} className="text-xs text-white/35 hover:text-white/70 transition-colors">
-                {label}
-              </Link>
-            ))}
+            {/* Left: big brand name + tagline */}
+            <div>
+              <p className="text-3xl md:text-5xl font-black uppercase tracking-tight text-[#4A0F1C] leading-none mb-2">
+                Ecclesia Hub
+              </p>
+              <p className="text-sm text-[#4A0F1C]/50">Glow. Nourish. Thrive.</p>
+            </div>
+
+            {/* Right: newsletter + socials */}
+            <div className="flex flex-col gap-4 md:items-end">
+              <form onSubmit={handleSubscribe} className="flex gap-2 w-full md:w-auto">
+                <input
+                  type="email"
+                  placeholder="Your email address"
+                  value={email}
+                  onChange={e => setEmail(e.target.value)}
+                  className="flex-1 md:w-64 px-4 py-2.5 text-sm bg-white border border-[#4A0F1C]/10 rounded-xl text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#4A0F1C]/20 transition-colors"
+                />
+                <button
+                  type="submit"
+                  className={`px-4 py-2.5 rounded-xl transition-all shrink-0 ${
+                    subscribed
+                      ? 'bg-green-600 text-white'
+                      : 'bg-[#4A0F1C] text-white hover:bg-[#3A0B15]'
+                  }`}
+                >
+                  {subscribed ? (
+                    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="m4.5 12.75 6 6 9-13.5" />
+                    </svg>
+                  ) : (
+                    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 4.5 21 12m0 0-7.5 7.5M21 12H3" />
+                    </svg>
+                  )}
+                </button>
+              </form>
+
+              {/* Socials + payment badges */}
+              <div className="flex items-center gap-2">
+                {SOCIALS.map(s => (
+                  <a key={s.label} href={s.href} aria-label={s.label}
+                    className="w-8 h-8 rounded-lg bg-[#4A0F1C]/8 hover:bg-[#4A0F1C] flex items-center justify-center text-[#4A0F1C] hover:text-white transition-colors">
+                    {s.icon}
+                  </a>
+                ))}
+                <div className="w-px h-5 bg-[#4A0F1C]/15 mx-1" />
+                {/* Payment badges */}
+                <div className="h-7 px-2.5 bg-white border border-[#4A0F1C]/10 rounded-lg flex items-center">
+                  <svg viewBox="0 0 48 16" className="h-3.5 w-auto" fill="none">
+                    <text x="0" y="12" fontFamily="Arial" fontWeight="900" fontSize="13" fill="#1A1F71">VISA</text>
+                  </svg>
+                </div>
+                <div className="h-7 px-1.5 bg-white border border-[#4A0F1C]/10 rounded-lg flex items-center">
+                  <div className="w-4 h-4 rounded-full bg-[#EB001B]" />
+                  <div className="w-4 h-4 rounded-full bg-[#F79E1B] -ml-2" />
+                </div>
+                <div className="h-7 px-2.5 bg-white border border-[#4A0F1C]/10 rounded-lg flex items-center">
+                  <span className="text-[10px] font-black text-[#00C3F7]">Pay</span><span className="text-[10px] font-black text-[#011B33]">stack</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Copyright */}
+          <div className="mt-6 pt-5 border-t border-[#4A0F1C]/10 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
+            <p className="text-xs text-[#4A0F1C]/40">
+              © {new Date().getFullYear()} Ecclesia Hub. All rights reserved.
+            </p>
+            <div className="flex items-center gap-5">
+              {[
+                { label: 'Privacy', href: '/privacy' },
+                { label: 'Terms', href: '/terms' },
+                { label: 'Contact', href: '/about' },
+              ].map(({ label, href }) => (
+                <Link key={label} href={href} className="text-xs text-[#4A0F1C]/40 hover:text-[#4A0F1C]/70 transition-colors">
+                  {label}
+                </Link>
+              ))}
+            </div>
           </div>
         </div>
+
       </div>
     </footer>
   )
