@@ -6,7 +6,7 @@ import { useState, useTransition, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { useCart } from '@/lib/cart-context'
 import { createOrder } from '@/lib/actions/customer-orders'
-import { initializePayment } from '@/lib/actions/paystack'
+import { initializePayment } from '@/lib/actions/flutterwave'
 
 type Field = 'firstName' | 'lastName' | 'email' | 'phone' | 'address' | 'city' | 'state'
 
@@ -59,14 +59,14 @@ export default function CheckoutPage() {
         return
       }
 
-      const payResult = await initializePayment(orderResult.orderId, shipping.email, total)
+      const customerName = `${form.firstName} ${form.lastName}`
+      const payResult = await initializePayment(orderResult.orderId, shipping.email, total, customerName, shipping.phone)
       if ('error' in payResult) {
         setError(payResult.error ?? 'Could not initialize payment.')
         return
       }
 
-      // Hard redirect — Paystack is an external page
-      window.location.href = payResult.authorizationUrl
+      window.location.href = payResult.paymentLink
     })
   }
 

@@ -3,7 +3,8 @@
 import { Suspense, useEffect, useState } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
 import { useCart } from '@/lib/cart-context'
-import { verifyAndFinalizeOrder } from '@/lib/actions/paystack'
+import { verifyAndFinalizeOrder as flwVerify } from '@/lib/actions/flutterwave'
+import { verifyAndFinalizeOrder as psVerify } from '@/lib/actions/paystack'
 
 type State = 'verifying' | 'success' | 'error'
 
@@ -15,24 +16,42 @@ function VerifyContent() {
   const [errorMsg, setErrorMsg] = useState('')
 
   useEffect(() => {
-    const reference = searchParams.get('reference') || searchParams.get('trxref')
-    if (!reference) {
-      setState('error')
-      setErrorMsg('No payment reference found.')
-      return
-    }
+    const transactionId = searchParams.get('transaction_id')   // Flutterwave
+    const status = searchParams.get('status')                   // Flutterwave
+    const reference = searchParams.get('reference') || searchParams.get('trxref') // Paystack
 
-    verifyAndFinalizeOrder(reference).then(result => {
-      if ('error' in result) {
+    async function verify() {
+      let result: { orderId?: string; error?: string }
+
+      if (transactionId) {
+        // Flutterwave callback
+        if (status === 'cancelled') {
+          setState('error')
+          setErrorMsg('Payment was cancelled.')
+          return
+        }
+        result = await flwVerify(transactionId)
+      } else if (reference) {
+        // Paystack callback
+        result = await psVerify(reference)
+      } else {
         setState('error')
-        setErrorMsg(result.error ?? 'Verification failed.')
+        setErrorMsg('No payment reference found.')
+        return
+      }
+
+      if ('error' in result && result.error) {
+        setState('error')
+        setErrorMsg(result.error)
         return
       }
 
       clearCart()
       setState('success')
       setTimeout(() => router.replace(`/orders/${result.orderId}?paid=1`), 1500)
-    })
+    }
+
+    verify()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
@@ -72,7 +91,7 @@ function VerifyContent() {
               <a href="/checkout" className="px-5 py-2.5 text-sm font-semibold bg-[#4A0F1C] text-white rounded-xl hover:bg-[#3A0B15] transition-colors">
                 Try again
               </a>
-              <a href="/support" className="px-5 py-2.5 text-sm font-semibold bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-200 rounded-xl hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors">
+              <a href="/about" className="px-5 py-2.5 text-sm font-semibold bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-200 rounded-xl hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors">
                 Contact support
               </a>
             </div>
