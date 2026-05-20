@@ -2,7 +2,7 @@ import Link from 'next/link'
 
 const CARDS = [
   {
-    title: 'Frequently Asked\nQuestions',
+    title: 'Frequently Asked Questions',
     description: 'Everything you need to know about our products, shipping, and returns.',
     href: '/about#faq',
     bg: '#FFF0F3',
@@ -14,7 +14,7 @@ const CARDS = [
     ),
   },
   {
-    title: 'Online Payment\nProcess',
+    title: 'Online Payment Process',
     description: 'Safe and secure payments powered by Paystack. Visa, Mastercard & more accepted.',
     href: '/about#payment',
     bg: '#F0FBF4',
@@ -26,7 +26,7 @@ const CARDS = [
     ),
   },
   {
-    title: 'Home Delivery\nOptions',
+    title: 'Home Delivery Options',
     description: 'We deliver nationwide. Fast and reliable shipping right to your doorstep.',
     href: '/about#delivery',
     bg: '#FFFBEA',
@@ -52,7 +52,7 @@ export default function InfoCards() {
           >
             {/* Text */}
             <div className="px-6 pt-6 pb-4">
-              <h3 className="text-lg font-black text-gray-900 leading-snug mb-2 whitespace-pre-line">
+              <h3 className="text-lg font-black text-gray-900 leading-snug mb-2">
                 {card.title}
               </h3>
               <p className="text-sm text-gray-500 leading-relaxed">{card.description}</p>
