@@ -1,5 +1,6 @@
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
+import AddToCartButton from '@/components/store/AddToCartButton'
 
 export default async function DealsOfTheDay() {
   const supabase = createClient()
@@ -42,13 +43,12 @@ export default async function DealsOfTheDay() {
           const outOfStock = product.stock === 0
 
           return (
-            <Link
+            <div
               key={product.id}
-              href={`/product/${product.slug}`}
               className="group flex flex-col rounded-2xl bg-white dark:bg-[#1a1a1a] border border-gray-100 dark:border-gray-800 overflow-hidden hover:shadow-md transition-shadow duration-300"
             >
               {/* Image */}
-              <div className="p-2.5 pb-0">
+              <Link href={`/product/${product.slug}`} className="block p-2.5 pb-0">
                 <div className="relative rounded-[14px] overflow-hidden bg-[#F5F3F0] dark:bg-[#2a1a1d] aspect-square">
                   {product.thumbnail ? (
                     <img
@@ -74,13 +74,15 @@ export default async function DealsOfTheDay() {
                     </span>
                   )}
                 </div>
-              </div>
+              </Link>
 
               {/* Info */}
-              <div className="px-3 pt-2.5 pb-3 flex flex-col gap-1.5">
-                <p className="text-xs font-semibold text-gray-900 dark:text-white leading-snug line-clamp-2 group-hover:text-[#4A0F1C] dark:group-hover:text-[#E8C4CB] transition-colors">
-                  {product.name}
-                </p>
+              <div className="px-3 pt-2.5 pb-3 flex flex-col gap-1.5 flex-1">
+                <Link href={`/product/${product.slug}`}>
+                  <p className="text-xs font-semibold text-gray-900 dark:text-white leading-snug line-clamp-2 group-hover:text-[#4A0F1C] dark:group-hover:text-[#E8C4CB] transition-colors">
+                    {product.name}
+                  </p>
+                </Link>
 
                 {/* Stars */}
                 <div className="flex items-center gap-1">
@@ -103,8 +105,11 @@ export default async function DealsOfTheDay() {
                     </span>
                   )}
                 </div>
+
+                {/* Cart button */}
+                <AddToCartButton product={product} className="mt-auto" />
               </div>
-            </Link>
+            </div>
           )
         })}
       </div>
