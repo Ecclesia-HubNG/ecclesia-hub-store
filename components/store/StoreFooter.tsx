@@ -22,9 +22,9 @@ const COLUMNS = {
   ],
   'Services': [
     { label: 'Shipping & Delivery', href: '/about#delivery' },
-    { label: 'Order Tracking', href: '/account' },
     { label: 'Deals of the Day', href: '/deals' },
     { label: 'Shop by Brand', href: '/brands' },
+    { label: 'New Arrivals', href: '/shop' },
     { label: 'Gift Card', href: '#' },
   ],
   'Help': [
@@ -33,6 +33,13 @@ const COLUMNS = {
     { label: 'Contact Us', href: '/about' },
     { label: 'Privacy Policy', href: '/privacy' },
     { label: 'Terms of Service', href: '/terms' },
+  ],
+  'Quick Links': [
+    { label: 'Sign In', href: '/auth' },
+    { label: 'My Cart', href: '/cart' },
+    { label: 'Wishlist', href: '/wishlist' },
+    { label: 'Track Order', href: '/account' },
+    { label: 'My Account', href: '/account' },
   ],
 }
 
@@ -94,7 +101,7 @@ export default function StoreFooter() {
           </div>
 
           {/* Nav columns */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
+          <div className="grid grid-cols-2 md:grid-cols-5 gap-8">
             {Object.entries(COLUMNS).map(([title, links]) => (
               <div key={title}>
                 <p className="text-[10px] font-bold uppercase tracking-widest text-white/40 mb-4">{title}</p>
