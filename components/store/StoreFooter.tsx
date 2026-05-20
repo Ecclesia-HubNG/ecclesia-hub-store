@@ -8,9 +8,7 @@ const COLUMNS = {
     { label: 'Body Lotion', href: '/shop?category=body-lotion-1778779566716' },
     { label: 'Face Serum', href: '/shop?category=face-serum' },
     { label: 'Body Wash', href: '/shop?category=body-wash' },
-    { label: 'Exfoliant', href: '/shop?category=exfoilant' },
     { label: 'Sunscreen', href: '/shop?category=sunscreen' },
-    { label: 'Supplements', href: '/shop?category=supplements' },
     { label: 'Perfume Oil', href: '/shop?category=perfume-oil' },
   ],
   'About Us': [
