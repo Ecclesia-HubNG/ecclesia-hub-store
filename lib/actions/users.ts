@@ -11,13 +11,15 @@ const PATH = '/admin/users'
 async function getCallerRole(): Promise<string> {
   const supabase = createClient()
   const { data: { user } } = await supabase.auth.getUser()
-  return user?.app_metadata?.role ?? ''
+  if (!user) return ''
+  const { data } = await supabase.from('profiles').select('role').eq('id', user.id).single()
+  return data?.role ?? ''
 }
 
 async function getTargetRole(id: string): Promise<string> {
   const admin = createAdminClient()
-  const { data: { user } } = await admin.auth.admin.getUserById(id)
-  return user?.app_metadata?.role ?? ''
+  const { data } = await admin.from('profiles').select('role').eq('id', id).single()
+  return data?.role ?? ''
 }
 
 export async function updateUserName(id: string, fullName: string) {
@@ -45,7 +47,11 @@ export async function setUserRole(id: string, role: string) {
   }
 
   const admin = createAdminClient()
-  await admin.auth.admin.updateUserById(id, { app_metadata: { role } })
+  // Keep both layers in sync
+  await Promise.all([
+    admin.auth.admin.updateUserById(id, { app_metadata: { role } }),
+    admin.from('profiles').update({ role }).eq('id', id),
+  ])
   revalidatePath(PATH)
 }
 
@@ -92,8 +98,11 @@ export async function inviteStaffMember(email: string, role: string) {
   })
   if (error) return { error: error.message }
 
-  // Set app_metadata role on the newly created user
-  await admin.auth.admin.updateUserById(data.user.id, { app_metadata: { role } })
+  // Set role in both app_metadata and profiles
+  await Promise.all([
+    admin.auth.admin.updateUserById(data.user.id, { app_metadata: { role } }),
+    admin.from('profiles').upsert({ id: data.user.id, role }).eq('id', data.user.id),
+  ])
 
   const roleLabel = ROLE_LABELS[role as keyof typeof ROLE_LABELS] ?? role
   await sendStaffInvite(email, {
