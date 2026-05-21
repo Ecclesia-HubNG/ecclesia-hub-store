@@ -3,9 +3,9 @@ import { type NextRequest, NextResponse } from 'next/server'
 // ── Constants ──────────────────────────────────────────────────────────────
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL!
 const ANON_KEY     = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-// Project ref is the subdomain portion of the Supabase URL
-const PROJECT_REF  = new URL(SUPABASE_URL).hostname.split('.')[0]
-const STORAGE_KEY  = `sb-${PROJECT_REF}-auth-token`
+// @supabase/auth-js default storageKey constant — what createBrowserClient uses
+// when no cookieOptions.name is provided.
+const STORAGE_KEY  = 'supabase.auth.token'
 const VERIFIER_KEY = `${STORAGE_KEY}-code-verifier`
 const MAX_AGE      = 400 * 24 * 60 * 60   // ~400 days
 const COOKIE_OPTS  = { path: '/', sameSite: 'lax' as const, httpOnly: false, maxAge: MAX_AGE }
