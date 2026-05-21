@@ -98,14 +98,22 @@ export async function GET(request: NextRequest) {
   if (!code) return NextResponse.redirect(`${origin}/account`)
 
   const allCookies = request.cookies.getAll()
-  const verifierRaw = readSsrCookie(allCookies, VERIFIER_KEY)
+  const verifierEncoded = readSsrCookie(allCookies, VERIFIER_KEY)
 
-  if (!verifierRaw) {
+  if (!verifierEncoded) {
     return fail('Session data missing. Please try signing in again.')
   }
 
+  // auth-js wraps every storage write in JSON.stringify, so decode that layer
+  let storedVerifier: string
+  try {
+    storedVerifier = JSON.parse(verifierEncoded)
+  } catch {
+    return fail()
+  }
+
   // Stored value is "codeVerifier" or "codeVerifier/recovery"
-  const codeVerifier = verifierRaw.split('/')[0]
+  const codeVerifier = storedVerifier.split('/')[0]
   if (!codeVerifier) return fail()
 
   // Exchange the Supabase auth code for a session
