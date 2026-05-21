@@ -104,8 +104,8 @@ export default function AccountDashboardLayout({ children }: { children: React.R
       `}>
         {/* Brand */}
         <div className="px-5 pt-6 pb-4 border-b border-white/10">
-          <Link href="/home">
-            <img src="/logo.svg" alt="Ecclesia Hub" className="h-7 w-auto brightness-0 invert" />
+          <Link href="/home" className="inline-block bg-white rounded-xl px-3 py-1.5">
+            <img src="/logo.svg" alt="Ecclesia Hub" className="h-6 w-auto" />
           </Link>
         </div>
 
@@ -196,7 +196,9 @@ export default function AccountDashboardLayout({ children }: { children: React.R
               <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" />
             </svg>
           </button>
-          <img src="/logo.svg" alt="Ecclesia Hub" className="h-6 w-auto brightness-0 invert" />
+          <div className="inline-block bg-white rounded-lg px-2.5 py-1">
+            <img src="/logo.svg" alt="Ecclesia Hub" className="h-5 w-auto" />
+          </div>
           <div className="w-9" />
         </header>
 

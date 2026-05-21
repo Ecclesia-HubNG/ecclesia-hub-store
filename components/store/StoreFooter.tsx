@@ -85,8 +85,8 @@ export default function StoreFooter() {
 
           {/* Brand */}
           <div className="flex flex-col gap-4">
-            <Link href="/">
-              <img src="/logo.svg" alt="Ecclesia Hub" className="h-9 w-auto brightness-0 invert" />
+            <Link href="/" className="inline-block bg-white rounded-2xl px-4 py-2">
+              <img src="/logo.svg" alt="Ecclesia Hub" className="h-7 w-auto" />
             </Link>
             <p className="text-sm text-white/50 leading-relaxed max-w-[200px]">
               Premium skincare and wellness, delivered across Nigeria.
@@ -118,7 +118,7 @@ export default function StoreFooter() {
 
             {/* Left: big brand logo + tagline */}
             <div>
-              <img src="/logo.svg" alt="Ecclesia Hub" className="h-12 md:h-16 w-auto mb-2 [filter:brightness(0)_saturate(100%)_invert(9%)_sepia(64%)_saturate(2400%)_hue-rotate(320deg)_brightness(80%)_contrast(110%)]" />
+              <img src="/logo.svg" alt="Ecclesia Hub" className="h-12 md:h-16 w-auto mb-2" />
               <p className="text-sm text-[#4A0F1C]/50">Glow. Nourish. Thrive.</p>
             </div>
 

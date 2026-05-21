@@ -79,7 +79,7 @@ export default function AccountPage() {
   return (
     <div className="max-w-sm mx-auto px-6 py-16">
       <div className="text-center mb-8">
-        <img src="/logo.svg" alt="Ecclesia Hub" className="h-10 w-auto mx-auto mb-5 [filter:brightness(0)_saturate(100%)_invert(9%)_sepia(64%)_saturate(2400%)_hue-rotate(320deg)_brightness(80%)_contrast(110%)] dark:[filter:brightness(0)_invert(1)]" />
+        <img src="/logo.svg" alt="Ecclesia Hub" className="h-10 w-auto mx-auto mb-5" />
         <h1 className="text-xl font-bold text-gray-900 dark:text-white">Your account</h1>
         <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Sign in to view your orders</p>
       </div>

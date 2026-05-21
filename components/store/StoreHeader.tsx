@@ -223,7 +223,7 @@ function MobileDrawer({
       <div className={`fixed top-0 left-0 bottom-0 z-50 w-80 max-w-[88vw] bg-white flex flex-col shadow-2xl transition-transform duration-300 ease-out ${open ? 'translate-x-0' : '-translate-x-full'}`}>
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-5 border-b border-gray-100">
-          <img src="/logo.svg" alt="Ecclesia Hub" className="h-7 w-auto" />
+          <img src="/logo.svg" alt="Ecclesia Hub" className="h-7 w-auto object-contain" />
           <button type="button" onClick={onClose} aria-label="Close menu" className="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors">
             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" />
@@ -415,7 +415,7 @@ export default function StoreHeader() {
 
           {/* Logo */}
           <Link href="/home" className="shrink-0">
-            <img src="/logo.svg" alt="Ecclesia Hub" className="h-8 w-auto dark:brightness-0 dark:invert" />
+            <img src="/logo.svg" alt="Ecclesia Hub" className="h-8 w-auto" />
           </Link>
 
           {/* Desktop nav — centered */}

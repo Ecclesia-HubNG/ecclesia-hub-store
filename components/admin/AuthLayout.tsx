@@ -32,7 +32,9 @@ export function AuthLayout({
 
         <div className="relative z-10 w-full max-w-xs flex flex-col items-center">
           {/* Logo */}
-          <img src="/logo.svg" alt="Ecclesia Hub" className="h-9 w-auto mb-12 brightness-0 invert" />
+          <div className="inline-block bg-white rounded-2xl px-5 py-2.5 mb-12">
+            <img src="/logo.svg" alt="Ecclesia Hub" className="h-8 w-auto" />
+          </div>
 
           <div className="text-center mb-10">
             <h1 className="text-[1.75rem] font-bold text-white leading-snug">{title}</h1>

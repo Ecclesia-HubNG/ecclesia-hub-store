@@ -132,7 +132,9 @@ export default function AdminSidebar({ role }: { role: string }) {
     <aside className="w-60 bg-gray-900 flex flex-col h-full shrink-0">
       {/* Brand */}
       <div className="px-5 py-5 border-b border-white/10">
-        <img src="/logo.svg" alt="Ecclesia Hub" className="h-10 w-auto brightness-0 invert" />
+        <div className="inline-block bg-white rounded-xl px-3 py-1.5 mb-1">
+          <img src="/logo.svg" alt="Ecclesia Hub" className="h-7 w-auto" />
+        </div>
         <p className="text-gray-500 text-xs mt-1">Admin Dashboard</p>
         {roleLabel && (
           <span className={`inline-flex items-center mt-2 px-2 py-0.5 rounded-full text-[10px] font-semibold ${roleColor}`}>
