@@ -15,6 +15,13 @@ export async function middleware(request: NextRequest) {
     return NextResponse.next()
   }
 
+  // Never run session refresh on the auth callback — it can corrupt the PKCE
+  // code_verifier cookie when stale session cookies are present, causing
+  // exchangeCodeForSession to fail with AuthPKCECodeVerifierMissingError.
+  if (pathname === '/auth/callback') {
+    return NextResponse.next()
+  }
+
   if (pathname.startsWith('/admin')) {
     // Auth pages are public — just refresh the session cookie, no role check
     if (ADMIN_PUBLIC_PATHS.some(p => pathname.startsWith(p))) {
