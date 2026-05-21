@@ -1,5 +1,6 @@
 import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
+import { ROLES } from '@/lib/roles'
 
 function makeClient(request: NextRequest) {
   let supabaseResponse = NextResponse.next({ request })
@@ -46,7 +47,7 @@ export async function updateSessionWithAdminCheck(request: NextRequest) {
     .eq('id', user.id)
     .single()
 
-  if (profile?.role !== 'admin') return NextResponse.redirect(loginUrl)
+  if (!profile?.role || !ROLES.includes(profile.role as any)) return NextResponse.redirect(loginUrl)
 
   return getResponse()
 }

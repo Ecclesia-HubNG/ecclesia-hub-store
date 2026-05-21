@@ -11,22 +11,22 @@ const ADMIN_PUBLIC_PATHS = [
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
 
-  if (pathname.startsWith('/admin')) {
-    if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
-      console.error('Missing Supabase env vars — skipping session update')
-      return NextResponse.next()
-    }
+  if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
+    return NextResponse.next()
+  }
 
+  if (pathname.startsWith('/admin')) {
     // Auth pages are public — just refresh the session cookie, no role check
     if (ADMIN_PUBLIC_PATHS.some(p => pathname.startsWith(p))) {
       return await updateSession(request)
     }
 
-    // All other /admin pages require an authenticated user with role = 'admin'
+    // All other /admin pages require an authenticated staff user
     return await updateSessionWithAdminCheck(request)
   }
 
-  return NextResponse.next()
+  // Refresh session for all store routes so OAuth cookies propagate correctly
+  return await updateSession(request)
 }
 
 export const config = {

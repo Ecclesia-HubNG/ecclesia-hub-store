@@ -10,7 +10,14 @@ export default async function AdminDashboardLayout({ children }: { children: Rea
 
   if (!user) redirect('/admin/login')
 
-  const role = (user.app_metadata?.role ?? '') as string
+  // Use profiles table — app_metadata.role is not set for Google OAuth sign-ins
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('role')
+    .eq('id', user.id)
+    .single()
+
+  const role = profile?.role ?? ''
   if (!ROLES.includes(role as any)) redirect('/admin/login')
 
   return (
