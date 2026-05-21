@@ -33,7 +33,7 @@ const COLUMNS = {
     { label: 'Terms of Service', href: '/terms' },
   ],
   'Quick Links': [
-    { label: 'Sign In', href: '/auth' },
+    { label: 'Sign In', href: '/account' },
     { label: 'My Cart', href: '/cart' },
     { label: 'Wishlist', href: '/wishlist' },
     { label: 'Track Order', href: '/account' },

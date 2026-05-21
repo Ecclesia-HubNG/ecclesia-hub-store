@@ -1,17 +1,29 @@
 import { type NextRequest, NextResponse } from 'next/server'
-import { updateSession } from '@/lib/supabase/middleware'
+import { updateSession, updateSessionWithAdminCheck } from '@/lib/supabase/middleware'
+
+const ADMIN_PUBLIC_PATHS = [
+  '/admin/login',
+  '/admin/register',
+  '/admin/forgot-password',
+  '/admin/reset-password',
+]
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
 
-  // Only run Supabase session logic on admin routes.
-  // All public store routes pass through without touching auth.
   if (pathname.startsWith('/admin')) {
     if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
       console.error('Missing Supabase env vars — skipping session update')
       return NextResponse.next()
     }
-    return await updateSession(request)
+
+    // Auth pages are public — just refresh the session cookie, no role check
+    if (ADMIN_PUBLIC_PATHS.some(p => pathname.startsWith(p))) {
+      return await updateSession(request)
+    }
+
+    // All other /admin pages require an authenticated user with role = 'admin'
+    return await updateSessionWithAdminCheck(request)
   }
 
   return NextResponse.next()
