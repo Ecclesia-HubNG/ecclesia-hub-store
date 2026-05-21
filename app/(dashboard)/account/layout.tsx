@@ -104,13 +104,8 @@ export default function AccountDashboardLayout({ children }: { children: React.R
       `}>
         {/* Brand */}
         <div className="px-5 pt-6 pb-4 border-b border-white/10">
-          <Link href="/home" className="flex items-center gap-2.5">
-            <div className="w-7 h-7 rounded-lg bg-white/10 flex items-center justify-center shrink-0">
-              <svg className="w-3.5 h-3.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904 9 18.75l-.813-2.846a4.5 4.5 0 0 0-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 0 0 3.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 0 0 3.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 0 0-3.09 3.09Z" />
-              </svg>
-            </div>
-            <span className="text-white font-black text-sm uppercase tracking-tight">Ecclesia Hub</span>
+          <Link href="/home">
+            <img src="/logo.svg" alt="Ecclesia Hub" className="h-7 w-auto brightness-0 invert" />
           </Link>
         </div>
 
@@ -201,7 +196,7 @@ export default function AccountDashboardLayout({ children }: { children: React.R
               <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" />
             </svg>
           </button>
-          <span className="text-white font-bold text-sm uppercase tracking-tight">Ecclesia Hub</span>
+          <img src="/logo.svg" alt="Ecclesia Hub" className="h-6 w-auto brightness-0 invert" />
           <div className="w-9" />
         </header>
 

@@ -79,11 +79,7 @@ export default function AccountPage() {
   return (
     <div className="max-w-sm mx-auto px-6 py-16">
       <div className="text-center mb-8">
-        <div className="w-12 h-12 rounded-2xl bg-[#4A0F1C] flex items-center justify-center mx-auto mb-4">
-          <svg className="w-6 h-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 6a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0ZM4.501 20.118a7.5 7.5 0 0 1 14.998 0A17.933 17.933 0 0 1 12 21.75c-2.676 0-5.216-.584-7.499-1.632Z" />
-          </svg>
-        </div>
+        <img src="/logo.svg" alt="Ecclesia Hub" className="h-10 w-auto mx-auto mb-5 [filter:brightness(0)_saturate(100%)_invert(9%)_sepia(64%)_saturate(2400%)_hue-rotate(320deg)_brightness(80%)_contrast(110%)] dark:[filter:brightness(0)_invert(1)]" />
         <h1 className="text-xl font-bold text-gray-900 dark:text-white">Your account</h1>
         <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Sign in to view your orders</p>
       </div>

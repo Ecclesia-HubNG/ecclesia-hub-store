@@ -85,13 +85,8 @@ export default function StoreFooter() {
 
           {/* Brand */}
           <div className="flex flex-col gap-4">
-            <Link href="/" className="inline-flex items-center gap-2.5">
-              <div className="w-8 h-8 rounded-lg bg-white/10 flex items-center justify-center shrink-0">
-                <svg className="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904 9 18.75l-.813-2.846a4.5 4.5 0 0 0-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 0 0 3.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 0 0 3.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 0 0-3.09 3.09Z" />
-                </svg>
-              </div>
-              <span className="text-white font-black tracking-tight text-base uppercase">Ecclesia Hub</span>
+            <Link href="/">
+              <img src="/logo.svg" alt="Ecclesia Hub" className="h-9 w-auto brightness-0 invert" />
             </Link>
             <p className="text-sm text-white/50 leading-relaxed max-w-[200px]">
               Premium skincare and wellness, delivered across Nigeria.
@@ -121,11 +116,9 @@ export default function StoreFooter() {
         <div className="mx-3 mb-3 bg-[#F9F0E8] rounded-2xl px-8 md:px-12 py-8">
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-8">
 
-            {/* Left: big brand name + tagline */}
+            {/* Left: big brand logo + tagline */}
             <div>
-              <p className="text-3xl md:text-5xl font-black uppercase tracking-tight text-[#4A0F1C] leading-none mb-2">
-                Ecclesia Hub
-              </p>
+              <img src="/logo.svg" alt="Ecclesia Hub" className="h-12 md:h-16 w-auto mb-2 [filter:brightness(0)_saturate(100%)_invert(9%)_sepia(64%)_saturate(2400%)_hue-rotate(320deg)_brightness(80%)_contrast(110%)]" />
               <p className="text-sm text-[#4A0F1C]/50">Glow. Nourish. Thrive.</p>
             </div>
 
