@@ -127,6 +127,17 @@ type ImportRow = {
   is_active: boolean
   is_featured: boolean
   isDuplicate: boolean
+  description?: string | null
+  short_description?: string | null
+  thumbnail?: string | null
+  images?: string[]
+  sku?: string | null
+  barcode?: string | null
+  weight?: number | null
+  meta_title?: string | null
+  meta_description?: string | null
+  variants?: Array<{ name: string; values: string[] }>
+  category_names?: string[]
 }
 
 const TEMPLATE_COLUMNS = [
@@ -160,7 +171,7 @@ const TEMPLATE_CSV = [
   '"Study Bible (KJV)","King James Version with study notes","",8500,,,,BIB-KJV-001,9781234567890,15,0.9,"","Books & Media","bible,study,kjv",Active,No,standard,"","[{""name"":""Cover"",""value"":""Hardback""},{""name"":""Pages"",""value"":""1800""}]","","","","KJV Study Bible | Ecclesia Hub","King James Version Study Bible with comprehensive concordance and study notes."',
 ].join('\n')
 
-type ImportFormat = 'template' | 'woocommerce'
+type ImportFormat = 'template' | 'woocommerce' | 'platform'
 
 function parseTemplateCSV(text: string, existing: Product[]): ImportRow[] {
   const cleaned = text.replace(/^﻿/, '').replace(/^ï»¿/, '')
@@ -262,10 +273,115 @@ function parseWooCommerceCSV(text: string, existing: Product[]): ImportRow[] {
   })
 }
 
+function parsePlatformCSV(text: string, existing: Product[]): ImportRow[] {
+  const cleaned = text.replace(/^﻿/, '').replace(/^ï»¿/, '')
+  const lines = cleaned.trim().split('\n').filter(Boolean)
+  if (lines.length < 2) return []
+
+  const headers = parseCSVLine(lines[0]).map(h => h.trim().toLowerCase())
+  const col = (names: string[]) => headers.findIndex(h => names.includes(h))
+
+  const rowTypeIdx      = col(['row type'])
+  const nameIdx         = col(['title'])
+  const priceIdx        = col(['price'])
+  const salesIdx        = col(['sales'])
+  const stockIdx        = col(['stock'])
+  const isActiveIdx     = col(['is active'])
+  const featuredIdx     = col(['featured'])
+  const descIdx         = col(['description'])
+  const detailsIdx      = col(['details'])
+  const skuIdx          = col(['sku'])
+  const barcodeIdx      = col(['barcode'])
+  const weightIdx       = col(['weight (kg)'])
+  const collectionsIdx  = col(['collections'])
+  const mainImageIdx    = col(['main image'])
+  const addlImagesIdx   = col(['additional images'])
+  const seoTitleIdx     = col(['seo title'])
+  const seoDescIdx      = col(['seo description'])
+  const optNamesIdx     = col(['options names'])
+  const optValuesIdx    = col(['options values'])
+
+  if (nameIdx === -1 || priceIdx === -1) return []
+
+  const existingNames = new Set(existing.map(p => p.name.toLowerCase().trim()))
+  const existingSlugs = new Set(existing.map(p => p.slug))
+
+  return lines.slice(1).flatMap(line => {
+    const vals = parseCSVLine(line)
+
+    // Only process "product" rows
+    const rowType = rowTypeIdx !== -1 ? vals[rowTypeIdx]?.trim().toLowerCase() : 'product'
+    if (rowType && rowType !== 'product') return []
+
+    const name = vals[nameIdx]?.trim() ?? ''
+    if (!name) return []
+
+    const rawPrice = vals[priceIdx]?.trim() ?? ''
+    const price = parseFloat(rawPrice)
+    if (isNaN(price) || rawPrice === '') return []
+
+    const stock = stockIdx !== -1 ? parseInt(vals[stockIdx] ?? '') || 0 : 0
+
+    const isActiveRaw = isActiveIdx !== -1 ? vals[isActiveIdx]?.trim() : '1'
+    const is_active = isActiveRaw === '1' || isActiveRaw?.toLowerCase() === 'true' || isActiveRaw?.toLowerCase() === 'active' || isActiveRaw === ''
+
+    const featuredRaw = featuredIdx !== -1 ? vals[featuredIdx]?.trim() : ''
+    const is_featured = featuredRaw === '1' || featuredRaw?.toLowerCase() === 'true' || featuredRaw?.toLowerCase() === 'yes'
+
+    const compare_at_price = salesIdx !== -1 && vals[salesIdx]?.trim()
+      ? parseFloat(vals[salesIdx]) || null : null
+
+    const mainImage = mainImageIdx !== -1 ? vals[mainImageIdx]?.trim() : null
+    const addlRaw = addlImagesIdx !== -1 ? vals[addlImagesIdx]?.trim() : ''
+    const addlImages = addlRaw ? addlRaw.split('|').map(s => s.trim()).filter(Boolean) : []
+    const images = [mainImage, ...addlImages].filter((s): s is string => !!s)
+
+    const collections = collectionsIdx !== -1 ? vals[collectionsIdx]?.trim() : ''
+    const category_names = collections ? collections.split('|').map(s => s.trim()).filter(Boolean) : []
+
+    // Parse variants from Options Names + Options Values
+    // Options Names: "Color|Size", Options Values: "Red,Blue|S,M,L"
+    const optNamesRaw = optNamesIdx !== -1 ? vals[optNamesIdx]?.trim() : ''
+    const optValuesRaw = optValuesIdx !== -1 ? vals[optValuesIdx]?.trim() : ''
+    let variants: Array<{ name: string; values: string[] }> | undefined
+    if (optNamesRaw) {
+      const groupNames = optNamesRaw.split('|').map(s => s.trim()).filter(Boolean)
+      const groupValues = optValuesRaw ? optValuesRaw.split('|').map(s => s.trim()) : []
+      variants = groupNames.map((gName, i) => ({
+        name: gName,
+        values: groupValues[i] ? groupValues[i].split(',').map(v => v.trim()).filter(Boolean) : [],
+      })).filter(g => g.values.length > 0)
+    }
+
+    const isDuplicate = existingNames.has(name.toLowerCase()) || existingSlugs.has(slugify(name))
+
+    return [{
+      name,
+      price,
+      compare_at_price,
+      stock,
+      is_active,
+      is_featured,
+      isDuplicate,
+      description: descIdx !== -1 ? vals[descIdx]?.trim() || null : null,
+      short_description: detailsIdx !== -1 ? vals[detailsIdx]?.trim() || null : null,
+      thumbnail: mainImage || null,
+      images: images.length > 0 ? images : undefined,
+      sku: skuIdx !== -1 ? vals[skuIdx]?.trim() || null : null,
+      barcode: barcodeIdx !== -1 ? vals[barcodeIdx]?.trim() || null : null,
+      weight: weightIdx !== -1 && vals[weightIdx]?.trim() ? parseFloat(vals[weightIdx]) || null : null,
+      meta_title: seoTitleIdx !== -1 ? vals[seoTitleIdx]?.trim() || null : null,
+      meta_description: seoDescIdx !== -1 ? vals[seoDescIdx]?.trim() || null : null,
+      variants: variants && variants.length > 0 ? variants : undefined,
+      category_names: category_names.length > 0 ? category_names : undefined,
+    }]
+  })
+}
+
 function parseImportCSV(text: string, existing: Product[], format: ImportFormat): ImportRow[] {
-  return format === 'woocommerce'
-    ? parseWooCommerceCSV(text, existing)
-    : parseTemplateCSV(text, existing)
+  if (format === 'woocommerce') return parseWooCommerceCSV(text, existing)
+  if (format === 'platform') return parsePlatformCSV(text, existing)
+  return parseTemplateCSV(text, existing)
 }
 
 function exportToCSV(products: Product[]) {
@@ -387,7 +503,25 @@ export function ProductsManager({
 
   const handleConfirmImport = () => {
     if (!importRows) return
-    const toImport = importRows.filter(r => !r.isDuplicate)
+    const toImport = importRows.filter(r => !r.isDuplicate).map(r => ({
+      name: r.name,
+      price: r.price,
+      compare_at_price: r.compare_at_price ?? null,
+      stock: r.stock,
+      is_active: r.is_active,
+      is_featured: r.is_featured,
+      description: r.description,
+      short_description: r.short_description,
+      thumbnail: r.thumbnail,
+      images: r.images,
+      sku: r.sku,
+      barcode: r.barcode,
+      weight: r.weight,
+      meta_title: r.meta_title,
+      meta_description: r.meta_description,
+      variants: r.variants,
+      category_names: r.category_names,
+    }))
     if (!toImport.length) { setImportRows(null); return }
     startImport(async () => {
       const result = await bulkImportProducts(toImport)
@@ -1095,6 +1229,23 @@ export function ProductsManager({
                   </div>
                 </button>
 
+                {/* Platform export option */}
+                <button
+                  type="button"
+                  onClick={() => setImportFormat('platform')}
+                  className={`w-full text-left p-4 rounded-xl border-2 transition-colors ${importFormat === 'platform' ? 'border-[#4A0F1C] dark:border-[#E8C4CB] bg-[#4A0F1C]/5 dark:bg-[#4A0F1C]/20' : 'border-gray-100 dark:border-gray-800 hover:border-gray-300 dark:hover:border-gray-600'}`}
+                >
+                  <div className="flex items-start gap-3">
+                    <div className={`mt-0.5 w-4 h-4 rounded-full border-2 shrink-0 flex items-center justify-center transition-colors ${importFormat === 'platform' ? 'border-[#4A0F1C] dark:border-[#E8C4CB]' : 'border-gray-300 dark:border-gray-600'}`}>
+                      {importFormat === 'platform' && <div className="w-2 h-2 rounded-full bg-[#4A0F1C] dark:bg-[#E8C4CB]" />}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium text-gray-900 dark:text-white">Platform Export <span className="ml-1.5 text-[10px] font-semibold px-1.5 py-0.5 bg-[#4A0F1C]/10 dark:bg-[#4A0F1C]/30 text-[#6B1A2A] dark:text-[#E8C4CB] rounded-full uppercase tracking-wide">Recommended</span></p>
+                      <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">The standard export format. Imports Title, Price, Stock, Images, Categories, Variants, and SEO fields.</p>
+                    </div>
+                  </div>
+                </button>
+
                 {/* Upload button */}
                 <label className={`flex items-center justify-center gap-2 w-full py-2.5 rounded-xl text-sm font-medium transition-colors mt-1 ${importFormat ? 'bg-gray-900 dark:bg-white text-white dark:text-gray-900 hover:bg-gray-700 dark:hover:bg-gray-100 cursor-pointer' : 'bg-gray-100 dark:bg-gray-800 text-gray-400 dark:text-gray-600 cursor-not-allowed'}`}>
                   <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
@@ -1157,9 +1308,21 @@ export function ProductsManager({
                   <div className="max-h-52 overflow-y-auto border border-gray-100 dark:border-gray-800 rounded-xl divide-y divide-gray-100 dark:divide-gray-800">
                     {importRows.map((r, i) => (
                       <div key={i} className={`flex items-center gap-3 px-3 py-2.5 ${r.isDuplicate ? 'bg-amber-50/50 dark:bg-amber-950/20' : ''}`}>
+                        {r.thumbnail ? (
+                          <img src={r.thumbnail} alt="" className="w-8 h-8 rounded-lg object-cover bg-gray-100 dark:bg-gray-800 shrink-0" />
+                        ) : (
+                          <div className="w-8 h-8 rounded-lg bg-gray-100 dark:bg-gray-800 shrink-0 flex items-center justify-center">
+                            <svg className="w-3.5 h-3.5 text-gray-300 dark:text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                              <path strokeLinecap="round" strokeLinejoin="round" d="m2.25 15.75 5.159-5.159a2.25 2.25 0 0 1 3.182 0l5.159 5.159m-1.5-1.5 1.409-1.409a2.25 2.25 0 0 1 3.182 0l2.909 2.909" />
+                            </svg>
+                          </div>
+                        )}
                         <div className="flex-1 min-w-0">
                           <p className={`text-sm truncate ${r.isDuplicate ? 'text-amber-700 dark:text-amber-400' : 'text-gray-900 dark:text-white'}`}>{r.name}</p>
-                          <p className="text-xs text-gray-400 dark:text-gray-600 mt-0.5">₦{r.price.toLocaleString()} · {r.stock} in stock</p>
+                          <p className="text-xs text-gray-400 dark:text-gray-600 mt-0.5">
+                            ₦{r.price.toLocaleString()} · {r.stock} in stock
+                            {r.category_names?.[0] && <> · {r.category_names[0]}</>}
+                          </p>
                         </div>
                         {r.isDuplicate ? (
                           <span className="text-xs font-medium text-amber-600 dark:text-amber-500 shrink-0">duplicate</span>

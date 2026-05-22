@@ -94,23 +94,70 @@ export async function bulkDeleteProducts(ids: string[]) {
 
 export async function bulkImportProducts(rows: Array<{
   name: string
+  description?: string | null
+  short_description?: string | null
   price: number
-  compare_at_price: number | null
+  compare_at_price?: number | null
   stock: number
   is_active: boolean
   is_featured: boolean
+  thumbnail?: string | null
+  images?: string[]
+  sku?: string | null
+  barcode?: string | null
+  weight?: number | null
+  meta_title?: string | null
+  meta_description?: string | null
+  variants?: Array<{ name: string; values: string[] }>
+  category_names?: string[]
 }>) {
   if (!rows.length) return { success: true as const, count: 0 }
   const supabase = createAdminClient()
   const now = Date.now()
+
+  // Collect unique first-category names and look them up / create them
+  const categoryMap: Record<string, string> = {}
+  const uniqueCategoryNames = Array.from(new Set(
+    rows.flatMap(r => r.category_names?.[0]?.trim() ? [r.category_names[0].trim()] : [])
+  ))
+  if (uniqueCategoryNames.length) {
+    const { data: existing } = await supabase
+      .from('categories')
+      .select('id, name')
+      .in('name', uniqueCategoryNames)
+    for (const cat of existing ?? []) categoryMap[cat.name.toLowerCase()] = cat.id
+
+    const missing = uniqueCategoryNames.filter(n => !categoryMap[n.toLowerCase()])
+    if (missing.length) {
+      const { data: created } = await supabase
+        .from('categories')
+        .insert(missing.map((name, i) => ({ name, slug: `${slugify(name)}-${now}-${i}` })))
+        .select('id, name')
+      for (const cat of created ?? []) categoryMap[cat.name.toLowerCase()] = cat.id
+    }
+  }
+
   const toInsert = rows.map((r, i) => ({
     name: r.name,
+    slug: `${slugify(r.name)}-${now}-${i}`,
+    description: r.description ?? null,
+    short_description: r.short_description ?? null,
     price: r.price,
-    compare_at_price: r.compare_at_price,
+    compare_at_price: r.compare_at_price ?? null,
     stock: r.stock,
     is_active: r.is_active,
     is_featured: r.is_featured,
-    slug: `${slugify(r.name)}-${now}-${i}`,
+    thumbnail: r.thumbnail ?? null,
+    images: r.images ?? [],
+    sku: r.sku ?? null,
+    barcode: r.barcode ?? null,
+    weight: r.weight ?? null,
+    meta_title: r.meta_title ?? null,
+    meta_description: r.meta_description ?? null,
+    variants: r.variants ? JSON.stringify(r.variants) : '[]',
+    category_id: r.category_names?.[0]?.trim()
+      ? (categoryMap[r.category_names[0].trim().toLowerCase()] ?? null)
+      : null,
   }))
   const { error, data } = await supabase.from('products').insert(toInsert).select('id')
   if (error) return { error: error.message }
