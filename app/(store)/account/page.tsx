@@ -76,7 +76,7 @@ export default function AccountPage() {
         { redirectTo: `${window.location.origin}/auth/callback?next=/account/reset-password` }
       )
       if (error) { setMsg({ type: 'error', text: error.message }); return }
-      setMsg({ type: 'success', text: 'Check your email for a reset link.' })
+      setMsg({ type: 'success', text: 'Check your email for a reset link. If you don\'t see it, check your spam folder.' })
     })
   }
 
