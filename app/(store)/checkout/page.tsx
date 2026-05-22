@@ -7,20 +7,10 @@ import { useRouter } from 'next/navigation'
 import { useCart } from '@/lib/cart-context'
 import { createOrder } from '@/lib/actions/customer-orders'
 import { initializePayment } from '@/lib/actions/flutterwave'
-
-type Field = 'firstName' | 'lastName' | 'email' | 'phone' | 'address' | 'city' | 'state'
-
-const FIELDS: { key: Field; label: string; placeholder: string; type?: string; half?: boolean }[] = [
-  { key: 'firstName', label: 'First name', placeholder: 'John', half: true },
-  { key: 'lastName', label: 'Last name', placeholder: 'Doe', half: true },
-  { key: 'email', label: 'Email address', placeholder: 'john@example.com', type: 'email' },
-  { key: 'phone', label: 'Phone number', placeholder: '+234 800 000 0000', type: 'tel' },
-  { key: 'address', label: 'Street address', placeholder: '12 Faith Avenue' },
-  { key: 'city', label: 'City', placeholder: 'Lagos', half: true },
-  { key: 'state', label: 'State', placeholder: 'Lagos', half: true },
-]
+import { getShippingZones, type ShippingZone } from '@/lib/actions/shipping'
 
 const inputCls = 'w-full px-3.5 py-2.5 text-sm bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-600 focus:outline-none focus:ring-2 focus:ring-[#4A0F1C]/20 focus:border-[#4A0F1C]/40 transition-colors'
+const selectCls = inputCls + ' appearance-none cursor-pointer'
 
 export default function CheckoutPage() {
   const { items, total, count } = useCart()
@@ -28,19 +18,60 @@ export default function CheckoutPage() {
   const [pending, startTransition] = useTransition()
   const [error, setError] = useState<string | null>(null)
 
-  const [form, setForm] = useState<Record<Field, string>>({
-    firstName: '', lastName: '', email: '', phone: '', address: '', city: '', state: '',
+  // Shipping zones
+  const [zones, setZones] = useState<ShippingZone[]>([])
+  const [selectedState, setSelectedState] = useState('')
+  const [selectedArea, setSelectedArea] = useState('')
+  const [shippingFee, setShippingFee] = useState<number | null>(null)
+
+  const [form, setForm] = useState({
+    firstName: '', lastName: '', email: '', phone: '', address: '', city: '',
   })
 
-  const update = (k: Field, v: string) => setForm(p => ({ ...p, [k]: v }))
+  const update = (k: keyof typeof form, v: string) => setForm(p => ({ ...p, [k]: v }))
+
+  // Load zones once
+  useEffect(() => {
+    getShippingZones().then(setZones)
+  }, [])
+
+  // Derived lists
+  const states = [...new Set(zones.map(z => z.state))].sort()
+  const areasForState = zones.filter(z => z.state === selectedState && z.area !== null)
+  const stateWideZone = zones.find(z => z.state === selectedState && z.area === null)
+
+  // Compute shipping fee whenever state/area selection changes
+  useEffect(() => {
+    if (!selectedState) { setShippingFee(null); return }
+    if (areasForState.length > 0) {
+      // State has area-level zones — require area selection
+      if (!selectedArea) { setShippingFee(null); return }
+      const match = zones.find(z => z.state === selectedState && z.area === selectedArea)
+      setShippingFee(match ? match.price : null)
+    } else {
+      // Only a state-wide zone
+      setShippingFee(stateWideZone ? stateWideZone.price : null)
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedState, selectedArea, zones])
+
+  // Reset area when state changes
+  useEffect(() => { setSelectedArea('') }, [selectedState])
+
+  const orderTotal = total + (shippingFee ?? 0)
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
     setError(null)
 
-    const required = FIELDS.map(f => f.key)
-    const missing = required.find(k => !form[k].trim())
-    if (missing) { setError('Please fill in all fields.'); return }
+    if (!form.firstName || !form.lastName || !form.email || !form.phone || !form.address || !selectedState) {
+      setError('Please fill in all fields.')
+      return
+    }
+    if (areasForState.length > 0 && !selectedArea) {
+      setError('Please select your delivery area.')
+      return
+    }
 
     startTransition(async () => {
       const shipping = {
@@ -49,18 +80,18 @@ export default function CheckoutPage() {
         email: form.email,
         phone: form.phone,
         address: form.address,
-        city: form.city,
-        state: form.state,
+        city: selectedArea || selectedState,
+        state: selectedState,
       }
 
-      const orderResult = await createOrder(items, shipping, total)
+      const orderResult = await createOrder(items, shipping, orderTotal, shippingFee ?? 0)
       if ('error' in orderResult) {
         setError(orderResult.error ?? 'Could not create order.')
         return
       }
 
       const customerName = `${form.firstName} ${form.lastName}`
-      const payResult = await initializePayment(orderResult.orderId, shipping.email, total, customerName, shipping.phone)
+      const payResult = await initializePayment(orderResult.orderId, shipping.email, orderTotal, customerName, shipping.phone)
       if ('error' in payResult) {
         setError(payResult.error ?? 'Could not initialize payment.')
         return
@@ -89,21 +120,76 @@ export default function CheckoutPage() {
               <h2 className="text-base font-semibold text-gray-900 dark:text-white mb-5">Shipping information</h2>
 
               <div className="grid grid-cols-2 gap-4">
-                {FIELDS.map(f => (
-                  <div key={f.key} className={f.half ? '' : 'col-span-2'}>
-                    <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1.5">
-                      {f.label}
-                    </label>
-                    <input
-                      type={f.type ?? 'text'}
-                      placeholder={f.placeholder}
-                      value={form[f.key]}
-                      onChange={e => update(f.key, e.target.value)}
-                      className={inputCls}
-                      required
-                    />
+                {/* Name */}
+                <div>
+                  <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1.5">First name</label>
+                  <input type="text" placeholder="John" value={form.firstName} onChange={e => update('firstName', e.target.value)} className={inputCls} required />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1.5">Last name</label>
+                  <input type="text" placeholder="Doe" value={form.lastName} onChange={e => update('lastName', e.target.value)} className={inputCls} required />
+                </div>
+                {/* Email */}
+                <div className="col-span-2">
+                  <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1.5">Email address</label>
+                  <input type="email" placeholder="john@example.com" value={form.email} onChange={e => update('email', e.target.value)} className={inputCls} required />
+                </div>
+                {/* Phone */}
+                <div className="col-span-2">
+                  <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1.5">Phone number</label>
+                  <input type="tel" placeholder="+234 800 000 0000" value={form.phone} onChange={e => update('phone', e.target.value)} className={inputCls} required />
+                </div>
+                {/* Address */}
+                <div className="col-span-2">
+                  <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1.5">Street address</label>
+                  <input type="text" placeholder="12 Faith Avenue" value={form.address} onChange={e => update('address', e.target.value)} className={inputCls} required />
+                </div>
+
+                {/* State dropdown */}
+                <div className={areasForState.length > 0 ? '' : 'col-span-2'}>
+                  <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1.5">State</label>
+                  {states.length > 0 ? (
+                    <div className="relative">
+                      <select
+                        value={selectedState}
+                        onChange={e => setSelectedState(e.target.value)}
+                        className={selectCls}
+                        required
+                      >
+                        <option value="">Select state…</option>
+                        {states.map(s => <option key={s} value={s}>{s}</option>)}
+                      </select>
+                      <svg className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
+                      </svg>
+                    </div>
+                  ) : (
+                    <input type="text" placeholder="e.g. Lagos" value={selectedState} onChange={e => setSelectedState(e.target.value)} className={inputCls} required />
+                  )}
+                </div>
+
+                {/* Area dropdown — only shown when state has area-level zones */}
+                {areasForState.length > 0 && (
+                  <div>
+                    <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1.5">Delivery area</label>
+                    <div className="relative">
+                      <select
+                        value={selectedArea}
+                        onChange={e => setSelectedArea(e.target.value)}
+                        className={selectCls}
+                        required
+                      >
+                        <option value="">Select area…</option>
+                        {areasForState.map(z => (
+                          <option key={z.id} value={z.area!}>{z.area}</option>
+                        ))}
+                      </select>
+                      <svg className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
+                      </svg>
+                    </div>
                   </div>
-                ))}
+                )}
               </div>
             </div>
           </div>
@@ -111,9 +197,7 @@ export default function CheckoutPage() {
           {/* Order summary */}
           <div className="w-full lg:w-80 shrink-0 space-y-4 sticky top-24">
             <div className="bg-gray-50 dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl p-6">
-              <h2 className="text-base font-semibold text-gray-900 dark:text-white mb-4">
-                Order summary
-              </h2>
+              <h2 className="text-base font-semibold text-gray-900 dark:text-white mb-4">Order summary</h2>
 
               <div className="space-y-3 mb-4">
                 {items.map(item => (
@@ -144,11 +228,17 @@ export default function CheckoutPage() {
                 </div>
                 <div className="flex justify-between text-gray-600 dark:text-gray-400">
                   <span>Shipping</span>
-                  <span className="italic text-gray-400">TBD</span>
+                  {shippingFee !== null ? (
+                    <span className="font-medium text-gray-900 dark:text-white">
+                      {shippingFee === 0 ? 'Free' : `₦${shippingFee.toLocaleString('en')}`}
+                    </span>
+                  ) : (
+                    <span className="italic text-gray-400 text-xs">Select location</span>
+                  )}
                 </div>
                 <div className="flex justify-between font-semibold text-gray-900 dark:text-white pt-1 border-t border-gray-200 dark:border-gray-700">
                   <span>Total</span>
-                  <span className="text-[#4A0F1C] dark:text-[#E8C4CB] text-base">₦{total.toLocaleString('en')}</span>
+                  <span className="text-[#4A0F1C] dark:text-[#E8C4CB] text-base">₦{orderTotal.toLocaleString('en')}</span>
                 </div>
               </div>
 

@@ -1,3 +1,5 @@
+export const dynamic = 'force-dynamic'
+
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import { getOrder } from '@/lib/actions/customer-orders'
@@ -134,10 +136,28 @@ export default async function OrderPage({ params }: { params: { id: string } }) 
           ))}
         </div>
 
-        <div className="border-t border-gray-100 dark:border-gray-800 mt-4 pt-4 flex justify-between">
-          <span className="text-sm font-semibold text-gray-900 dark:text-white">Total</span>
-          <span className="text-base font-bold text-[#4A0F1C] dark:text-[#E8C4CB]">₦{Number(order.total).toLocaleString('en')}</span>
-        </div>
+        {(() => {
+          const shippingFee = Number((order as Record<string, unknown>).shipping_fee ?? 0)
+          const subtotal = items.reduce((s, i) => s + i.price * i.quantity, 0)
+          return (
+            <div className="border-t border-gray-100 dark:border-gray-800 mt-4 pt-4 space-y-2">
+              <div className="flex justify-between text-sm text-gray-500 dark:text-gray-400">
+                <span>Subtotal</span>
+                <span>₦{subtotal.toLocaleString('en')}</span>
+              </div>
+              {shippingFee > 0 && (
+                <div className="flex justify-between text-sm text-gray-500 dark:text-gray-400">
+                  <span>Shipping</span>
+                  <span>₦{shippingFee.toLocaleString('en')}</span>
+                </div>
+              )}
+              <div className="flex justify-between pt-1 border-t border-gray-100 dark:border-gray-800">
+                <span className="text-sm font-semibold text-gray-900 dark:text-white">Total</span>
+                <span className="text-base font-bold text-[#4A0F1C] dark:text-[#E8C4CB]">₦{Number(order.total).toLocaleString('en')}</span>
+              </div>
+            </div>
+          )
+        })()}
       </div>
 
       {/* Shipping address */}

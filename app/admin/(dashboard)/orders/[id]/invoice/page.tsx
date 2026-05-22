@@ -26,6 +26,7 @@ export default async function InvoicePage({ params }: { params: { id: string } }
   const carrier: string | null = (order as Record<string, unknown>).carrier as string | null ?? null
 
   const subtotal = items.reduce((s, i) => s + i.price * i.quantity, 0)
+  const shippingFee: number = Number((order as Record<string, unknown>).shipping_fee ?? 0)
   const invoiceDate = new Date(order.created_at).toLocaleDateString('en', {
     day: 'numeric', month: 'long', year: 'numeric',
   })
@@ -153,11 +154,17 @@ export default async function InvoicePage({ params }: { params: { id: string } }
             <span className="text-gray-500">Subtotal</span>
             <span className="text-gray-700">{fmt(subtotal)}</span>
           </div>
-          {Number(order.total) !== subtotal && (
+          {shippingFee > 0 && (
+            <div className="flex justify-between text-sm">
+              <span className="text-gray-500">Shipping</span>
+              <span className="text-gray-700">{fmt(shippingFee)}</span>
+            </div>
+          )}
+          {Number(order.total) !== subtotal + shippingFee && (
             <div className="flex justify-between text-sm">
               <span className="text-gray-500">Adjustments</span>
-              <span className={Number(order.total) - subtotal < 0 ? 'text-green-600' : 'text-gray-700'}>
-                {Number(order.total) - subtotal < 0 ? '-' : '+'}{fmt(Math.abs(Number(order.total) - subtotal))}
+              <span className={Number(order.total) - subtotal - shippingFee < 0 ? 'text-green-600' : 'text-gray-700'}>
+                {Number(order.total) - subtotal - shippingFee < 0 ? '-' : '+'}{fmt(Math.abs(Number(order.total) - subtotal - shippingFee))}
               </span>
             </div>
           )}

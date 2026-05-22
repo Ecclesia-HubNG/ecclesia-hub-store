@@ -13,7 +13,7 @@ export type ShippingAddress = {
   state: string
 }
 
-export async function createOrder(items: CartItem[], shipping: ShippingAddress, total: number) {
+export async function createOrder(items: CartItem[], shipping: ShippingAddress, total: number, shippingFee = 0) {
   const supabase = createClient()
   const { data: { user } } = await supabase.auth.getUser()
 
@@ -23,6 +23,7 @@ export async function createOrder(items: CartItem[], shipping: ShippingAddress, 
       customer_id: user?.id ?? null,
       status: 'pending',
       total,
+      shipping_fee: shippingFee,
       items: items.map(i => ({
         productId: i.productId,
         slug: i.slug,

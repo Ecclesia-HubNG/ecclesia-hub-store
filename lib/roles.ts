@@ -28,13 +28,13 @@ export const ROLE_COLORS: Record<Role, string> = {
   financier:   'bg-green-50 dark:bg-green-950/40 text-green-700 dark:text-green-400',
 }
 
-export type Section = 'dashboard' | 'homepage' | 'media' | 'products' | 'orders' | 'customers' | 'users' | 'settings' | 'coupons' | 'emails' | 'finance' | 'support'
+export type Section = 'dashboard' | 'homepage' | 'media' | 'products' | 'orders' | 'customers' | 'users' | 'settings' | 'coupons' | 'emails' | 'finance' | 'support' | 'shipping'
 
 export const ROLE_PERMISSIONS: Record<Role, Section[]> = {
-  super_admin: ['dashboard', 'homepage', 'media', 'products', 'orders', 'customers', 'users', 'settings', 'coupons', 'emails', 'finance', 'support'],
-  admin:       ['dashboard', 'homepage', 'media', 'products', 'orders', 'customers', 'users', 'settings', 'coupons', 'emails', 'finance', 'support'],
+  super_admin: ['dashboard', 'homepage', 'media', 'products', 'orders', 'customers', 'users', 'settings', 'coupons', 'emails', 'finance', 'support', 'shipping'],
+  admin:       ['dashboard', 'homepage', 'media', 'products', 'orders', 'customers', 'users', 'settings', 'coupons', 'emails', 'finance', 'support', 'shipping'],
   editor:      ['dashboard', 'homepage', 'media', 'products'],
-  manager:     ['dashboard', 'orders', 'customers', 'finance', 'support'],
+  manager:     ['dashboard', 'orders', 'customers', 'finance', 'support', 'shipping'],
   shop_keeper: ['dashboard', 'media', 'products', 'orders'],
   financier:   ['dashboard', 'orders', 'coupons', 'finance'],
 }
