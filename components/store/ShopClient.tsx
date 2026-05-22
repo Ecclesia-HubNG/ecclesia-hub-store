@@ -256,7 +256,7 @@ export default function ShopClient({ products, categories }: { products: Product
     products.forEach(p => {
       ;(p.variants ?? []).forEach(v => {
         if (!groups[v.name]) groups[v.name] = {}
-        v.options.forEach(o => {
+        ;(v.options ?? []).forEach(o => {
           groups[v.name][o.value] = (groups[v.name][o.value] ?? 0) + 1
         })
       })
@@ -281,7 +281,7 @@ export default function ShopClient({ products, categories }: { products: Product
       // Every active variant group must match at least one selected value
       for (const [groupName, selectedValues] of activeVariants) {
         const group = (p.variants ?? []).find(v => v.name === groupName)
-        if (!group || !group.options.some(o => selectedValues.includes(o.value))) return false
+        if (!group || !(group.options ?? []).some(o => selectedValues.includes(o.value))) return false
       }
       return true
     })
