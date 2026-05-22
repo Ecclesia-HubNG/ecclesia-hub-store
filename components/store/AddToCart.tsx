@@ -11,7 +11,7 @@ function fmt(n: number) {
 }
 
 export default function AddToCart({
-  productId, slug, name, basePrice, thumbnail, variants, stock,
+  productId, slug, name, basePrice, thumbnail, variants: variantsProp, stock,
 }: {
   productId: string
   slug: string
@@ -21,6 +21,7 @@ export default function AddToCart({
   variants: Variant[]
   stock: number
 }) {
+  const variants = Array.isArray(variantsProp) ? variantsProp : []
   const { addItem } = useCart()
   const [selected, setSelected] = useState<Record<string, string>>(
     () => Object.fromEntries(variants.map(v => [v.name, (Array.isArray(v.options) ? v.options : [])[0]?.value ?? '']))

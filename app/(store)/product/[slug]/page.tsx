@@ -20,7 +20,7 @@ export default async function ProductPage({ params }: { params: { slug: string }
 
   if (!product) notFound()
 
-  const relatedIds: string[] = product.related_product_ids ?? []
+  const relatedIds: string[] = Array.isArray(product.related_product_ids) ? product.related_product_ids : []
   const { data: related } = relatedIds.length
     ? await supabase
         .from('products')
@@ -36,8 +36,8 @@ export default async function ProductPage({ params }: { params: { slug: string }
     : []
 
   const category = product.categories as { name: string } | null
-  const variants = (product.variants ?? []) as Array<{ name: string; options: Array<{ value: string; price?: number | null }> }>
-  const attributes = (product.attributes ?? []) as Array<{ key: string; value: string }>
+  const variants = (Array.isArray(product.variants) ? product.variants : []) as Array<{ name: string; options: Array<{ value: string; price?: number | null }> }>
+  const attributes = (Array.isArray(product.attributes) ? product.attributes : []) as Array<{ key: string; value: string }>
 
   const now = new Date()
   const saleActive =
