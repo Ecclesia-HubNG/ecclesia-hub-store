@@ -254,10 +254,13 @@ export default function ShopClient({ products, categories }: { products: Product
   const variantGroups = useMemo((): VariantGroup[] => {
     const groups: Record<string, Record<string, number>> = {}
     products.forEach(p => {
-      ;(p.variants ?? []).forEach(v => {
+      const variants = Array.isArray(p.variants) ? p.variants : []
+      variants.forEach(v => {
+        if (!v || typeof v !== 'object' || !v.name) return
         if (!groups[v.name]) groups[v.name] = {}
-        ;(v.options ?? []).forEach(o => {
-          groups[v.name][o.value] = (groups[v.name][o.value] ?? 0) + 1
+        const opts = Array.isArray(v.options) ? v.options : []
+        opts.forEach(o => {
+          if (o?.value) groups[v.name][o.value] = (groups[v.name][o.value] ?? 0) + 1
         })
       })
     })
@@ -280,8 +283,9 @@ export default function ShopClient({ products, categories }: { products: Product
       if (onSaleOnly && (!p.compare_at_price || p.compare_at_price <= p.price)) return false
       // Every active variant group must match at least one selected value
       for (const [groupName, selectedValues] of activeVariants) {
-        const group = (p.variants ?? []).find(v => v.name === groupName)
-        if (!group || !(group.options ?? []).some(o => selectedValues.includes(o.value))) return false
+        const pVariants = Array.isArray(p.variants) ? p.variants : []
+        const group = pVariants.find(v => v?.name === groupName)
+        if (!group || !(Array.isArray(group.options) ? group.options : []).some(o => selectedValues.includes(o.value))) return false
       }
       return true
     })

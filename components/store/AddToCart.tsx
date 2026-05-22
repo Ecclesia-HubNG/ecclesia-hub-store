@@ -23,7 +23,7 @@ export default function AddToCart({
 }) {
   const { addItem } = useCart()
   const [selected, setSelected] = useState<Record<string, string>>(
-    () => Object.fromEntries(variants.map(v => [v.name, (v.options ?? [])[0]?.value ?? '']))
+    () => Object.fromEntries(variants.map(v => [v.name, (Array.isArray(v.options) ? v.options : [])[0]?.value ?? '']))
   )
   const [qty, setQty] = useState(1)
   const [added, setAdded] = useState(false)
@@ -31,7 +31,7 @@ export default function AddToCart({
   // Resolve price — use variant price override if set
   const resolvedPrice = (() => {
     for (const v of variants) {
-      const opt = (v.options ?? []).find(o => o.value === selected[v.name])
+      const opt = (Array.isArray(v.options) ? v.options : []).find(o => o.value === selected[v.name])
       if (opt?.price != null) return opt.price
     }
     return basePrice
@@ -68,7 +68,7 @@ export default function AddToCart({
                 )}
               </p>
               <div className="flex flex-wrap gap-2">
-                {(v.options ?? []).map(opt => (
+                {(Array.isArray(v.options) ? v.options : []).map(opt => (
                   <button
                     key={opt.value}
                     type="button"
