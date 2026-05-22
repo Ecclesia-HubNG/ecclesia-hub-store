@@ -475,12 +475,21 @@ export default function ShopClient({ products, categories }: { products: Product
           {/* Count + active chips */}
           <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
             <p className="text-sm text-gray-500 dark:text-gray-400">
-              Showing{' '}
-              <span className="font-semibold text-gray-900 dark:text-white">
-                {(page - 1) * ITEMS_PER_PAGE + 1}–{Math.min(page * ITEMS_PER_PAGE, filtered.length)}
-              </span>{' '}
-              of <span className="font-semibold text-gray-900 dark:text-white">{filtered.length}</span> products
-              {search && <span className="text-[#6B1A2A] dark:text-[#D4849A]"> for &ldquo;{search}&rdquo;</span>}
+              {filtered.length > 0 ? (
+                <>
+                  Showing{' '}
+                  <span className="font-semibold text-gray-900 dark:text-white">
+                    {(page - 1) * ITEMS_PER_PAGE + 1}–{Math.min(page * ITEMS_PER_PAGE, filtered.length)}
+                  </span>{' '}
+                  of <span className="font-semibold text-gray-900 dark:text-white">{filtered.length}</span> products
+                  {search && <span className="text-[#6B1A2A] dark:text-[#D4849A]"> for &ldquo;{search}&rdquo;</span>}
+                </>
+              ) : (
+                <>
+                  <span className="font-semibold text-gray-900 dark:text-white">0</span> products
+                  {search && <span className="text-[#6B1A2A] dark:text-[#D4849A]"> for &ldquo;{search}&rdquo;</span>}
+                </>
+              )}
             </p>
             {hasFilters && (
               <button type="button" onClick={clearFilters} className="text-xs font-medium text-gray-500 hover:text-gray-900 dark:hover:text-white transition-colors">
