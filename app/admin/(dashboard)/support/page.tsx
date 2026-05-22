@@ -13,7 +13,7 @@ export default async function AdminSupportPage() {
     .order('created_at', { ascending: true })
 
   // Get user profiles for names/emails
-  const userIds = [...new Set((messages ?? []).map(m => m.user_id))]
+  const userIds = Array.from(new Set((messages ?? []).map(m => m.user_id)))
   const { data: authUsers } = userIds.length
     ? await supabase.auth.admin.listUsers()
     : { data: { users: [] } }
@@ -26,11 +26,12 @@ export default async function AdminSupportPage() {
   )
 
   // Group into conversations
+  type Msg = NonNullable<typeof messages>[number]
   const conversations: Record<string, {
     userId: string
     name: string
     email: string
-    messages: typeof messages
+    messages: Msg[]
     hasUnread: boolean
     lastAt: string
   }> = {}

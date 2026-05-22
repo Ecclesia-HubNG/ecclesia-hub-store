@@ -36,7 +36,7 @@ export default function CheckoutPage() {
   }, [])
 
   // Derived lists
-  const states = [...new Set(zones.map(z => z.state))].sort()
+  const states = Array.from(new Set(zones.map(z => z.state))).sort()
   const areasForState = zones.filter(z => z.state === selectedState && z.area !== null)
   const stateWideZone = zones.find(z => z.state === selectedState && z.area === null)
 

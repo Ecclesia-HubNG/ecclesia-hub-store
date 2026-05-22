@@ -29,7 +29,7 @@ export async function getShippingZones(): Promise<ShippingZone[]> {
 // Returns unique states that have zones
 export async function getShippingStates(): Promise<string[]> {
   const zones = await getShippingZones()
-  return [...new Set(zones.map(z => z.state))].sort()
+  return Array.from(new Set(zones.map(z => z.state))).sort()
 }
 
 // Returns areas for a given state (empty = only state-level zone)
