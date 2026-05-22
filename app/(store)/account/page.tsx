@@ -62,7 +62,7 @@ export default function AccountPage() {
         options: { data: { full_name: fd.get('name') as string } },
       })
       if (error) { setMsg({ type: 'error', text: error.message }); return }
-      setMsg({ type: 'success', text: 'Check your email to confirm your account.' })
+      setMsg({ type: 'success', text: 'Check your email to confirm your account. If you don\'t see it, check your spam folder.' })
     })
   }
 
