@@ -19,6 +19,7 @@ export default function InboxPage() {
   const [userId, setUserId] = useState<string | null>(null)
   const [text, setText] = useState('')
   const [sending, setSending] = useState(false)
+  const [sendError, setSendError] = useState<string | null>(null)
   const bottomRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -89,7 +90,7 @@ export default function InboxPage() {
     const { error } = await supabase
       .from('inbox_messages')
       .insert({ user_id: userId, subject: 'Support', body, sender: 'customer' })
-    if (error) setText(body) // restore on failure
+    if (error) { setText(body); setSendError('Failed to send. Please try again.') }
     setSending(false)
   }
 
@@ -147,11 +148,15 @@ export default function InboxPage() {
         <div ref={bottomRef} />
       </div>
 
+      {sendError && (
+        <p className="mt-2 text-xs text-red-500 px-1">{sendError}</p>
+      )}
+
       {/* Compose */}
       <form onSubmit={handleSend} className="mt-3 flex gap-2">
         <input
           value={text}
-          onChange={e => setText(e.target.value)}
+          onChange={e => { setText(e.target.value); setSendError(null) }}
           placeholder="Type a message…"
           className="flex-1 px-4 py-2.5 text-sm bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#4A0F1C]/20 focus:border-[#4A0F1C]/40 transition-colors"
           onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend(e as any) } }}
