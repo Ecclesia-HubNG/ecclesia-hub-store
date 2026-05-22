@@ -91,7 +91,7 @@ function VerifyContent() {
               <a href="/checkout" className="px-5 py-2.5 text-sm font-semibold bg-[#4A0F1C] text-white rounded-xl hover:bg-[#3A0B15] transition-colors">
                 Try again
               </a>
-              <a href="/about" className="px-5 py-2.5 text-sm font-semibold bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-200 rounded-xl hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors">
+              <a href="/account/inbox" className="px-5 py-2.5 text-sm font-semibold bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-200 rounded-xl hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors">
                 Contact support
               </a>
             </div>
