@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 
 type Message = {
@@ -14,6 +15,7 @@ type Message = {
 
 export default function InboxPage() {
   const supabase = createClient()
+  const router = useRouter()
   const [messages, setMessages] = useState<Message[]>([])
   const [loading, setLoading] = useState(true)
   const [userId, setUserId] = useState<string | null>(null)
@@ -23,8 +25,21 @@ export default function InboxPage() {
   const bottomRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
-    supabase.auth.getUser().then(({ data: { user } }) => {
+    supabase.auth.getUser().then(async ({ data: { user } }) => {
       if (!user) return
+
+      // Redirect admin/staff to the admin support panel
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('role')
+        .eq('id', user.id)
+        .single()
+      const adminRoles = ['super_admin', 'admin', 'manager', 'shop_keeper', 'editor', 'financier']
+      if (profile?.role && adminRoles.includes(profile.role)) {
+        router.replace('/admin/support')
+        return
+      }
+
       setUserId(user.id)
 
       // Initial load
