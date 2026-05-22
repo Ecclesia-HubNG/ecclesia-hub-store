@@ -794,6 +794,7 @@ export default function UsersManager({
                 const name = user.user_metadata?.full_name || user.email?.split('@')[0] || 'Unknown'
                 const role = user.app_metadata?.role ?? ''
                 const isStaff = ROLES.includes(role as any)
+                const isCustomer = role === 'customer'
                 const confirmed = !!user.email_confirmed_at
                 const banned = isBanned(user)
 
@@ -818,6 +819,10 @@ export default function UsersManager({
                       {isStaff ? (
                         <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold ${ROLE_COLORS[role as keyof typeof ROLE_COLORS]}`}>
                           {ROLE_LABELS[role as keyof typeof ROLE_LABELS]}
+                        </span>
+                      ) : isCustomer ? (
+                        <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-teal-50 dark:bg-teal-950/40 text-teal-700 dark:text-teal-400">
+                          Customer
                         </span>
                       ) : (
                         <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400">
