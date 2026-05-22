@@ -179,26 +179,26 @@ export default function ProductForm({
 
   // Images
   const [images, setImages] = useState<ImageItem[]>(
-    (product?.images ?? []).map(url => ({ id: genId(), preview: url, uploading: false, uploaded: true, uploadedUrl: url }))
+    (Array.isArray(product?.images) ? product.images : []).map(url => ({ id: genId(), preview: url, uploading: false, uploaded: true, uploadedUrl: url }))
   )
   const [dragOver, setDragOver] = useState(false)
   const [dragImageIndex, setDragImageIndex] = useState<number | null>(null)
 
   // Variants
   const [variants, setVariants] = useState<VariantRow[]>(
-    (product?.variants ?? []).map(v => ({
+    (Array.isArray(product?.variants) ? product.variants : []).map(v => ({
       id: genId(), name: v.name,
-      options: (v.options ?? []).map(o => ({ id: genId(), value: o.value, price: o.price != null ? String(o.price) : '' })),
+      options: (Array.isArray(v.options) ? v.options : []).map(o => ({ id: genId(), value: o.value, price: o.price != null ? String(o.price) : '' })),
     }))
   )
 
   // Attributes
   const [attributes, setAttributes] = useState<AttributeRow[]>(
-    (product?.attributes ?? []).map(a => ({ id: genId(), key: a.key, value: a.value }))
+    (Array.isArray(product?.attributes) ? product.attributes : []).map(a => ({ id: genId(), key: a.key, value: a.value }))
   )
 
   // Tags
-  const [tags, setTags] = useState<string[]>(product?.tags ?? [])
+  const [tags, setTags] = useState<string[]>(Array.isArray(product?.tags) ? product.tags : [])
   const [tagInput, setTagInput] = useState('')
 
   // Category
@@ -218,7 +218,7 @@ export default function ProductForm({
   const [brandError, setBrandError] = useState('')
 
   // Related products
-  const [relatedIds, setRelatedIds] = useState<string[]>(product?.related_product_ids ?? [])
+  const [relatedIds, setRelatedIds] = useState<string[]>(Array.isArray(product?.related_product_ids) ? product.related_product_ids : [])
   const [productSearch, setProductSearch] = useState('')
   const [showProductDropdown, setShowProductDropdown] = useState(false)
 
