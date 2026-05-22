@@ -11,7 +11,7 @@ function fmt(n: number) {
 
 export default function VariantSelector({ variants }: { variants: Variant[] }) {
   const [selected, setSelected] = useState<Record<string, string>>(() =>
-    Object.fromEntries(variants.map(v => [v.name, v.options[0]?.value ?? '']))
+    Object.fromEntries(variants.map(v => [v.name, (v.options ?? [])[0]?.value ?? '']))
   )
 
   if (!variants.length) return null
@@ -29,7 +29,7 @@ export default function VariantSelector({ variants }: { variants: Variant[] }) {
             )}
           </p>
           <div className="flex flex-wrap gap-2">
-            {v.options.map(opt => (
+            {(v.options ?? []).map(opt => (
               <button
                 key={opt.value}
                 type="button"

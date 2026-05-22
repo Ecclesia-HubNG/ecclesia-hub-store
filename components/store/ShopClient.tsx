@@ -184,7 +184,7 @@ function Sidebar({
             onToggle={() => toggleVariantOpen(group.name)}
           >
             <div className="space-y-1">
-              {group.options.map(opt => {
+              {(group.options ?? []).map(opt => {
                 const checked = selected.includes(opt.value)
                 return (
                   <label

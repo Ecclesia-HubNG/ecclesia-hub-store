@@ -36,13 +36,13 @@ export default function ProductOfMonth({ product }: Props) {
   const [activeImg, setActiveImg] = useState(0)
   const [qty, setQty] = useState(1)
   const [selected, setSelected] = useState<Record<string, string>>(
-    () => Object.fromEntries(product.variants.map(v => [v.name, v.options[0]?.value ?? '']))
+    () => Object.fromEntries(product.variants.map(v => [v.name, (v.options ?? [])[0]?.value ?? '']))
   )
   const [added, setAdded] = useState(false)
 
   const resolvedPrice = (() => {
     for (const v of product.variants) {
-      const opt = v.options.find(o => o.value === selected[v.name])
+      const opt = (v.options ?? []).find(o => o.value === selected[v.name])
       if (opt?.price != null) return opt.price
     }
     return product.price
@@ -165,7 +165,7 @@ export default function ProductOfMonth({ product }: Props) {
                     {v.name}: <span className="font-normal text-gray-400">{selected[v.name]}</span>
                   </p>
                   <div className="flex flex-wrap gap-2">
-                    {v.options.map(opt => (
+                    {(v.options ?? []).map(opt => (
                       <button
                         key={opt.value}
                         type="button"
