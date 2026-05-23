@@ -6,6 +6,7 @@ import { revalidatePath } from 'next/cache'
 
 export type ShippingZone = {
   id: string
+  name: string
   country: string
   state: string
   area: string | null
@@ -21,27 +22,8 @@ export async function getShippingZones(): Promise<ShippingZone[]> {
     .from('shipping_zones')
     .select('*')
     .eq('is_active', true)
-    .order('state')
-    .order('area', { nullsFirst: true })
+    .order('name')
   return (data ?? []) as ShippingZone[]
-}
-
-// Returns unique states that have zones
-export async function getShippingStates(): Promise<string[]> {
-  const zones = await getShippingZones()
-  return Array.from(new Set(zones.map(z => z.state))).sort()
-}
-
-// Returns areas for a given state (empty = only state-level zone)
-export async function getAreasForState(state: string): Promise<{ area: string | null; price: number }[]> {
-  const supabase = createClient()
-  const { data } = await supabase
-    .from('shipping_zones')
-    .select('area, price')
-    .eq('state', state)
-    .eq('is_active', true)
-    .order('area', { nullsFirst: true })
-  return (data ?? []) as { area: string | null; price: number }[]
 }
 
 // Admin: get all zones
@@ -50,23 +32,24 @@ export async function adminGetShippingZones(): Promise<ShippingZone[]> {
   const { data } = await supabase
     .from('shipping_zones')
     .select('*')
-    .order('country')
-    .order('state')
-    .order('area', { nullsFirst: true })
+    .order('name')
   return (data ?? []) as ShippingZone[]
 }
 
 // Admin: create zone
 export async function createShippingZone(data: {
+  name: string
   country: string
   state: string
   area: string | null
   price: number
 }) {
+  if (!data.name.trim()) return { error: 'Name is required' }
   if (!data.state.trim()) return { error: 'State is required' }
   if (data.price < 0) return { error: 'Price cannot be negative' }
   const supabase = createAdminClient()
   const { error } = await supabase.from('shipping_zones').insert({
+    name: data.name.trim(),
     country: data.country.trim() || 'Nigeria',
     state: data.state.trim(),
     area: data.area?.trim() || null,
@@ -79,16 +62,19 @@ export async function createShippingZone(data: {
 
 // Admin: update zone
 export async function updateShippingZone(id: string, data: {
+  name: string
   country: string
   state: string
   area: string | null
   price: number
   is_active: boolean
 }) {
+  if (!data.name.trim()) return { error: 'Name is required' }
   if (!data.state.trim()) return { error: 'State is required' }
   if (data.price < 0) return { error: 'Price cannot be negative' }
   const supabase = createAdminClient()
   const { error } = await supabase.from('shipping_zones').update({
+    name: data.name.trim(),
     country: data.country.trim() || 'Nigeria',
     state: data.state.trim(),
     area: data.area?.trim() || null,
