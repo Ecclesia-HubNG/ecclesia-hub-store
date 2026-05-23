@@ -122,7 +122,9 @@ export async function verifyAndFinalizeOrder(reference: string) {
         quantity: i.quantity as number,
         price: i.price as number,
         thumbnail: (i.thumbnail as string) ?? undefined,
-        variant: i.selectedVariant
+        variant: Array.isArray(i.selectedVariants) && (i.selectedVariants as Array<{ value: string }>).length
+          ? (i.selectedVariants as Array<{ value: string }>).map(sv => sv.value).join(', ')
+          : i.selectedVariant
           ? Object.values(i.selectedVariant as Record<string, string>).join(' / ')
           : undefined,
       })),

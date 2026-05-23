@@ -2,6 +2,8 @@
 
 import { createContext, useContext, useState, useEffect, useCallback } from 'react'
 
+export type SelectedVariant = { groupName: string; value: string; price: number }
+
 export type CartItem = {
   productId: string
   slug: string
@@ -9,7 +11,7 @@ export type CartItem = {
   price: number
   thumbnail: string | null
   quantity: number
-  selectedVariant?: { groupName: string; value: string }
+  selectedVariants?: SelectedVariant[]
 }
 
 type CartContextType = {
@@ -22,8 +24,23 @@ type CartContextType = {
   count: number
 }
 
-export function itemKey(productId: string, variant?: { groupName: string; value: string }) {
-  return variant ? `${productId}__${variant.groupName}__${variant.value}` : productId
+export function itemKey(productId: string, variants?: SelectedVariant[]) {
+  if (!variants || variants.length === 0) return productId
+  const sorted = [...variants].sort((a, b) => a.groupName.localeCompare(b.groupName))
+  return `${productId}__${sorted.map(v => `${v.groupName}:${v.value}`).join('__')}`
+}
+
+function migrateItem(raw: Record<string, unknown>): CartItem {
+  // Migrate old selectedVariant (single) to selectedVariants (array)
+  if (raw.selectedVariant && !raw.selectedVariants) {
+    const sv = raw.selectedVariant as { groupName: string; value: string }
+    return {
+      ...(raw as unknown as CartItem),
+      selectedVariants: [{ groupName: sv.groupName, value: sv.value, price: 0 }],
+      selectedVariant: undefined,
+    } as CartItem
+  }
+  return raw as unknown as CartItem
 }
 
 const CartContext = createContext<CartContextType | null>(null)
@@ -35,7 +52,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     try {
       const saved = localStorage.getItem('ecclesia-cart')
-      if (saved) setItems(JSON.parse(saved))
+      if (saved) setItems((JSON.parse(saved) as Record<string, unknown>[]).map(migrateItem))
     } catch {}
     setReady(true)
   }, [])
@@ -46,12 +63,12 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   }, [items, ready])
 
   const addItem = useCallback((item: Omit<CartItem, 'quantity'> & { quantity?: number }) => {
-    const key = itemKey(item.productId, item.selectedVariant)
+    const key = itemKey(item.productId, item.selectedVariants)
     setItems(prev => {
-      const existing = prev.find(i => itemKey(i.productId, i.selectedVariant) === key)
+      const existing = prev.find(i => itemKey(i.productId, i.selectedVariants) === key)
       if (existing) {
         return prev.map(i =>
-          itemKey(i.productId, i.selectedVariant) === key
+          itemKey(i.productId, i.selectedVariants) === key
             ? { ...i, quantity: i.quantity + (item.quantity ?? 1) }
             : i
         )
@@ -61,7 +78,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   }, [])
 
   const removeItem = useCallback((key: string) => {
-    setItems(prev => prev.filter(i => itemKey(i.productId, i.selectedVariant) !== key))
+    setItems(prev => prev.filter(i => itemKey(i.productId, i.selectedVariants) !== key))
   }, [])
 
   const updateQuantity = useCallback((key: string, quantity: number) => {
@@ -70,7 +87,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       return
     }
     setItems(prev =>
-      prev.map(i => itemKey(i.productId, i.selectedVariant) === key ? { ...i, quantity } : i)
+      prev.map(i => itemKey(i.productId, i.selectedVariants) === key ? { ...i, quantity } : i)
     )
   }, [removeItem])
 

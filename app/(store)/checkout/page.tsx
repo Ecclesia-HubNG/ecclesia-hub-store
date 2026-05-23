@@ -20,12 +20,10 @@ export default function CheckoutPage() {
 
   // Shipping zones
   const [zones, setZones] = useState<ShippingZone[]>([])
-  const [selectedState, setSelectedState] = useState('')
-  const [selectedArea, setSelectedArea] = useState('')
-  const [shippingFee, setShippingFee] = useState<number | null>(null)
+  const [selectedZoneId, setSelectedZoneId] = useState('')
 
   const [form, setForm] = useState({
-    firstName: '', lastName: '', email: '', phone: '', address: '', city: '',
+    firstName: '', lastName: '', email: '', phone: '', address: '',
   })
 
   const update = (k: keyof typeof form, v: string) => setForm(p => ({ ...p, [k]: v }))
@@ -35,41 +33,20 @@ export default function CheckoutPage() {
     getShippingZones().then(setZones)
   }, [])
 
-  // Derived lists
-  const states = Array.from(new Set(zones.map(z => z.state))).sort()
-  const areasForState = zones.filter(z => z.state === selectedState && z.area !== null)
-  const stateWideZone = zones.find(z => z.state === selectedState && z.area === null)
-
-  // Compute shipping fee whenever state/area selection changes
-  useEffect(() => {
-    if (!selectedState) { setShippingFee(null); return }
-    if (areasForState.length > 0) {
-      // State has area-level zones — require area selection
-      if (!selectedArea) { setShippingFee(null); return }
-      const match = zones.find(z => z.state === selectedState && z.area === selectedArea)
-      setShippingFee(match ? match.price : null)
-    } else {
-      // Only a state-wide zone
-      setShippingFee(stateWideZone ? stateWideZone.price : null)
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedState, selectedArea, zones])
-
-  // Reset area when state changes
-  useEffect(() => { setSelectedArea('') }, [selectedState])
-
+  const selectedZone = zones.find(z => z.id === selectedZoneId) ?? null
+  const shippingFee = selectedZone ? selectedZone.price : null
   const orderTotal = total + (shippingFee ?? 0)
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
     setError(null)
 
-    if (!form.firstName || !form.lastName || !form.email || !form.phone || !form.address || !selectedState) {
+    if (!form.firstName || !form.lastName || !form.email || !form.phone || !form.address) {
       setError('Please fill in all fields.')
       return
     }
-    if (areasForState.length > 0 && !selectedArea) {
-      setError('Please select your delivery area.')
+    if (!selectedZone) {
+      setError('Please select a delivery option.')
       return
     }
 
@@ -80,8 +57,8 @@ export default function CheckoutPage() {
         email: form.email,
         phone: form.phone,
         address: form.address,
-        city: selectedArea || selectedState,
-        state: selectedState,
+        city: selectedZone.area || selectedZone.state,
+        state: selectedZone.state,
       }
 
       const orderResult = await createOrder(items, shipping, orderTotal, shippingFee ?? 0)
@@ -145,51 +122,31 @@ export default function CheckoutPage() {
                   <input type="text" placeholder="12 Faith Avenue" value={form.address} onChange={e => update('address', e.target.value)} className={inputCls} required />
                 </div>
 
-                {/* State dropdown */}
-                <div className={areasForState.length > 0 ? '' : 'col-span-2'}>
-                  <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1.5">State</label>
-                  {states.length > 0 ? (
-                    <div className="relative">
-                      <select
-                        value={selectedState}
-                        onChange={e => setSelectedState(e.target.value)}
-                        className={selectCls}
-                        required
-                      >
-                        <option value="">Select state…</option>
-                        {states.map(s => <option key={s} value={s}>{s}</option>)}
-                      </select>
-                      <svg className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                        <path strokeLinecap="round" strokeLinejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
-                      </svg>
-                    </div>
-                  ) : (
-                    <input type="text" placeholder="e.g. Lagos" value={selectedState} onChange={e => setSelectedState(e.target.value)} className={inputCls} required />
+                {/* Delivery option dropdown */}
+                <div className="col-span-2">
+                  <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1.5">Delivery option</label>
+                  <div className="relative">
+                    <select
+                      value={selectedZoneId}
+                      onChange={e => setSelectedZoneId(e.target.value)}
+                      className={selectCls}
+                      required
+                    >
+                      <option value="">Select delivery option…</option>
+                      {zones.map(z => (
+                        <option key={z.id} value={z.id}>
+                          {z.name} — ₦{z.price.toLocaleString('en')}
+                        </option>
+                      ))}
+                    </select>
+                    <svg className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
+                    </svg>
+                  </div>
+                  {zones.length === 0 && (
+                    <p className="text-xs text-amber-600 dark:text-amber-400 mt-1.5">No delivery options available yet. Please contact us to arrange delivery.</p>
                   )}
                 </div>
-
-                {/* Area dropdown — only shown when state has area-level zones */}
-                {areasForState.length > 0 && (
-                  <div>
-                    <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1.5">Delivery area</label>
-                    <div className="relative">
-                      <select
-                        value={selectedArea}
-                        onChange={e => setSelectedArea(e.target.value)}
-                        className={selectCls}
-                        required
-                      >
-                        <option value="">Select area…</option>
-                        {areasForState.map(z => (
-                          <option key={z.id} value={z.area!}>{z.area}</option>
-                        ))}
-                      </select>
-                      <svg className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                        <path strokeLinecap="round" strokeLinejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
-                      </svg>
-                    </div>
-                  </div>
-                )}
               </div>
             </div>
           </div>
@@ -201,7 +158,7 @@ export default function CheckoutPage() {
 
               <div className="space-y-3 mb-4">
                 {items.map(item => (
-                  <div key={`${item.productId}-${item.selectedVariant?.value ?? ''}`} className="flex gap-3 items-center">
+                  <div key={`${item.productId}-${(item.selectedVariants ?? []).map(v => v.value).join('-')}`} className="flex gap-3 items-center">
                     <div className="w-10 h-10 rounded-lg bg-gray-100 dark:bg-gray-800 overflow-hidden shrink-0">
                       {item.thumbnail && (
                         <img src={item.thumbnail} alt={item.name} className="w-full h-full object-contain p-1" />
@@ -209,9 +166,11 @@ export default function CheckoutPage() {
                     </div>
                     <div className="flex-1 min-w-0">
                       <p className="text-xs font-medium text-gray-900 dark:text-white line-clamp-1">{item.name}</p>
-                      {item.selectedVariant && (
-                        <p className="text-[10px] text-gray-400">{item.selectedVariant.groupName}: {item.selectedVariant.value}</p>
-                      )}
+                      {!!item.selectedVariants?.length && item.selectedVariants.map(sv => (
+                        <p key={`${sv.groupName}:${sv.value}`} className="text-[10px] text-gray-400">
+                          {sv.groupName}: {sv.value}
+                        </p>
+                      ))}
                     </div>
                     <div className="text-right shrink-0">
                       <p className="text-xs text-gray-500">×{item.quantity}</p>

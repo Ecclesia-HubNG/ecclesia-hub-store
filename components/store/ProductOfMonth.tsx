@@ -48,23 +48,21 @@ export default function ProductOfMonth({ product }: Props) {
     return product.price
   })()
 
-  const cartVariant = (() => {
-    const entries = product.variants
-      .filter(v => selected[v.name])
-      .map(v => ({ groupName: v.name, value: selected[v.name] }))
-    if (entries.length === 1) return entries[0]
-    if (entries.length > 1) return { groupName: entries.map(e => e.groupName).join(' / '), value: entries.map(e => e.value).join(' / ') }
-    return undefined
-  })()
+  const cartVariants = product.variants
+    .filter(v => selected[v.name])
+    .map(v => {
+      const opt = (Array.isArray(v.options) ? v.options : []).find(o => o.value === selected[v.name])
+      return { groupName: v.name, value: selected[v.name], price: opt?.price ?? 0 }
+    })
 
   function handleAdd() {
-    addItem({ productId: product.id, slug: product.slug, name: product.name, price: resolvedPrice, thumbnail: product.thumbnail, selectedVariant: cartVariant, quantity: qty })
+    addItem({ productId: product.id, slug: product.slug, name: product.name, price: resolvedPrice, thumbnail: product.thumbnail, selectedVariants: cartVariants.length > 0 ? cartVariants : undefined, quantity: qty })
     setAdded(true)
     setTimeout(() => setAdded(false), 2000)
   }
 
   function handleBuyNow() {
-    addItem({ productId: product.id, slug: product.slug, name: product.name, price: resolvedPrice, thumbnail: product.thumbnail, selectedVariant: cartVariant, quantity: qty })
+    addItem({ productId: product.id, slug: product.slug, name: product.name, price: resolvedPrice, thumbnail: product.thumbnail, selectedVariants: cartVariants.length > 0 ? cartVariants : undefined, quantity: qty })
     router.push('/cart')
   }
 

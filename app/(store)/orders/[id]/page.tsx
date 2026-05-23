@@ -79,6 +79,7 @@ export default async function OrderPage({ params }: { params: { id: string } }) 
     price: number
     quantity: number
     thumbnail: string | null
+    selectedVariants?: Array<{ groupName: string; value: string; price: number }> | null
     selectedVariant?: { groupName: string; value: string } | null
   }[]
 
@@ -124,9 +125,14 @@ export default async function OrderPage({ params }: { params: { id: string } }) 
               </div>
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-medium text-gray-900 dark:text-white line-clamp-1">{item.name}</p>
-                {item.selectedVariant && (
-                  <p className="text-xs text-gray-500">{item.selectedVariant.groupName}: {item.selectedVariant.value}</p>
-                )}
+                {item.selectedVariants?.length
+                  ? item.selectedVariants.map(sv => (
+                      <p key={`${sv.groupName}:${sv.value}`} className="text-xs text-gray-500">{sv.groupName}: {sv.value}</p>
+                    ))
+                  : item.selectedVariant && (
+                      <p className="text-xs text-gray-500">{item.selectedVariant.groupName}: {item.selectedVariant.value}</p>
+                    )
+                }
                 <p className="text-xs text-gray-400">Qty: {item.quantity}</p>
               </div>
               <p className="text-sm font-semibold text-gray-900 dark:text-white shrink-0">

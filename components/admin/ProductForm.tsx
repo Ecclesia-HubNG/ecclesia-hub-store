@@ -61,7 +61,7 @@ type ImageItem = {
   uploadedUrl?: string
 }
 
-type VariantOption = { id: string; value: string; price: string }
+type VariantOption = { id: string; value: string; price: string; stock: string }
 type VariantRow = { id: string; name: string; options: VariantOption[] }
 type AttributeRow = { id: string; key: string; value: string }
 
@@ -188,7 +188,12 @@ export default function ProductForm({
   const [variants, setVariants] = useState<VariantRow[]>(
     (Array.isArray(product?.variants) ? product.variants : []).map(v => ({
       id: genId(), name: v.name,
-      options: (Array.isArray(v.options) ? v.options : []).map(o => ({ id: genId(), value: o.value, price: o.price != null ? String(o.price) : '' })),
+      options: (Array.isArray(v.options) ? v.options : []).map(o => ({
+        id: genId(),
+        value: o.value,
+        price: o.price != null ? String(o.price) : '',
+        stock: (o as { stock?: number | null }).stock != null ? String((o as { stock?: number | null }).stock) : '',
+      })),
     }))
   )
 
@@ -315,11 +320,11 @@ export default function ProductForm({
 
   // ── Variants ─────────────────────────────────────────────
 
-  const addVariant = () => setVariants(prev => [...prev, { id: genId(), name: '', options: [{ id: genId(), value: '', price: '' }] }])
+  const addVariant = () => setVariants(prev => [...prev, { id: genId(), name: '', options: [{ id: genId(), value: '', price: '', stock: '' }] }])
   const removeVariant = (id: string) => setVariants(prev => prev.filter(v => v.id !== id))
   const updateVariantName = (id: string, name: string) => setVariants(prev => prev.map(v => v.id === id ? { ...v, name } : v))
-  const addOption = (vid: string) => setVariants(prev => prev.map(v => v.id === vid ? { ...v, options: [...v.options, { id: genId(), value: '', price: '' }] } : v))
-  const updateOption = (vid: string, oid: string, field: 'value' | 'price', val: string) =>
+  const addOption = (vid: string) => setVariants(prev => prev.map(v => v.id === vid ? { ...v, options: [...v.options, { id: genId(), value: '', price: '', stock: '' }] } : v))
+  const updateOption = (vid: string, oid: string, field: 'value' | 'price' | 'stock', val: string) =>
     setVariants(prev => prev.map(v => v.id === vid ? { ...v, options: v.options.map(o => o.id === oid ? { ...o, [field]: val } : o) } : v))
   const removeOption = (vid: string, oid: string) =>
     setVariants(prev => prev.map(v => v.id === vid ? { ...v, options: v.options.filter(o => o.id !== oid) } : v))
@@ -379,7 +384,11 @@ export default function ProductForm({
     fd.set('tags', JSON.stringify(tags))
     fd.set('variants', JSON.stringify(variants.filter(v => v.name.trim()).map(v => ({
       name: v.name.trim(),
-      options: v.options.filter(o => o.value.trim()).map(o => ({ value: o.value.trim(), price: o.price ? parseFloat(o.price) : null })),
+      options: v.options.filter(o => o.value.trim()).map(o => ({
+        value: o.value.trim(),
+        price: o.price ? parseFloat(o.price) : null,
+        stock: o.stock !== '' ? parseInt(o.stock, 10) : null,
+      })),
     }))))
     fd.set('attributes', JSON.stringify(attributes.filter(a => a.key.trim()).map(a => ({ key: a.key.trim(), value: a.value.trim() }))))
     fd.set('related_product_ids', JSON.stringify(relatedIds))
@@ -598,14 +607,17 @@ export default function ProductForm({
                     <RemoveBtn onClick={() => removeVariant(v.id)} />
                   </div>
                   <div className="space-y-1.5 pl-3 border-l-2 border-gray-100 dark:border-gray-800">
-                    <div className="grid grid-cols-[minmax(0,1fr)_130px] gap-2 mb-1">
+                    <div className="grid grid-cols-[minmax(0,1fr)_110px_90px_28px] gap-2 mb-1">
                       <span className="text-xs text-gray-400 dark:text-gray-600 px-1">Value</span>
                       <span className="text-xs text-gray-400 dark:text-gray-600 px-1">Price (₦)</span>
+                      <span className="text-xs text-gray-400 dark:text-gray-600 px-1">Stock</span>
+                      <span />
                     </div>
                     {v.options.map(o => (
-                      <div key={o.id} className="grid grid-cols-[minmax(0,1fr)_130px_28px] gap-2 items-center">
+                      <div key={o.id} className="grid grid-cols-[minmax(0,1fr)_110px_90px_28px] gap-2 items-center">
                         <input value={o.value} onChange={e => updateOption(v.id, o.id, 'value', e.target.value)} placeholder="e.g. 100ml" className={inputCls} />
                         <input value={o.price} onChange={e => updateOption(v.id, o.id, 'price', e.target.value)} type="number" min="0" step="any" placeholder="0.00" className={inputCls} />
+                        <input value={o.stock} onChange={e => updateOption(v.id, o.id, 'stock', e.target.value)} type="number" min="0" step="1" placeholder="qty" className={inputCls} />
                         <RemoveBtn onClick={() => removeOption(v.id, o.id)} />
                       </div>
                     ))}

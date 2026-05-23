@@ -36,7 +36,7 @@ export default async function ProductPage({ params }: { params: { slug: string }
     : []
 
   const category = product.categories as { name: string } | null
-  const variants = (Array.isArray(product.variants) ? product.variants : []) as Array<{ name: string; options: Array<{ value: string; price?: number | null }> }>
+  const variants = (Array.isArray(product.variants) ? product.variants : []) as Array<{ name: string; options: Array<{ value: string; price?: number | null; stock?: number | null }> }>
   const attributes = (Array.isArray(product.attributes) ? product.attributes : []) as Array<{ key: string; value: string }>
 
   const now = new Date()
@@ -109,16 +109,18 @@ export default async function ProductPage({ params }: { params: { slug: string }
             </p>
           )}
 
-          {/* Stock status */}
-          <p className="text-sm mb-4">
-            {product.stock > 5 ? (
-              <span className="text-green-600 dark:text-green-400 font-medium">In stock</span>
-            ) : product.stock > 0 ? (
-              <span className="text-amber-500 dark:text-amber-400 font-medium">Only {product.stock} left</span>
-            ) : (
-              <span className="text-red-500 dark:text-red-400 font-medium">Out of stock</span>
-            )}
-          </p>
+          {/* Stock status — only shown when there are no variants (variants show per-option stock inline) */}
+          {variants.length === 0 && (
+            <p className="text-sm mb-4">
+              {product.stock > 5 ? (
+                <span className="text-green-600 dark:text-green-400 font-medium">In stock</span>
+              ) : product.stock > 0 ? (
+                <span className="text-amber-500 dark:text-amber-400 font-medium">Only {product.stock} left</span>
+              ) : (
+                <span className="text-red-500 dark:text-red-400 font-medium">Out of stock</span>
+              )}
+            </p>
+          )}
 
           {/* Variant selector + Add to cart (client) */}
           <AddToCart

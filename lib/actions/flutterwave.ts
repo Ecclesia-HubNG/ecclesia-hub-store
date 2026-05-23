@@ -126,6 +126,57 @@ export async function verifyAndFinalizeOrder(transactionId: string) {
 
     if (updateErr) return { error: updateErr.message }
 
+    // ── Decrement per-variant stock ───────────────────────
+    const orderItems = (order.items as Array<Record<string, unknown>>) ?? []
+    const variantProductIds = Array.from(new Set(
+      orderItems.filter(i => Array.isArray(i.selectedVariants) && (i.selectedVariants as unknown[]).length > 0)
+        .map(i => i.productId as string)
+    ))
+
+    if (variantProductIds.length > 0) {
+      const { data: variantProducts } = await supabase
+        .from('products')
+        .select('id, variants')
+        .in('id', variantProductIds)
+
+      for (const item of orderItems) {
+        const svs = item.selectedVariants as Array<{ groupName: string; value: string }> | null
+        if (!svs?.length) continue
+
+        const product = variantProducts?.find(p => p.id === item.productId)
+        if (!product) continue
+
+        type VOption = { value: string; stock?: number | null }
+        type VGroup = { name: string; options: VOption[] }
+        const productVariants: VGroup[] = Array.isArray(product.variants)
+          ? (product.variants as VGroup[]).map(v => ({ ...v, options: [...v.options] }))
+          : []
+        let changed = false
+
+        for (const sv of svs) {
+          const groupIdx = productVariants.findIndex(v => v.name === sv.groupName)
+          if (groupIdx === -1) continue
+
+          const group: VGroup = { ...productVariants[groupIdx], options: [...productVariants[groupIdx].options] }
+          const optIdx = group.options.findIndex(o => o.value === sv.value)
+          if (optIdx === -1) continue
+
+          const opt = { ...group.options[optIdx] }
+          if (opt.stock != null) {
+            opt.stock = Math.max(0, opt.stock - ((item.quantity as number) ?? 1))
+            group.options[optIdx] = opt
+            productVariants[groupIdx] = group
+            changed = true
+          }
+        }
+
+        if (changed) {
+          await supabase.from('products').update({ variants: productVariants }).eq('id', item.productId as string)
+        }
+      }
+    }
+    // ─────────────────────────────────────────────────────
+
     const shipping = order.shipping_address as Record<string, string>
     const items = (order.items as Array<Record<string, unknown>>) ?? []
     sendOrderConfirmation(shipping.email, {
@@ -136,7 +187,9 @@ export async function verifyAndFinalizeOrder(transactionId: string) {
         quantity: i.quantity as number,
         price: i.price as number,
         thumbnail: (i.thumbnail as string) ?? undefined,
-        variant: i.selectedVariant
+        variant: Array.isArray(i.selectedVariants) && (i.selectedVariants as Array<{ value: string }>).length
+          ? (i.selectedVariants as Array<{ value: string }>).map(sv => sv.value).join(', ')
+          : i.selectedVariant
           ? Object.values(i.selectedVariant as Record<string, string>).join(' / ')
           : undefined,
       })),

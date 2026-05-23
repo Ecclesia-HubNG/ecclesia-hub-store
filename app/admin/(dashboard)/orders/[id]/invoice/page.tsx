@@ -19,7 +19,7 @@ export default async function InvoicePage({ params }: { params: { id: string } }
   if (!order) notFound()
 
   const customer = order.customers as { full_name: string | null; email: string | null; phone?: string | null } | null
-  const items: Array<{ name: string; price: number; quantity: number; selectedVariant?: { groupName: string; value: string } | null }> =
+  const items: Array<{ name: string; price: number; quantity: number; selectedVariants?: Array<{ groupName: string; value: string }> | null; selectedVariant?: { groupName: string; value: string } | null }> =
     Array.isArray(order.items) ? order.items : []
   const shipping = order.shipping_address as Record<string, string> | null
   const trackingNumber: string | null = (order as Record<string, unknown>).tracking_number as string | null ?? null
@@ -136,9 +136,14 @@ export default async function InvoicePage({ params }: { params: { id: string } }
               <tr key={i}>
                 <td className="py-3.5 pr-4">
                   <p className="text-sm font-medium text-gray-900">{item.name}</p>
-                  {item.selectedVariant && (
-                    <p className="text-xs text-gray-400 mt-0.5">{item.selectedVariant.groupName}: {item.selectedVariant.value}</p>
-                  )}
+                  {item.selectedVariants?.length
+                    ? item.selectedVariants.map(sv => (
+                        <p key={`${sv.groupName}:${sv.value}`} className="text-xs text-gray-400 mt-0.5">{sv.groupName}: {sv.value}</p>
+                      ))
+                    : item.selectedVariant && (
+                        <p className="text-xs text-gray-400 mt-0.5">{item.selectedVariant.groupName}: {item.selectedVariant.value}</p>
+                      )
+                  }
                 </td>
                 <td className="py-3.5 text-center text-sm text-gray-600">{item.quantity}</td>
                 <td className="py-3.5 text-right text-sm text-gray-600">{fmt(item.price)}</td>

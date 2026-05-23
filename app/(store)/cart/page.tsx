@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { useCart, itemKey } from '@/lib/cart-context'
+import { useCart, itemKey, type SelectedVariant } from '@/lib/cart-context'
 
 export default function CartPage() {
   const { items, removeItem, updateQuantity, total, count } = useCart()
@@ -34,7 +34,7 @@ export default function CartPage() {
         {/* Items list */}
         <div className="flex-1 min-w-0 divide-y divide-gray-100 dark:divide-gray-800">
           {items.map(item => {
-            const key = itemKey(item.productId, item.selectedVariant)
+            const key = itemKey(item.productId, item.selectedVariants)
             return (
               <div key={key} className="flex gap-4 py-5">
                 {/* Thumbnail */}
@@ -57,10 +57,15 @@ export default function CartPage() {
                   <Link href={`/product/${item.slug}`} className="text-sm font-medium text-gray-900 dark:text-white hover:text-[#4A0F1C] dark:hover:text-[#E8C4CB] transition-colors line-clamp-2">
                     {item.name}
                   </Link>
-                  {item.selectedVariant && (
-                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
-                      {item.selectedVariant.groupName}: <span className="font-medium">{item.selectedVariant.value}</span>
-                    </p>
+                  {!!item.selectedVariants?.length && (
+                    <div className="mt-0.5 space-y-0.5">
+                      {item.selectedVariants.map((sv: SelectedVariant) => (
+                        <p key={`${sv.groupName}:${sv.value}`} className="text-xs text-gray-500 dark:text-gray-400">
+                          {sv.groupName}: <span className="font-medium">{sv.value}</span>
+                          {sv.price > 0 && <span className="text-gray-400 dark:text-gray-600"> (+₦{sv.price.toLocaleString('en')})</span>}
+                        </p>
+                      ))}
+                    </div>
                   )}
                   <p className="text-sm font-bold text-[#4A0F1C] dark:text-[#E8C4CB] mt-1">
                     ₦{item.price.toLocaleString('en')}
