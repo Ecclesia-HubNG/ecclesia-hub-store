@@ -179,9 +179,11 @@ export default function AddToCart({
                               disabled={optStock != null && optQty >= optStock}
                             >{Plus}</QtyBtn>
                           </div>
-                          <span className="text-sm text-gray-500 dark:text-gray-400">
-                            = <span className="font-semibold text-gray-800 dark:text-gray-200">{fmt(optPrice * optQty)}</span>
-                          </span>
+                          {optQty > 1 && (
+                            <span className="text-sm text-gray-500 dark:text-gray-400">
+                              = <span className="font-semibold text-gray-800 dark:text-gray-200">{fmt(optPrice * optQty)}</span>
+                            </span>
+                          )}
                         </div>
                       )}
                     </div>

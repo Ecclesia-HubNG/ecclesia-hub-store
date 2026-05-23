@@ -39,6 +39,7 @@ export default async function HomePage() {
       .select('id, name, slug, price, compare_at_price, thumbnail, images, stock, variants, categories(name), brands(name)')
       .eq('is_product_of_month', true)
       .eq('is_active', true)
+      .limit(1)
       .maybeSingle(),
   ])
 
