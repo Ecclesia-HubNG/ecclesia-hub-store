@@ -2,9 +2,11 @@
 
 import { useState } from 'react'
 
+type Platform = 'youtube' | 'tiktok' | 'instagram' | 'unknown'
+
 type GalleryItem =
   | { type: 'image'; src: string }
-  | { type: 'video'; embedUrl: string; platform: string }
+  | { type: 'video'; embedUrl: string; platform: Platform }
 
 function parseEmbed(raw: string): { embedUrl: string; platform: string } | null {
   try {
@@ -17,20 +19,27 @@ function parseEmbed(raw: string): { embedUrl: string; platform: string } | null 
       else if (url.pathname.startsWith('/shorts/')) id = url.pathname.split('/')[2]
       else if (url.pathname.startsWith('/embed/')) id = url.pathname.split('/')[2]
       else id = url.searchParams.get('v')
-      if (id) return { embedUrl: `https://www.youtube.com/embed/${id}?rel=0`, platform: 'YouTube' }
+      if (id) return { embedUrl: `https://www.youtube.com/embed/${id}?rel=0`, platform: 'youtube' as const }
     }
 
     if (host === 'tiktok.com' || host === 'vm.tiktok.com') {
       const match = url.pathname.match(/\/video\/(\d+)/)
-      if (match) return { embedUrl: `https://www.tiktok.com/embed/v2/${match[1]}`, platform: 'TikTok' }
+      if (match) return { embedUrl: `https://www.tiktok.com/embed/v2/${match[1]}`, platform: 'tiktok' as const }
     }
 
     if (host === 'instagram.com') {
       const match = url.pathname.match(/\/(reel|p|tv)\/([^/]+)/)
-      if (match) return { embedUrl: `https://www.instagram.com/${match[1]}/${match[2]}/embed/`, platform: 'Instagram' }
+      if (match) return { embedUrl: `https://www.instagram.com/${match[1]}/${match[2]}/embed/`, platform: 'instagram' as const }
     }
   } catch {}
   return null
+}
+
+const VIDEO_ASPECT: Record<Platform, string> = {
+  youtube:   'aspect-video',
+  tiktok:    'aspect-[9/16] max-w-[320px] mx-auto',
+  instagram: 'aspect-[4/5] max-w-[400px] mx-auto',
+  unknown:   'aspect-video',
 }
 
 function PlaceholderIcon() {
@@ -57,7 +66,7 @@ export default function ImageGallery({
     ...images.map(src => ({ type: 'image' as const, src })),
     ...(videoUrl ? (() => {
       const parsed = parseEmbed(videoUrl)
-      return parsed ? [{ type: 'video' as const, ...parsed }] : []
+      return parsed ? [{ type: 'video' as const, ...parsed }] : [{ type: 'video' as const, embedUrl: videoUrl, platform: 'unknown' as const }]
     })() : []),
   ]
 
@@ -74,10 +83,12 @@ export default function ImageGallery({
   return (
     <div className="space-y-3">
       {/* Main viewer */}
-      <div className={`w-full bg-gray-100 dark:bg-gray-900 rounded-2xl overflow-hidden ${current.type === 'video' ? 'aspect-video' : 'aspect-square'}`}>
-        {current.type === 'image' ? (
+      {current.type === 'image' ? (
+        <div className="w-full aspect-square bg-gray-100 dark:bg-gray-900 rounded-2xl overflow-hidden">
           <img src={current.src} alt={name} className="w-full h-full object-cover" />
-        ) : (
+        </div>
+      ) : (
+        <div className={`bg-black rounded-2xl overflow-hidden ${VIDEO_ASPECT[current.platform]}`}>
           <iframe
             src={current.embedUrl}
             className="w-full h-full"
@@ -86,8 +97,8 @@ export default function ImageGallery({
             loading="lazy"
             title={`${current.platform} video`}
           />
-        )}
-      </div>
+        </div>
+      )}
 
       {/* Thumbnail strip — only shown when there are multiple items */}
       {items.length > 1 && (
