@@ -66,7 +66,9 @@ export default function ImageGallery({
     ...images.map(src => ({ type: 'image' as const, src })),
     ...(videoUrl ? (() => {
       const parsed = parseEmbed(videoUrl)
-      return parsed ? [{ type: 'video' as const, ...parsed }] : [{ type: 'video' as const, embedUrl: videoUrl, platform: 'unknown' as const }]
+      return parsed
+        ? [{ type: 'video' as const, embedUrl: parsed.embedUrl, platform: parsed.platform as Platform }]
+        : [{ type: 'video' as const, embedUrl: videoUrl, platform: 'unknown' as Platform }]
     })() : []),
   ]
 

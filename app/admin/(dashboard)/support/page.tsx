@@ -9,7 +9,7 @@ export default async function AdminSupportPage() {
   // Get all messages grouped by user
   const { data: messages } = await supabase
     .from('inbox_messages')
-    .select('id, user_id, subject, body, sender, read_at, created_at')
+    .select('id, user_id, subject, body, sender, read_at, created_at, attachment')
     .order('created_at', { ascending: true })
 
   // Get user profiles for names/emails

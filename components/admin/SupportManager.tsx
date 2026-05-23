@@ -4,6 +4,8 @@ import { useEffect, useRef, useState, useTransition } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { adminReply, markConversationRead } from '@/lib/actions/inbox'
 
+type Attachment = { type: 'order' | 'product'; id: string; label: string; slug?: string }
+
 type Msg = {
   id: string
   user_id: string
@@ -12,6 +14,7 @@ type Msg = {
   sender: 'admin' | 'customer'
   read_at: string | null
   created_at: string
+  attachment?: Attachment | null
 }
 
 type Conversation = {
@@ -156,16 +159,48 @@ export function SupportManager({ conversations: initial }: { conversations: Conv
                       </span>
                     </div>
                   )}
-                  <div className={`max-w-[72%] px-4 py-2.5 rounded-2xl text-sm leading-relaxed ${
+                  <div className={`max-w-[72%] rounded-2xl text-sm leading-relaxed overflow-hidden ${
                     isAdmin
                       ? 'bg-[#4A0F1C] text-white rounded-br-sm'
                       : 'bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-100 rounded-bl-sm'
                   }`}>
-                    <p className="whitespace-pre-wrap">{msg.body}</p>
-                    <p className={`text-[10px] mt-1 ${isAdmin ? 'text-white/60 text-right' : 'text-gray-400'}`}>
-                      {new Date(msg.created_at).toLocaleTimeString('en', { hour: '2-digit', minute: '2-digit' })}
-                      {' · '}{new Date(msg.created_at).toLocaleDateString('en', { day: 'numeric', month: 'short' })}
-                    </p>
+                    <div className="px-4 py-2.5">
+                      <p className="whitespace-pre-wrap">{msg.body}</p>
+                      <p className={`text-[10px] mt-1 ${isAdmin ? 'text-white/60 text-right' : 'text-gray-400'}`}>
+                        {new Date(msg.created_at).toLocaleTimeString('en', { hour: '2-digit', minute: '2-digit' })}
+                        {' · '}{new Date(msg.created_at).toLocaleDateString('en', { day: 'numeric', month: 'short' })}
+                      </p>
+                    </div>
+                    {msg.attachment && (
+                      <a
+                        href={
+                          msg.attachment.type === 'order'
+                            ? `/admin/orders/${msg.attachment.id}`
+                            : `/product/${msg.attachment.slug ?? msg.attachment.id}`
+                        }
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className={`flex items-center gap-2 px-4 py-2 border-t text-xs font-medium transition-opacity hover:opacity-80 ${
+                          isAdmin
+                            ? 'border-white/20 text-white/80 bg-white/10'
+                            : 'border-gray-200 dark:border-gray-700 text-[#4A0F1C] dark:text-[#D4849A] bg-white dark:bg-gray-900'
+                        }`}
+                      >
+                        {msg.attachment.type === 'order' ? (
+                          <svg className="w-3.5 h-3.5 shrink-0" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h3.75M9 15h3.75M9 18h3.75m3 .75H18a2.25 2.25 0 0 0 2.25-2.25V6.108c0-1.135-.845-2.098-1.976-2.192a48.424 48.424 0 0 0-1.123-.08m-5.801 0c-.065.21-.1.433-.1.664 0 .414.336.75.75.75h4.5a.75.75 0 0 0 .75-.75 2.25 2.25 0 0 0-.1-.664m-5.8 0A2.251 2.251 0 0 1 13.5 2.25H15c1.012 0 1.867.668 2.15 1.586m-5.8 0c-.376.023-.75.05-1.124.08C9.095 4.01 8.25 4.973 8.25 6.108V8.25m0 0H4.875c-.621 0-1.125.504-1.125 1.125v11.25c0 .621.504 1.125 1.125 1.125h9.75c.621 0 1.125-.504 1.125-1.125V9.375c0-.621-.504-1.125-1.125-1.125H8.25Z" />
+                          </svg>
+                        ) : (
+                          <svg className="w-3.5 h-3.5 shrink-0" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 10.5V6a3.75 3.75 0 1 0-7.5 0v4.5m11.356-1.993 1.263 12c.07.665-.45 1.243-1.119 1.243H4.25a1.125 1.125 0 0 1-1.12-1.243l1.264-12A1.125 1.125 0 0 1 5.513 7.5h12.974c.576 0 1.059.435 1.119 1.007Z" />
+                          </svg>
+                        )}
+                        <span className="truncate">{msg.attachment.label}</span>
+                        <svg className="w-3 h-3 shrink-0 ml-auto" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 6H5.25A2.25 2.25 0 0 0 3 8.25v10.5A2.25 2.25 0 0 0 5.25 21h10.5A2.25 2.25 0 0 0 18 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25" />
+                        </svg>
+                      </a>
+                    )}
                   </div>
                 </div>
               )

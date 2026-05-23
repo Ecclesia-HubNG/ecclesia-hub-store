@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { signOut } from '@/lib/actions/auth'
 import { can, ROLE_LABELS, ROLE_COLORS, type Role } from '@/lib/roles'
+import { createClient } from '@/lib/supabase/client'
 
 function Icon({ d }: { d: string }) {
   return (
@@ -100,6 +101,34 @@ const EXPANDABLE_ROOTS = ['/admin/products', '/admin/users', '/admin/finance', '
 export default function AdminSidebar({ role }: { role: string }) {
   const pathname = usePathname()
   const router = useRouter()
+  const [unreadSupport, setUnreadSupport] = useState(0)
+
+  useEffect(() => {
+    const supabase = createClient()
+
+    supabase
+      .from('inbox_messages')
+      .select('id', { count: 'exact', head: true })
+      .eq('sender', 'customer')
+      .is('read_at', null)
+      .then(({ count }) => setUnreadSupport(count ?? 0))
+
+    const channel = supabase
+      .channel('sidebar-support')
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'inbox_messages' }, (payload) => {
+        if ((payload.new as any).sender === 'customer') setUnreadSupport(prev => prev + 1)
+      })
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'inbox_messages' }, (payload) => {
+        const n = payload.new as any
+        const o = payload.old as any
+        if (n.sender === 'customer' && !o.read_at && n.read_at) {
+          setUnreadSupport(prev => Math.max(0, prev - 1))
+        }
+      })
+      .subscribe()
+
+    return () => { supabase.removeChannel(channel) }
+  }, [])
 
   const [openSections, setOpenSections] = useState<Set<string>>(() => {
     const open = new Set<string>()
@@ -185,6 +214,11 @@ export default function AdminSidebar({ role }: { role: string }) {
                 >
                   <Icon d={icon} />
                   <span className="flex-1">{label}</span>
+                  {href === '/admin/support' && unreadSupport > 0 && (
+                    <span className="min-w-[18px] h-[18px] px-1 flex items-center justify-center rounded-full bg-[#6B1A2A] text-white text-[10px] font-bold leading-none">
+                      {unreadSupport > 99 ? '99+' : unreadSupport}
+                    </span>
+                  )}
                 </Link>
               )}
 
