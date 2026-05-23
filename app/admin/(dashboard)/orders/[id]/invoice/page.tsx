@@ -12,13 +12,17 @@ export default async function InvoicePage({ params }: { params: { id: string } }
 
   const { data: order } = await supabase
     .from('orders')
-    .select('*, customers(full_name, email, phone)')
+    .select('*')
     .eq('id', params.id)
     .single()
 
   if (!order) notFound()
 
-  const customer = order.customers as { full_name: string | null; email: string | null; phone?: string | null } | null
+  const { data: customerRow } = order.customer_id
+    ? await supabase.from('customers').select('full_name, email, phone').eq('id', order.customer_id).maybeSingle()
+    : { data: null }
+
+  const customer = customerRow as { full_name: string | null; email: string | null; phone?: string | null } | null
   const items: Array<{ name: string; price: number; quantity: number; selectedVariants?: Array<{ groupName: string; value: string }> | null; selectedVariant?: { groupName: string; value: string } | null }> =
     Array.isArray(order.items) ? order.items : []
   const shipping = order.shipping_address as Record<string, string> | null

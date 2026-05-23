@@ -26,13 +26,17 @@ export default async function OrderDetailPage({ params }: { params: { id: string
 
   const { data: order } = await supabase
     .from('orders')
-    .select('*, customers(full_name, email, phone)')
+    .select('*')
     .eq('id', params.id)
     .single()
 
   if (!order) notFound()
 
-  const customer = order.customers as { full_name: string | null; email: string | null; phone?: string | null } | null
+  const { data: customerRow } = order.customer_id
+    ? await supabase.from('customers').select('full_name, email, phone').eq('id', order.customer_id).maybeSingle()
+    : { data: null }
+
+  const customer = customerRow as { full_name: string | null; email: string | null; phone?: string | null } | null
   const items: Array<{ product_id?: string; name: string; price: number; quantity: number; thumbnail?: string | null }> =
     Array.isArray(order.items) ? order.items : []
   const shipping = order.shipping_address as Record<string, string> | null
