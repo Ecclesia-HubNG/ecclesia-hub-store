@@ -3,6 +3,7 @@ import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import ImageGallery from '@/components/store/ImageGallery'
 import AddToCart from '@/components/store/AddToCart'
+import VideoEmbed from '@/components/store/VideoEmbed'
 
 function fmt(n: number) {
   return `₦${n.toLocaleString('en', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
@@ -170,6 +171,14 @@ export default async function ProductPage({ params }: { params: { slug: string }
           <div className="text-gray-500 dark:text-gray-400 text-sm leading-7 whitespace-pre-line">
             {product.description}
           </div>
+        </div>
+      )}
+
+      {/* Video */}
+      {product.video_url && (
+        <div className="max-w-2xl mb-20">
+          <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-5">Product video</h2>
+          <VideoEmbed url={product.video_url} />
         </div>
       )}
 
