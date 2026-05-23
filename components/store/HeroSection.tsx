@@ -87,11 +87,14 @@ export default function HeroSection({
           {/* BOTTOM ROW */}
           <div className="flex items-end justify-between gap-6 flex-wrap md:flex-nowrap">
             <div>
-              <h1 className="text-[2.5rem] md:text-[3.2rem] lg:text-[4rem] font-bold text-white leading-[1.05] tracking-tight mb-7">
-                Radiant skin for<br />
-                the everyday<br />
-                believer.
+              <h1 className="text-[2.5rem] md:text-[3.2rem] lg:text-[4rem] font-bold text-white leading-[1.05] tracking-tight mb-4">
+                Skin that speaks<br />
+                before you<br />
+                even do.
               </h1>
+              <p className="text-sm md:text-base text-white/65 mb-6 max-w-sm leading-relaxed">
+                Premium body care and skincare crafted for the radiant, unapologetically luminous you.
+              </p>
               <div className="flex items-center gap-3 flex-wrap">
                 <Link href="/shop" className="px-7 py-3 bg-white text-gray-900 text-sm font-bold rounded-full hover:bg-gray-100 transition-colors">
                   Shop Now
