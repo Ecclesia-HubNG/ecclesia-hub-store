@@ -181,6 +181,8 @@ export async function verifyAndFinalizeOrder(transactionId: string) {
         subtotal: session.subtotal,
         items: cartItems,
         shipping_address: shipping,
+        delivery_rate_id: session.delivery_rate_id ?? null,
+        delivery_label: session.delivery_label ?? null,
         payment_reference: tx.tx_ref,
         paid_at: new Date().toISOString(),
         order_channel: 'store',

@@ -53,7 +53,8 @@ export async function createCheckoutSession(
   subtotal: number,
   shippingFee: number,
   total: number,
-  zoneId: string,
+  deliveryRateId: string,
+  deliveryLabel: string,
 ): Promise<{ sessionId: string } | { error: string }> {
   const stockError = await validateStock(items)
   if (stockError) return { error: stockError }
@@ -81,7 +82,8 @@ export async function createCheckoutSession(
       subtotal,
       shipping_fee: shippingFee,
       total,
-      zone_id: zoneId || null,
+      delivery_rate_id: deliveryRateId || null,
+      delivery_label: deliveryLabel || null,
       customer_id: user?.id ?? null,
     })
     .select('id')
@@ -184,6 +186,8 @@ export async function createBankTransferOrder(sessionId: string): Promise<
       subtotal: session.subtotal,
       items: cartItems,
       shipping_address: shipping,
+      delivery_rate_id: session.delivery_rate_id ?? null,
+      delivery_label: session.delivery_label ?? null,
       order_channel: 'store',
       payment_metadata: { provider: 'bank_transfer' },
     })

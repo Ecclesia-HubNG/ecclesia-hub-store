@@ -7,6 +7,27 @@ function revalidate() {
   revalidatePath('/admin/shipping/delivery-type')
 }
 
+// ── Public (storefront) ───────────────────────────────────────────────────────
+export async function getActiveDeliveryOptions() {
+  const supabase = createAdminClient()
+
+  const [{ data: types }, { data: zones }, { data: rates }] = await Promise.all([
+    supabase.from('delivery_types').select('id, name, description').eq('is_active', true).order('sort_order').order('created_at'),
+    supabase.from('delivery_zones').select('id, type_id, name, description').eq('is_active', true).order('sort_order').order('created_at'),
+    supabase.from('delivery_rates').select('id, zone_id, name, areas, price, estimated_days').eq('is_active', true).order('sort_order').order('created_at'),
+  ])
+
+  return (types ?? []).map(t => ({
+    ...t,
+    zones: (zones ?? [])
+      .filter(z => z.type_id === t.id)
+      .map(z => ({
+        ...z,
+        rates: (rates ?? []).filter(r => r.zone_id === z.id),
+      })),
+  }))
+}
+
 // ── Read ──────────────────────────────────────────────────────────────────────
 export async function getDeliveryData() {
   const supabase = createAdminClient()

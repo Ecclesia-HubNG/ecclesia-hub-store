@@ -8,7 +8,11 @@ import { useCart } from '@/lib/cart-context'
 import { createCheckoutSession, createBankTransferOrder } from '@/lib/actions/customer-orders'
 import { initializePayment as initFlutterwave } from '@/lib/actions/flutterwave'
 import { initializePayment as initPaystack } from '@/lib/actions/paystack'
-import { adminGetShippingZones, type ShippingZone } from '@/lib/actions/shipping'
+import { getActiveDeliveryOptions } from '@/lib/actions/delivery'
+
+type DeliveryRate = { id: string; zone_id: string; name: string; areas: string[]; price: number; estimated_days: string | null }
+type DeliveryZone = { id: string; type_id: string; name: string; description: string | null; rates: DeliveryRate[] }
+type DeliveryType = { id: string; name: string; description: string | null; zones: DeliveryZone[] }
 
 type PaymentMethod = 'paystack' | 'flutterwave' | 'bank_transfer'
 
@@ -20,7 +24,6 @@ type BankConfirm = {
 }
 
 const inputCls = 'w-full px-3.5 py-2.5 text-sm bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-600 focus:outline-none focus:ring-2 focus:ring-[#4A0F1C]/20 focus:border-[#4A0F1C]/40 transition-colors'
-const selectCls = inputCls + ' appearance-none cursor-pointer'
 
 export default function CheckoutPage() {
   const { items, total: subtotal, count, clearCart } = useCart()
@@ -30,49 +33,57 @@ export default function CheckoutPage() {
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('paystack')
   const [bankConfirm, setBankConfirm] = useState<BankConfirm | null>(null)
 
-  // Zones
-  const [zones, setZones] = useState<ShippingZone[]>([])
-  const [selectedState, setSelectedState] = useState('')
+  // Delivery options
+  const [deliveryOptions, setDeliveryOptions] = useState<DeliveryType[]>([])
+  const [selectedTypeId, setSelectedTypeId] = useState('')
   const [selectedZoneId, setSelectedZoneId] = useState('')
+  const [selectedRateId, setSelectedRateId] = useState('')
 
   const [form, setForm] = useState({
     firstName: '', lastName: '', email: '', phone: '', address: '',
   })
   const update = (k: keyof typeof form, v: string) => setForm(p => ({ ...p, [k]: v }))
 
-  useEffect(() => { adminGetShippingZones().then(zones => setZones(zones.filter(z => z.is_active))) }, [])
+  useEffect(() => {
+    getActiveDeliveryOptions().then(opts => setDeliveryOptions(opts as DeliveryType[]))
+  }, [])
+
   useEffect(() => { if (items.length === 0) router.replace('/cart') }, [items.length, router])
 
-  // ── Derived location state ─────────────────────────────────────────
-  const states = useMemo(
-    () => Array.from(new Set(zones.map(z => z.state))).sort(),
-    [zones],
-  )
-
-  const areasForState = useMemo(
-    () => zones.filter(z => z.state === selectedState),
-    [zones, selectedState],
-  )
-
-  // Auto-select zone if the chosen state has only one option
-  useEffect(() => {
-    if (areasForState.length === 1) {
-      setSelectedZoneId(areasForState[0].id)
-    } else {
-      setSelectedZoneId('')
-    }
-  }, [areasForState])
-
-  const selectedZone = zones.find(z => z.id === selectedZoneId) ?? null
-  const shippingFee = selectedZone?.price ?? null
+  // Derived delivery state
+  const selectedType = useMemo(() => deliveryOptions.find(t => t.id === selectedTypeId) ?? null, [deliveryOptions, selectedTypeId])
+  const zonesForType = useMemo(() => selectedType?.zones ?? [], [selectedType])
+  const selectedZone = useMemo(() => zonesForType.find(z => z.id === selectedZoneId) ?? null, [zonesForType, selectedZoneId])
+  const ratesForZone = useMemo(() => selectedZone?.rates ?? [], [selectedZone])
+  const selectedRate = useMemo(() => ratesForZone.find(r => r.id === selectedRateId) ?? null, [ratesForZone, selectedRateId])
+  const shippingFee = selectedRate?.price ?? null
   const orderTotal = subtotal + (shippingFee ?? 0)
-  // ──────────────────────────────────────────────────────────────────
+  const deliveryLabel = selectedRate && selectedType && selectedZone
+    ? `${selectedType.name} · ${selectedZone.name} · ${selectedRate.name}${selectedRate.estimated_days ? ' · ' + selectedRate.estimated_days : ''}`
+    : ''
+
+  // Auto-select zone when type changes
+  useEffect(() => {
+    const zones = deliveryOptions.find(t => t.id === selectedTypeId)?.zones ?? []
+    if (zones.length === 1) { setSelectedZoneId(zones[0].id); return }
+    setSelectedZoneId('')
+    setSelectedRateId('')
+  }, [selectedTypeId, deliveryOptions])
+
+  // Auto-select rate when zone changes
+  useEffect(() => {
+    const type = deliveryOptions.find(t => t.id === selectedTypeId)
+    const zone = type?.zones.find(z => z.id === selectedZoneId)
+    const rates = zone?.rates ?? []
+    if (rates.length === 1) { setSelectedRateId(rates[0].id); return }
+    setSelectedRateId('')
+  }, [selectedZoneId, deliveryOptions, selectedTypeId])
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
     setError(null)
 
-    if (!selectedZone) { setError('Please select your delivery location.'); return }
+    if (!selectedRate) { setError('Please select your delivery option.'); return }
     if (!form.firstName || !form.lastName || !form.email || !form.phone || !form.address) {
       setError('Please fill in all fields.')
       return
@@ -85,18 +96,18 @@ export default function CheckoutPage() {
         email: form.email,
         phone: form.phone,
         address: form.address,
-        city: selectedZone.area || selectedZone.state,
-        state: selectedZone.state,
+        city: selectedRate.name,
+        state: selectedZone?.name ?? '',
       }
 
-      // 1. Create checkout session (validates stock, no order written yet)
       const sessionResult = await createCheckoutSession(
         items,
         shipping,
         subtotal,
         shippingFee ?? 0,
         orderTotal,
-        selectedZone.id,
+        selectedRate.id,
+        deliveryLabel,
       )
 
       if ('error' in sessionResult) {
@@ -118,7 +129,6 @@ export default function CheckoutPage() {
         window.location.href = payResult.authorizationUrl
 
       } else {
-        // Bank transfer — create order immediately, show account details
         const bankResult = await createBankTransferOrder(sid)
         if ('error' in bankResult) { setError(bankResult.error); return }
         clearCart()
@@ -188,93 +198,135 @@ export default function CheckoutPage() {
           {/* Left column */}
           <div className="flex-1 min-w-0 space-y-5">
 
-            {/* ── 1. Delivery location (shown first so fee is visible) ── */}
+            {/* ── 1. Delivery method ── */}
             <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl p-6">
-              <h2 className="text-base font-semibold text-gray-900 dark:text-white mb-1">Delivery location</h2>
-              <p className="text-xs text-gray-400 dark:text-gray-500 mb-5">Select your state and area to see the delivery fee.</p>
+              <h2 className="text-base font-semibold text-gray-900 dark:text-white mb-1">Delivery method</h2>
+              <p className="text-xs text-gray-400 dark:text-gray-500 mb-5">Select how you'd like to receive your order.</p>
 
-              <div className="grid grid-cols-2 gap-4">
-                {/* State */}
-                <div>
-                  <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1.5">State</label>
-                  <div className="relative">
-                    <select
-                      value={selectedState}
-                      onChange={e => setSelectedState(e.target.value)}
-                      className={selectCls}
-                      required
-                    >
-                      <option value="">Select state…</option>
-                      {states.map(s => (
-                        <option key={s} value={s}>{s}</option>
-                      ))}
-                    </select>
-                    <svg className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                      <path strokeLinecap="round" strokeLinejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
-                    </svg>
+              {deliveryOptions.length === 0 ? (
+                <p className="text-xs text-amber-600 dark:text-amber-400">No delivery options available yet. Please contact us to arrange delivery.</p>
+              ) : (
+                <div className="space-y-5">
+
+                  {/* Type selector */}
+                  <div className="flex flex-wrap gap-3">
+                    {deliveryOptions.map(type => (
+                      <button
+                        key={type.id}
+                        type="button"
+                        onClick={() => setSelectedTypeId(type.id)}
+                        className={`flex-1 min-w-[140px] text-left px-4 py-3.5 rounded-xl border-2 transition-all ${
+                          selectedTypeId === type.id
+                            ? 'border-[#4A0F1C] dark:border-[#E8C4CB] bg-[#4A0F1C]/5 dark:bg-[#4A0F1C]/20'
+                            : 'border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600'
+                        }`}
+                      >
+                        <div className="flex items-start gap-2.5">
+                          <span className={`mt-0.5 w-4 h-4 rounded-full border-2 flex items-center justify-center shrink-0 ${
+                            selectedTypeId === type.id ? 'border-[#4A0F1C] dark:border-[#E8C4CB]' : 'border-gray-300 dark:border-gray-600'
+                          }`}>
+                            {selectedTypeId === type.id && <span className="w-2 h-2 rounded-full bg-[#4A0F1C] dark:bg-[#E8C4CB]" />}
+                          </span>
+                          <div>
+                            <p className="text-sm font-medium text-gray-900 dark:text-white">{type.name}</p>
+                            {type.description && <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{type.description}</p>}
+                          </div>
+                        </div>
+                      </button>
+                    ))}
                   </div>
-                </div>
 
-                {/* Area — only shown if state selected and has multiple zones */}
-                <div>
-                  <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1.5">Area / Zone</label>
-                  <div className="relative">
-                    <select
-                      value={selectedZoneId}
-                      onChange={e => setSelectedZoneId(e.target.value)}
-                      className={selectCls}
-                      disabled={!selectedState || areasForState.length <= 1}
-                      required
-                    >
-                      {!selectedState && <option value="">Select state first…</option>}
-                      {selectedState && areasForState.length === 0 && (
-                        <option value="">No zones for this state</option>
+                  {/* Zone selector — only if type has 2+ zones */}
+                  {selectedType && zonesForType.length > 1 && (
+                    <div>
+                      <p className="text-xs font-medium text-gray-600 dark:text-gray-400 mb-2.5">Select zone</p>
+                      <div className="flex flex-wrap gap-2">
+                        {zonesForType.map(zone => (
+                          <button
+                            key={zone.id}
+                            type="button"
+                            onClick={() => setSelectedZoneId(zone.id)}
+                            className={`px-3.5 py-1.5 rounded-lg text-sm font-medium border transition-all ${
+                              selectedZoneId === zone.id
+                                ? 'bg-[#4A0F1C] dark:bg-[#4A0F1C] text-white border-[#4A0F1C] dark:border-[#4A0F1C]'
+                                : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600'
+                            }`}
+                          >
+                            {zone.name}
+                          </button>
+                        ))}
+                      </div>
+                      {zonesForType.length === 0 && (
+                        <p className="text-xs text-gray-400">No zones available for this delivery type.</p>
                       )}
-                      {selectedState && areasForState.length === 1 && (
-                        <option value={areasForState[0].id}>
-                          {areasForState[0].area || areasForState[0].name || 'Whole state'}
-                        </option>
-                      )}
-                      {selectedState && areasForState.length > 1 && (
-                        <>
-                          <option value="">Select area…</option>
-                          {areasForState.map(z => (
-                            <option key={z.id} value={z.id}>
-                              {z.area || z.name || z.state}
-                            </option>
-                          ))}
-                        </>
-                      )}
-                    </select>
-                    <svg className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                      <path strokeLinecap="round" strokeLinejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
-                    </svg>
-                  </div>
-                </div>
-              </div>
+                    </div>
+                  )}
 
-              {/* Fee callout — shown as soon as a zone is chosen */}
-              {selectedZone && (
-                <div className="mt-4 flex items-center gap-3 px-4 py-3 bg-[#4A0F1C]/5 dark:bg-[#4A0F1C]/20 border border-[#4A0F1C]/15 dark:border-[#4A0F1C]/30 rounded-xl">
-                  <svg className="w-4 h-4 text-[#4A0F1C] dark:text-[#E8C4CB] shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 18.75a1.5 1.5 0 0 1-3 0m3 0a1.5 1.5 0 0 0-3 0m3 0h6m-9 0H3.375a1.125 1.125 0 0 1-1.125-1.125V14.25m17.25 4.5a1.5 1.5 0 0 1-3 0m3 0a1.5 1.5 0 0 0-3 0m3 0h1.125c.621 0 1.129-.504 1.09-1.124a17.902 17.902 0 0 0-3.213-9.193 2.056 2.056 0 0 0-1.58-.86H14.25M16.5 18.75h-2.25m0-11.177v-.958c0-.568-.422-1.048-.987-1.106a48.554 48.554 0 0 0-10.026 0 1.106 1.106 0 0 0-.987 1.106v7.635m12-6.677v6.677m0 4.5v-4.5m0 0h-12" />
-                  </svg>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-[#4A0F1C] dark:text-[#E8C4CB]">
-                      {selectedZone.name || `Delivery to ${selectedZone.area || selectedZone.state}`}
-                    </p>
-                    <p className="text-xs text-[#4A0F1C]/70 dark:text-[#E8C4CB]/70 mt-0.5">
-                      {selectedZone.state}{selectedZone.area ? ` · ${selectedZone.area}` : ''}
-                    </p>
-                  </div>
-                  <span className="text-sm font-bold text-[#4A0F1C] dark:text-[#E8C4CB] shrink-0">
-                    {shippingFee === 0 ? 'Free' : `₦${(shippingFee ?? 0).toLocaleString('en')}`}
-                  </span>
-                </div>
-              )}
+                  {/* Rate selector — shown when zone is selected and has 2+ rates */}
+                  {selectedZone && ratesForZone.length > 1 && (
+                    <div>
+                      <p className="text-xs font-medium text-gray-600 dark:text-gray-400 mb-2.5">Select rate</p>
+                      <div className="space-y-2">
+                        {ratesForZone.map(rate => (
+                          <button
+                            key={rate.id}
+                            type="button"
+                            onClick={() => setSelectedRateId(rate.id)}
+                            className={`w-full text-left px-4 py-3 rounded-xl border transition-all ${
+                              selectedRateId === rate.id
+                                ? 'border-[#4A0F1C] dark:border-[#E8C4CB] bg-[#4A0F1C]/5 dark:bg-[#4A0F1C]/20'
+                                : 'border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600'
+                            }`}
+                          >
+                            <div className="flex items-start justify-between gap-3">
+                              <div className="flex items-start gap-2.5 min-w-0">
+                                <span className={`mt-0.5 w-4 h-4 rounded-full border-2 flex items-center justify-center shrink-0 ${
+                                  selectedRateId === rate.id ? 'border-[#4A0F1C] dark:border-[#E8C4CB]' : 'border-gray-300 dark:border-gray-600'
+                                }`}>
+                                  {selectedRateId === rate.id && <span className="w-2 h-2 rounded-full bg-[#4A0F1C] dark:bg-[#E8C4CB]" />}
+                                </span>
+                                <div className="min-w-0">
+                                  <p className="text-sm font-medium text-gray-900 dark:text-white">{rate.name}</p>
+                                  {rate.areas.length > 0 && (
+                                    <div className="flex flex-wrap gap-1 mt-1">
+                                      {rate.areas.map(area => (
+                                        <span key={area} className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 border border-blue-100 dark:border-blue-800">
+                                          {area}
+                                        </span>
+                                      ))}
+                                    </div>
+                                  )}
+                                  {rate.estimated_days && (
+                                    <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">{rate.estimated_days}</p>
+                                  )}
+                                </div>
+                              </div>
+                              <span className="text-sm font-bold text-gray-900 dark:text-white shrink-0">
+                                {rate.price === 0 ? 'Free' : `₦${rate.price.toLocaleString('en')}`}
+                              </span>
+                            </div>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
 
-              {zones.length === 0 && (
-                <p className="mt-3 text-xs text-amber-600 dark:text-amber-400">No delivery options available yet. Please contact us to arrange delivery.</p>
+                  {/* Fee callout — shown once a rate is selected */}
+                  {selectedRate && (
+                    <div className="flex items-center gap-3 px-4 py-3 bg-[#4A0F1C]/5 dark:bg-[#4A0F1C]/20 border border-[#4A0F1C]/15 dark:border-[#4A0F1C]/30 rounded-xl">
+                      <svg className="w-4 h-4 text-[#4A0F1C] dark:text-[#E8C4CB] shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 18.75a1.5 1.5 0 0 1-3 0m3 0a1.5 1.5 0 0 0-3 0m3 0h6m-9 0H3.375a1.125 1.125 0 0 1-1.125-1.125V14.25m17.25 4.5a1.5 1.5 0 0 1-3 0m3 0a1.5 1.5 0 0 0-3 0m3 0h1.125c.621 0 1.129-.504 1.09-1.124a17.902 17.902 0 0 0-3.213-9.193 2.056 2.056 0 0 0-1.58-.86H14.25M16.5 18.75h-2.25m0-11.177v-.958c0-.568-.422-1.048-.987-1.106a48.554 48.554 0 0 0-10.026 0 1.106 1.106 0 0 0-.987 1.106v7.635m12-6.677v6.677m0 4.5v-4.5m0 0h-12" />
+                      </svg>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium text-[#4A0F1C] dark:text-[#E8C4CB] truncate">{deliveryLabel}</p>
+                      </div>
+                      <span className="text-sm font-bold text-[#4A0F1C] dark:text-[#E8C4CB] shrink-0">
+                        {shippingFee === 0 ? 'Free' : `₦${(shippingFee ?? 0).toLocaleString('en')}`}
+                      </span>
+                    </div>
+                  )}
+
+                </div>
               )}
             </div>
 
@@ -303,7 +355,7 @@ export default function CheckoutPage() {
                   <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1.5">
                     Street address
                     {selectedZone && (
-                      <span className="ml-1 font-normal text-gray-400">· {selectedZone.area || selectedZone.state}</span>
+                      <span className="ml-1 font-normal text-gray-400">· {selectedZone.name}</span>
                     )}
                   </label>
                   <input type="text" placeholder="12 Faith Avenue" value={form.address} onChange={e => update('address', e.target.value)} className={inputCls} required />
@@ -353,7 +405,7 @@ export default function CheckoutPage() {
                       {shippingFee === 0 ? 'Free' : `₦${shippingFee.toLocaleString('en')}`}
                     </span>
                   ) : (
-                    <span className="italic text-gray-400 text-xs">Select location above</span>
+                    <span className="italic text-gray-400 text-xs">Select delivery above</span>
                   )}
                 </div>
                 <div className="flex justify-between font-semibold text-gray-900 dark:text-white pt-1 border-t border-gray-200 dark:border-gray-700">
@@ -401,13 +453,13 @@ export default function CheckoutPage() {
 
               <button
                 type="submit"
-                disabled={pending || !selectedZone}
+                disabled={pending || !selectedRate}
                 className="w-full py-3 bg-[#4A0F1C] text-white text-sm font-semibold rounded-xl hover:bg-[#3A0B15] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
               >
                 {pending
                   ? paymentMethod === 'bank_transfer' ? 'Placing order…' : 'Redirecting to payment…'
-                  : !selectedZone
-                  ? 'Select delivery location'
+                  : !selectedRate
+                  ? 'Select delivery option'
                   : paymentMethod === 'bank_transfer'
                   ? 'Place Order (Bank Transfer)'
                   : `Pay with ${paymentMethod === 'paystack' ? 'Paystack' : 'Flutterwave'}`}
