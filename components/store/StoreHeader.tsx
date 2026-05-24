@@ -141,10 +141,10 @@ const SHOP_COLUMNS = [
     heading: 'Shop All',
     links: [
       { label: 'All Products', href: '/shop' },
-      { label: 'New Arrivals', href: '/shop' },
+      { label: 'New Arrivals', href: '/new-arrivals' },
       { label: 'Bestsellers', href: '/shop' },
       { label: 'Gift Sets', href: '/shop' },
-      { label: 'Sale', href: '/shop' },
+      { label: 'Sale', href: '/promotions' },
     ],
   },
   {
@@ -172,6 +172,7 @@ const SHOP_COLUMNS = [
 const PLAIN_NAV = [
   { label: 'Bestsellers', href: '/shop' },
   { label: 'New Arrivals', href: '/new-arrivals' },
+  { label: 'Sale', href: '/promotions' },
   { label: 'About', href: '/about' },
 ]
 
