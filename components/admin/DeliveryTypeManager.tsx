@@ -8,6 +8,139 @@ import {
   createDeliveryChannel, updateDeliveryChannel, deleteDeliveryChannel,
 } from '@/lib/actions/delivery'
 
+// ── Nigerian states list ──────────────────────────────────────────────────────
+const NG_STATES = [
+  'Abia', 'Adamawa', 'Akwa Ibom', 'Anambra', 'Bauchi', 'Bayelsa', 'Benue', 'Borno',
+  'Cross River', 'Delta', 'Ebonyi', 'Edo', 'Ekiti', 'Enugu', 'FCT (Abuja)', 'Gombe',
+  'Imo', 'Jigawa', 'Kaduna', 'Kano', 'Katsina', 'Kebbi', 'Kogi', 'Kwara', 'Lagos',
+  'Nasarawa', 'Niger', 'Ogun', 'Ondo', 'Osun', 'Oyo', 'Plateau', 'Rivers',
+  'Sokoto', 'Taraba', 'Yobe', 'Zamfara',
+]
+
+// ── State / area multi-select picker ─────────────────────────────────────────
+function StateAreaPicker({ value, onChange }: { value: string[]; onChange: (v: string[]) => void }) {
+  const [open, setOpen] = useState(false)
+  const [search, setSearch] = useState('')
+  const [custom, setCustom] = useState('')
+  const containerRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    function handleClick(e: MouseEvent) {
+      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+        setOpen(false)
+        setSearch('')
+      }
+    }
+    if (open) document.addEventListener('mousedown', handleClick)
+    return () => document.removeEventListener('mousedown', handleClick)
+  }, [open])
+
+  const filtered = NG_STATES.filter(s => s.toLowerCase().includes(search.toLowerCase()))
+
+  function toggle(state: string) {
+    onChange(value.includes(state) ? value.filter(v => v !== state) : [...value, state])
+  }
+
+  function addCustom() {
+    const tags = custom.split(',').map(t => t.trim()).filter(Boolean)
+    const combined = [...value, ...tags]
+    onChange(combined.filter((t, i) => combined.indexOf(t) === i))
+    setCustom('')
+  }
+
+  const inputCls = 'w-full px-3 py-1.5 text-sm bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-900/10 dark:focus:ring-white/20'
+
+  return (
+    <div ref={containerRef} className="relative">
+      {/* Selected chips + open button */}
+      <div className="flex flex-wrap items-center gap-1.5 px-3 py-2 min-h-[38px] bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg cursor-pointer" onClick={() => setOpen(p => !p)}>
+        {value.map(v => (
+          <span key={v} className="inline-flex items-center gap-1 px-2 py-0.5 bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 border border-blue-100 dark:border-blue-800 text-xs rounded-md">
+            {v}
+            <button type="button" onClick={e => { e.stopPropagation(); onChange(value.filter(x => x !== v)) }} className="text-blue-400 hover:text-red-500 leading-none">×</button>
+          </span>
+        ))}
+        <span className="text-sm text-gray-400 ml-auto flex items-center gap-1 shrink-0">
+          {value.length === 0 && <span className="text-gray-400">Select states / areas…</span>}
+          <svg className={`w-3.5 h-3.5 transition-transform ${open ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
+          </svg>
+        </span>
+      </div>
+
+      {open && (
+        <div className="absolute top-full left-0 mt-1 w-80 z-50 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl shadow-2xl overflow-hidden">
+          {/* Search */}
+          <div className="p-2 border-b border-gray-100 dark:border-gray-800">
+            <input
+              autoFocus
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              placeholder="Search states…"
+              className={inputCls}
+            />
+          </div>
+
+          {/* States grid */}
+          <div className="max-h-52 overflow-y-auto p-2 grid grid-cols-2 gap-0.5">
+            {filtered.length === 0 && <p className="col-span-2 text-xs text-gray-400 py-3 text-center">No match</p>}
+            {filtered.map(state => {
+              const checked = value.includes(state)
+              return (
+                <button
+                  key={state}
+                  type="button"
+                  onClick={() => toggle(state)}
+                  className={`flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-sm text-left transition-colors ${checked ? 'bg-[#4A0F1C]/5 dark:bg-[#4A0F1C]/20' : 'hover:bg-gray-50 dark:hover:bg-gray-800'}`}
+                >
+                  <span className={`w-4 h-4 rounded flex items-center justify-center border-2 shrink-0 transition-colors ${checked ? 'bg-[#4A0F1C] dark:bg-[#E8C4CB] border-[#4A0F1C] dark:border-[#E8C4CB]' : 'border-gray-300 dark:border-gray-600'}`}>
+                    {checked && (
+                      <svg className="w-2.5 h-2.5 text-white dark:text-gray-900" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="m4.5 12.75 6 6 9-13.5" />
+                      </svg>
+                    )}
+                  </span>
+                  <span className={`text-xs ${checked ? 'font-semibold text-[#4A0F1C] dark:text-[#E8C4CB]' : 'text-gray-700 dark:text-gray-300'}`}>{state}</span>
+                </button>
+              )
+            })}
+          </div>
+
+          {/* Custom area input */}
+          <div className="p-2 border-t border-gray-100 dark:border-gray-800">
+            <p className="text-[10px] text-gray-400 mb-1.5">Add city / LGA not in the list above:</p>
+            <div className="flex gap-2">
+              <input
+                value={custom}
+                onChange={e => setCustom(e.target.value)}
+                onKeyDown={e => { if (e.key === 'Enter' && custom.trim()) { e.preventDefault(); addCustom() } }}
+                placeholder="e.g. Kafanchan, Lekki…"
+                className="flex-1 px-2.5 py-1.5 text-xs bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none focus:ring-1 focus:ring-gray-300"
+              />
+              <button
+                type="button"
+                onClick={addCustom}
+                disabled={!custom.trim()}
+                className="px-3 py-1.5 text-xs font-semibold bg-gray-900 dark:bg-white text-white dark:text-gray-900 rounded-lg disabled:opacity-40"
+              >
+                Add
+              </button>
+            </div>
+          </div>
+
+          {/* Footer */}
+          {value.length > 0 && (
+            <div className="px-3 py-2 bg-gray-50 dark:bg-gray-800/50 border-t border-gray-100 dark:border-gray-800 flex justify-between items-center">
+              <span className="text-xs text-gray-500">{value.length} selected</span>
+              <button type="button" onClick={() => onChange([])} className="text-xs text-red-400 hover:text-red-600">Clear all</button>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
+
 // ── Types ─────────────────────────────────────────────────────────────────────
 type Rate = { id: string; name: string; areas: string[]; price: number; estimated_days: string | null; is_active: boolean; sort_order: number }
 type Zone = { id: string; name: string; description: string | null; is_active: boolean; rates: Rate[] }
@@ -128,11 +261,9 @@ function RateForm({
 
       <div className="grid grid-cols-2 gap-3">
         <div>
-          <label className="block text-[10px] font-semibold uppercase tracking-wide text-gray-400 mb-1">
-            Areas <span className="normal-case font-normal text-gray-400">(type + Enter, or comma-separate)</span>
-          </label>
-          <TagInput value={areas} onChange={setAreas} placeholder="e.g. Lekki, Victoria Island…" />
-          <p className="text-[10px] text-gray-400 mt-1">Leave empty for a single named area. Add multiple for a grouped rate.</p>
+          <label className="block text-[10px] font-semibold uppercase tracking-wide text-gray-400 mb-1">Areas / States covered</label>
+          <StateAreaPicker value={areas} onChange={setAreas} />
+          <p className="text-[10px] text-gray-400 mt-1">Leave empty for a single named area.</p>
         </div>
         <div>
           <label className="block text-[10px] font-semibold uppercase tracking-wide text-gray-400 mb-1">Estimated delivery</label>
@@ -608,11 +739,7 @@ export default function DeliveryTypeManager({
                       </div>
                       <div>
                         <label className="block text-[10px] font-semibold uppercase tracking-wide text-gray-400 mb-1">State / City / Zone name(s)</label>
-                        <TagInput
-                          value={locNames}
-                          onChange={setLocNames}
-                          placeholder="e.g. Kano, Kaduna, Minna — each becomes its own zone"
-                        />
+                        <StateAreaPicker value={locNames} onChange={setLocNames} />
                       </div>
                       <div className="grid grid-cols-3 gap-3">
                         <div>
