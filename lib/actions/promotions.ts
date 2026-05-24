@@ -11,6 +11,26 @@ function revalidateAll() {
   revalidatePath('/promotions')
 }
 
+// Each placement slot can only hold one promotion at a time.
+// value=true → sets this promo, clears all others for that slot.
+// value=false → clears just this promo from that slot.
+export async function setPromotionPlacement(
+  id: string,
+  placement: 'homepage' | 'promotions_page',
+  value: boolean,
+) {
+  const col = placement === 'homepage' ? 'show_on_homepage' : 'show_on_promotions_page'
+  const supabase = createAdminClient()
+  if (value) {
+    await supabase.from('global_promotions').update({ [col]: false }).neq('id', id)
+  }
+  await supabase.from('global_promotions').update({ [col]: value }).eq('id', id)
+  revalidatePath('/admin/promotions')
+  revalidatePath('/')
+  revalidatePath('/promotions')
+  return { success: true as const }
+}
+
 export async function createPromotion(name: string, discountPct: number) {
   if (!name.trim()) return { error: 'Name is required.' }
   if (discountPct <= 0 || discountPct > 100) return { error: 'Discount must be between 1 and 100.' }

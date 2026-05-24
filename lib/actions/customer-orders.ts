@@ -2,6 +2,7 @@
 
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { sendOrderConfirmation } from '@/lib/email'
 import type { CartItem } from '@/lib/cart-context'
 
 export type ShippingAddress = {
@@ -147,4 +148,69 @@ export async function getMyOrders() {
     .order('created_at', { ascending: false })
 
   return data ?? []
+}
+
+// ── Bank Transfer ─────────────────────────────────────────────────────────
+// Creates an order immediately (no payment gateway redirect).
+// Order stays as pending_bank_transfer until admin manually confirms the transfer.
+export async function createBankTransferOrder(sessionId: string): Promise<
+  | { orderId: string; orderNumber: string; bankDetails: { bankName: string; accountNumber: string; accountName: string } }
+  | { error: string }
+> {
+  const admin = createAdminClient()
+
+  const { data: session, error: sessionErr } = await admin
+    .from('checkout_sessions')
+    .select('*')
+    .eq('id', sessionId)
+    .single()
+
+  if (sessionErr || !session) return { error: 'Session not found or expired.' }
+
+  type SessionItem = {
+    productId: string; slug: string; name: string; price: number
+    quantity: number; thumbnail: string | null; selectedVariants: Array<{ groupName: string; value: string }> | null
+  }
+  const cartItems = (session.cart_items ?? []) as SessionItem[]
+  const shipping = session.shipping as Record<string, string>
+
+  const { data: order, error: orderErr } = await admin
+    .from('orders')
+    .insert({
+      customer_id: session.customer_id ?? null,
+      status: 'pending_bank_transfer',
+      total: session.total,
+      shipping_fee: session.shipping_fee,
+      subtotal: session.subtotal,
+      items: cartItems,
+      shipping_address: shipping,
+      order_channel: 'store',
+      payment_metadata: { provider: 'bank_transfer' },
+    })
+    .select('id')
+    .single()
+
+  if (orderErr) return { error: orderErr.message }
+
+  await admin.from('checkout_sessions').delete().eq('id', sessionId)
+
+  const bankDetails = {
+    bankName: process.env.BANK_NAME ?? 'Access Bank',
+    accountNumber: process.env.BANK_ACCOUNT_NUMBER ?? '0123456789',
+    accountName: process.env.BANK_ACCOUNT_NAME ?? 'Ecclesia Hub Ltd',
+  }
+
+  const orderNumber = order.id.slice(0, 8).toUpperCase()
+
+  sendOrderConfirmation(shipping.email, {
+    orderNumber,
+    customerName: `${shipping.firstName} ${shipping.lastName}`,
+    items: cartItems.map(i => ({ name: i.name, quantity: i.quantity, price: i.price, thumbnail: i.thumbnail ?? undefined })),
+    subtotal: session.subtotal as number,
+    shipping: session.shipping_fee as number,
+    total: session.total as number,
+    shippingAddress: { firstName: shipping.firstName, lastName: shipping.lastName, phone: shipping.phone, address: shipping.address, city: shipping.city, state: shipping.state },
+  }).catch(() => {})
+
+  return { orderId: order.id, orderNumber, bankDetails }
 }

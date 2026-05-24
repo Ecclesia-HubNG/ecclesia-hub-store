@@ -11,6 +11,7 @@ export default async function PromotionsPage() {
       .from('global_promotions')
       .select(`
         id, name, discount_pct, is_active, applied_at, created_at,
+        show_on_homepage, show_on_promotions_page,
         promotion_products ( product_id, products ( id, name, thumbnail, price ) )
       `)
       .order('created_at', { ascending: false }),
@@ -28,6 +29,8 @@ export default async function PromotionsPage() {
     is_active: p.is_active,
     applied_at: p.applied_at,
     created_at: p.created_at,
+    show_on_homepage: p.show_on_homepage,
+    show_on_promotions_page: p.show_on_promotions_page,
     products: (p.promotion_products ?? [])
       .map((pp: any) => pp.products)
       .filter(Boolean),
@@ -38,8 +41,7 @@ export default async function PromotionsPage() {
       <div className="mb-6">
         <h1 className="text-xl font-semibold text-gray-900 dark:text-white">Promotions</h1>
         <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">
-          Create named promotions with a discount %. Select specific products or leave empty to apply to all.
-          Only one promotion can be live at a time.
+          Create promotions with a discount %. Assign products (or apply to all). Pin one to the homepage and one to the Promotions page.
         </p>
       </div>
       <PromotionsManager

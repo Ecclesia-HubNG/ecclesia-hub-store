@@ -8,6 +8,7 @@ import {
   deletePromotion,
   addProductToPromotion,
   removeProductFromPromotion,
+  setPromotionPlacement,
 } from '@/lib/actions/promotions'
 
 type PromoProduct = {
@@ -24,6 +25,8 @@ type Promotion = {
   is_active: boolean
   applied_at: string | null
   created_at: string
+  show_on_homepage: boolean
+  show_on_promotions_page: boolean
   products: PromoProduct[]
 }
 
@@ -256,6 +259,20 @@ export default function PromotionsManager({
     })
   }
 
+  function handlePlacement(promoId: string, placement: 'homepage' | 'promotions_page', value: boolean) {
+    const col = placement === 'homepage' ? 'show_on_homepage' : 'show_on_promotions_page'
+    setPromotions(prev =>
+      prev.map(p => ({
+        ...p,
+        [col]: p.id === promoId ? value : (value ? false : p[col as keyof Promotion] as boolean),
+      }))
+    )
+    startTransition(async () => {
+      const res = await setPromotionPlacement(promoId, placement, value)
+      if ('error' in res) notify('Could not update placement.', true)
+    })
+  }
+
   function handleProductAdd(promoId: string, productId: string) {
     const product = allProducts.find(p => p.id === productId)
     if (!product) return
@@ -419,6 +436,29 @@ export default function PromotionsManager({
                   <span className="shrink-0 px-3 py-1 text-sm font-bold text-gray-900 dark:text-white bg-gray-100 dark:bg-gray-800 rounded-full">
                     -{promo.discount_pct}%
                   </span>
+
+                  {/* Placement toggles */}
+                  <div className="flex items-center gap-1.5 shrink-0">
+                    {(['homepage', 'promotions_page'] as const).map(placement => {
+                      const active = placement === 'homepage' ? promo.show_on_homepage : promo.show_on_promotions_page
+                      const label = placement === 'homepage' ? 'Home' : 'Sale Page'
+                      return (
+                        <button
+                          key={placement}
+                          type="button"
+                          onClick={() => handlePlacement(promo.id, placement, !active)}
+                          title={active ? `Remove from ${label}` : `Show on ${label}`}
+                          className={`px-2 py-1 text-[10px] font-semibold rounded-lg border transition-colors ${
+                            active
+                              ? 'bg-[#4A0F1C] dark:bg-[#E8C4CB] text-white dark:text-gray-900 border-[#4A0F1C] dark:border-[#E8C4CB]'
+                              : 'text-gray-400 dark:text-gray-600 border-gray-200 dark:border-gray-700 hover:border-gray-400 dark:hover:border-gray-500'
+                          }`}
+                        >
+                          {label}
+                        </button>
+                      )
+                    })}
+                  </div>
 
                   <div className="flex items-center gap-2 shrink-0">
                     {/* Products toggle */}

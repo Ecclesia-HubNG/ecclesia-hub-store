@@ -11,25 +11,36 @@ function secretKey() {
   return key
 }
 
-export async function initializePayment(orderId: string, email: string, amountNaira: number) {
+// ── Step 1: initialize ─────────────────────────────────────────────────────
+// Session-based flow matching Flutterwave: no order is written until payment
+// is verified. The checkout_sessions.tx_ref is used for idempotency.
+export async function initializePayment(
+  sessionId: string,
+  email: string,
+  amountNaira: number,
+  customerName: string,
+  phone: string,
+) {
   try {
     const key = secretKey()
-    const reference = `EH-${orderId.replace(/-/g, '').slice(0, 10)}-${Date.now()}`
+    const reference = `EH-PS-${sessionId.replace(/-/g, '').slice(0, 10)}-${Date.now()}`
     const callbackUrl = `${process.env.NEXT_PUBLIC_APP_URL}/payment/verify`
 
     const res = await fetch(`${PAYSTACK_BASE}/transaction/initialize`, {
       method: 'POST',
-      headers: {
-        Authorization: `Bearer ${key}`,
-        'Content-Type': 'application/json',
-      },
+      headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' },
       body: JSON.stringify({
         email,
         amount: Math.round(amountNaira * 100), // kobo
         reference,
         callback_url: callbackUrl,
-        metadata: { order_id: orderId, cancel_action: `${process.env.NEXT_PUBLIC_APP_URL}/checkout` },
         currency: 'NGN',
+        metadata: {
+          session_id: sessionId,
+          customer_name: customerName,
+          phone,
+          cancel_action: `${process.env.NEXT_PUBLIC_APP_URL}/checkout`,
+        },
       }),
     })
 
@@ -39,29 +50,30 @@ export async function initializePayment(orderId: string, email: string, amountNa
 
     const { authorization_url } = json.data as { authorization_url: string }
 
-    // Persist reference on order so webhook/verify can look it up
+    // Store reference on the checkout session for verify-time lookup
     const supabase = createAdminClient()
     await supabase
-      .from('orders')
-      .update({ payment_reference: reference })
-      .eq('id', orderId)
+      .from('checkout_sessions')
+      .update({ tx_ref: reference })
+      .eq('id', sessionId)
 
-    return { authorizationUrl: authorization_url, reference }
+    return { authorizationUrl: authorization_url }
   } catch {
     return { error: 'Payment initialization failed.' }
   }
 }
 
+// ── Step 2: verify + finalise ──────────────────────────────────────────────
+// Called when Paystack redirects back with ?reference=xxx.
+// Mirrors the Flutterwave flow exactly.
 export async function verifyAndFinalizeOrder(reference: string) {
   if (!reference?.trim()) return { error: 'Missing payment reference.' }
 
   try {
     const key = secretKey()
-
-    // Re-verify with Paystack (never trust the client)
     const res = await fetch(
       `${PAYSTACK_BASE}/transaction/verify/${encodeURIComponent(reference)}`,
-      { headers: { Authorization: `Bearer ${key}` }, cache: 'no-store' }
+      { headers: { Authorization: `Bearer ${key}` }, cache: 'no-store' },
     )
 
     if (!res.ok) return { error: 'Could not verify payment.' }
@@ -79,69 +91,101 @@ export async function verifyAndFinalizeOrder(reference: string) {
 
     const supabase = createAdminClient()
 
-    const { data: order } = await supabase
+    // Idempotency: return existing order if already processed
+    const { data: existingOrder } = await supabase
       .from('orders')
-      .select('id, status, total, shipping_address, items')
+      .select('id')
       .eq('payment_reference', reference)
-      .single()
+      .maybeSingle()
 
-    if (!order) return { error: 'Order not found for this payment.' }
+    if (existingOrder) return { orderId: existingOrder.id }
 
-    // Already processed (idempotent — safe to redirect)
-    if (order.status !== 'pending') return { orderId: order.id }
+    // Find checkout session by stored tx_ref
+    const { data: session } = await supabase
+      .from('checkout_sessions')
+      .select('*')
+      .eq('tx_ref', reference)
+      .maybeSingle()
 
-    // Amount verification — reject if Paystack amount doesn't match what we stored
-    const expectedKobo = Math.round((order.total as number) * 100)
+    if (!session) return { error: 'Checkout session not found. It may have expired.' }
+
+    // Amount check (kobo vs naira)
+    const expectedKobo = Math.round((session.total as number) * 100)
     if (tx.amount !== expectedKobo) return { error: 'Payment amount does not match order total.' }
 
-    // Mark paid (eq status check makes this atomic/idempotent)
-    const { error: updateErr } = await supabase
+    type SessionItem = {
+      productId: string; slug: string; name: string; price: number
+      quantity: number; thumbnail: string | null; selectedVariants: Array<{ groupName: string; value: string }> | null
+    }
+    const cartItems = (session.cart_items ?? []) as SessionItem[]
+    const shipping = session.shipping as Record<string, string>
+
+    // Create order as paid
+    const { data: newOrder, error: orderError } = await supabase
       .from('orders')
-      .update({
+      .insert({
+        customer_id: session.customer_id ?? null,
         status: 'paid',
+        total: session.total,
+        shipping_fee: session.shipping_fee,
+        subtotal: session.subtotal,
+        items: cartItems,
+        shipping_address: shipping,
+        payment_reference: reference,
         paid_at: new Date().toISOString(),
+        order_channel: 'store',
         payment_metadata: {
+          provider: 'paystack',
           channel: tx.channel,
           bank: tx.authorization?.bank ?? null,
           card_type: tx.authorization?.card_type ?? null,
         },
       })
-      .eq('id', order.id)
-      .eq('status', 'pending')
+      .select('id')
+      .single()
 
-    if (updateErr) return { error: updateErr.message }
+    if (orderError) return { error: orderError.message }
 
-    // Confirmation email (non-blocking)
-    const shipping = order.shipping_address as Record<string, string>
-    const items = (order.items as Array<Record<string, unknown>>) ?? []
+    // Decrement variant stock
+    const variantItems = cartItems.filter(i => Array.isArray(i.selectedVariants) && i.selectedVariants.length > 0)
+    if (variantItems.length > 0) {
+      const productIds = Array.from(new Set(variantItems.map(i => i.productId)))
+      const { data: products } = await supabase.from('products').select('id, variants').in('id', productIds)
+
+      for (const item of variantItems) {
+        const product = products?.find(p => p.id === item.productId)
+        if (!product) continue
+        type VOption = { value: string; stock?: number | null }
+        type VGroup = { name: string; options: VOption[] }
+        const productVariants: VGroup[] = Array.isArray(product.variants)
+          ? (product.variants as VGroup[]).map(v => ({ ...v, options: [...v.options] })) : []
+        let changed = false
+        for (const sv of item.selectedVariants ?? []) {
+          const gIdx = productVariants.findIndex(v => v.name === sv.groupName)
+          if (gIdx === -1) continue
+          const group: VGroup = { ...productVariants[gIdx], options: [...productVariants[gIdx].options] }
+          const oIdx = group.options.findIndex(o => o.value === sv.value)
+          if (oIdx === -1) continue
+          const opt = { ...group.options[oIdx] }
+          if (opt.stock != null) { opt.stock = Math.max(0, opt.stock - item.quantity); group.options[oIdx] = opt; productVariants[gIdx] = group; changed = true }
+        }
+        if (changed) await supabase.from('products').update({ variants: productVariants }).eq('id', item.productId)
+      }
+    }
+
+    await supabase.from('checkout_sessions').delete().eq('id', session.id)
+
     sendOrderConfirmation(shipping.email, {
-      orderNumber: order.id.slice(0, 8).toUpperCase(),
+      orderNumber: newOrder.id.slice(0, 8).toUpperCase(),
       customerName: `${shipping.firstName} ${shipping.lastName}`,
-      items: items.map(i => ({
-        name: i.name as string,
-        quantity: i.quantity as number,
-        price: i.price as number,
-        thumbnail: (i.thumbnail as string) ?? undefined,
-        variant: Array.isArray(i.selectedVariants) && (i.selectedVariants as Array<{ value: string }>).length
-          ? (i.selectedVariants as Array<{ value: string }>).map(sv => sv.value).join(', ')
-          : i.selectedVariant
-          ? Object.values(i.selectedVariant as Record<string, string>).join(' / ')
-          : undefined,
-      })),
-      subtotal: order.total as number,
-      shipping: 0,
-      total: order.total as number,
-      shippingAddress: {
-        firstName: shipping.firstName,
-        lastName: shipping.lastName,
-        phone: shipping.phone,
-        address: shipping.address,
-        city: shipping.city,
-        state: shipping.state,
-      },
+      items: cartItems.map(i => ({ name: i.name, quantity: i.quantity, price: i.price, thumbnail: i.thumbnail ?? undefined, variant: Array.isArray(i.selectedVariants) && i.selectedVariants.length ? i.selectedVariants.map(sv => sv.value).join(', ') : undefined })),
+      subtotal: session.subtotal as number,
+      shipping: session.shipping_fee as number,
+      total: session.total as number,
+      shippingAddress: { firstName: shipping.firstName, lastName: shipping.lastName, phone: shipping.phone, address: shipping.address, city: shipping.city, state: shipping.state },
     }).catch(() => {})
 
-    return { orderId: order.id }
+    return { orderId: newOrder.id }
   } catch {
     return { error: 'An unexpected error occurred during verification.' }
   }
