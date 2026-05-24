@@ -234,3 +234,12 @@ export async function removeProductOfMonth(productId: string) {
   revalidatePath('/')
   return { success: true as const }
 }
+
+export async function setNewArrival(productId: string, value: boolean) {
+  const supabase = createAdminClient()
+  const { error } = await supabase.from('products').update({ is_new_arrival: value }).eq('id', productId)
+  if (error) return { error: error.message }
+  revalidatePath('/admin/new-arrivals')
+  revalidatePath('/new-arrivals')
+  return { success: true as const }
+}

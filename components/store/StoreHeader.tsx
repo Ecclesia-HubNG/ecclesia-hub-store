@@ -171,7 +171,7 @@ const SHOP_COLUMNS = [
 
 const PLAIN_NAV = [
   { label: 'Bestsellers', href: '/shop' },
-  { label: 'New Arrivals', href: '/shop' },
+  { label: 'New Arrivals', href: '/new-arrivals' },
   { label: 'About', href: '/about' },
 ]
 

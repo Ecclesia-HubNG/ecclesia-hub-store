@@ -17,6 +17,7 @@ type Product = {
   stock: number
   category_id: string | null
   is_featured: boolean
+  is_new_arrival?: boolean
   variants: ProductVariant[] | null
   categories: { name: string } | null
 }
@@ -216,7 +217,17 @@ function Sidebar({
   )
 }
 
-export default function ShopClient({ products, categories }: { products: Product[]; categories: Category[] }) {
+export default function ShopClient({
+  products,
+  categories,
+  pageTitle,
+  pageTag,
+}: {
+  products: Product[]
+  categories: Category[]
+  pageTitle?: string
+  pageTag?: string
+}) {
   const [categoryId, setCategoryId] = useState<string | null>(null)
   const [search, setSearch] = useState('')
   const [sortBy, setSortBy] = useState<SortBy>('newest')
@@ -347,9 +358,11 @@ export default function ShopClient({ products, categories }: { products: Product
       <aside className="hidden md:flex flex-col w-64 shrink-0 border-r border-gray-100 dark:border-gray-800 sticky top-16 h-[calc(100vh-4rem)] overflow-y-auto">
         {/* Collection header */}
         <div className="px-6 pt-6 pb-5 border-b border-gray-100 dark:border-gray-800 shrink-0">
-          <p className="text-[10px] font-bold uppercase tracking-widest text-[#6B1A2A] dark:text-[#D4849A] mb-1">Collection</p>
+          <p className="text-[10px] font-bold uppercase tracking-widest text-[#6B1A2A] dark:text-[#D4849A] mb-1">
+            {pageTag ?? 'Collection'}
+          </p>
           <h1 className="text-lg font-bold text-gray-900 dark:text-white tracking-tight">
-            {activeCategory ? activeCategory.name : 'All Products'}
+            {pageTitle ?? (activeCategory ? activeCategory.name : 'All Products')}
           </h1>
           <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">
             {filtered.length} product{filtered.length !== 1 ? 's' : ''}
@@ -468,9 +481,11 @@ export default function ShopClient({ products, categories }: { products: Product
 
         {/* Mobile collection header */}
         <div className="md:hidden px-4 py-4 border-b border-gray-100 dark:border-gray-800">
-          <p className="text-[10px] font-bold uppercase tracking-widest text-[#6B1A2A] dark:text-[#D4849A] mb-0.5">Collection</p>
+          <p className="text-[10px] font-bold uppercase tracking-widest text-[#6B1A2A] dark:text-[#D4849A] mb-0.5">
+            {pageTag ?? 'Collection'}
+          </p>
           <p className="text-base font-bold text-gray-900 dark:text-white">
-            {activeCategory ? activeCategory.name : 'All Products'}
+            {pageTitle ?? (activeCategory ? activeCategory.name : 'All Products')}
           </p>
         </div>
 

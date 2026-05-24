@@ -15,6 +15,7 @@ type Product = {
   thumbnail: string | null
   stock?: number
   categories?: { name: string } | null
+  is_new_arrival?: boolean
 }
 
 function CartIcon() {
@@ -80,6 +81,9 @@ export default function ProductCard({ product, showCategory = true }: { product:
           <div className="absolute top-2.5 left-2.5 flex flex-col gap-1">
             {outOfStock && (
               <span className="px-2 py-0.5 bg-gray-900/80 backdrop-blur-sm text-white text-[9px] font-bold rounded-full tracking-wide">Sold out</span>
+            )}
+            {!outOfStock && product.is_new_arrival && (
+              <span className="px-2 py-0.5 bg-emerald-500 text-white text-[9px] font-bold rounded-full tracking-wide">NEW</span>
             )}
             {!outOfStock && discountPct && (
               <span className="px-2 py-0.5 bg-[#4A0F1C] text-white text-[9px] font-bold rounded-full">{discountPct}% OFF</span>
