@@ -37,7 +37,8 @@ export default function NewArrivalsManager({ initialProducts }: { initialProduct
 
   const filtered = useMemo(() => {
     const q = search.toLowerCase()
-    const pool = tab === 'added' ? added : products
+    // When searching, always scan all products so you can find and add anything
+    const pool = q ? products : (tab === 'added' ? added : products)
     return q ? pool.filter(p => p.name.toLowerCase().includes(q)) : pool
   }, [products, added, search, tab])
 
@@ -102,7 +103,7 @@ export default function NewArrivalsManager({ initialProducts }: { initialProduct
       <div className="rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden">
         {filtered.length === 0 ? (
           <div className="px-4 py-10 text-center text-sm text-gray-400">
-            {tab === 'added' ? 'No products added yet — switch to All Products to add some.' : 'No products found.'}
+            {search ? 'No products match your search.' : tab === 'added' ? 'No products added yet — use the search or switch to All Products.' : 'No products found.'}
           </div>
         ) : (
           <div className="divide-y divide-gray-100 dark:divide-gray-800">
