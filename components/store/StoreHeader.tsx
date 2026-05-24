@@ -444,7 +444,7 @@ export default function StoreHeader() {
           {/* Icons — right */}
           <div className="flex items-center gap-0.5 ml-auto md:ml-0">
             {/* Search */}
-            <button type="button" aria-label="Search" onClick={() => setSearchOpen(true)} className="p-2.5 text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white transition-colors hidden sm:block">
+            <button type="button" aria-label="Search" onClick={() => setSearchOpen(true)} className="p-2.5 text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white transition-colors">
               <SearchIcon />
             </button>
 
