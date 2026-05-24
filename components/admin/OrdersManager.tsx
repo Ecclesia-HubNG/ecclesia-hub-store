@@ -36,17 +36,56 @@ type Product = {
   stock: number
 }
 
-const CHANNEL_META: Record<string, { label: string; icon: string; color: string }> = {
-  store:     { label: 'Store',     icon: '🛍️', color: 'bg-blue-50 dark:bg-blue-950/30 text-blue-600 dark:text-blue-400' },
-  instagram: { label: 'Instagram', icon: '📸', color: 'bg-pink-50 dark:bg-pink-950/30 text-pink-600 dark:text-pink-400' },
-  tiktok:    { label: 'TikTok',    icon: '🎵', color: 'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300' },
-  facebook:  { label: 'Facebook',  icon: '📘', color: 'bg-blue-50 dark:bg-blue-950/30 text-blue-700 dark:text-blue-300' },
-  whatsapp:  { label: 'WhatsApp',  icon: '💬', color: 'bg-green-50 dark:bg-green-950/30 text-green-600 dark:text-green-400' },
-  referral:  { label: 'Referral',  icon: '🔗', color: 'bg-purple-50 dark:bg-purple-950/30 text-purple-600 dark:text-purple-400' },
-  manual:    { label: 'Manual',    icon: '✍️', color: 'bg-amber-50 dark:bg-amber-950/30 text-amber-600 dark:text-amber-400' },
+const CHANNEL_META: Record<string, { label: string; color: string }> = {
+  store:     { label: 'Store',     color: 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300' },
+  instagram: { label: 'Instagram', color: 'bg-pink-50 dark:bg-pink-950/30 text-pink-600 dark:text-pink-400' },
+  tiktok:    { label: 'TikTok',    color: 'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300' },
+  facebook:  { label: 'Facebook',  color: 'bg-blue-50 dark:bg-blue-950/30 text-blue-700 dark:text-blue-300' },
+  whatsapp:  { label: 'WhatsApp',  color: 'bg-green-50 dark:bg-green-950/30 text-green-600 dark:text-green-400' },
+  referral:  { label: 'Referral',  color: 'bg-purple-50 dark:bg-purple-950/30 text-purple-600 dark:text-purple-400' },
+  manual:    { label: 'Manual',    color: 'bg-amber-50 dark:bg-amber-950/30 text-amber-600 dark:text-amber-400' },
 }
 
 const ALL_CHANNELS = Object.keys(CHANNEL_META)
+
+function ChannelIcon({ channel }: { channel: string }) {
+  switch (channel) {
+    case 'instagram':
+      return (
+        <svg className="w-3 h-3 shrink-0" viewBox="0 0 24 24" fill="none">
+          <defs>
+            <radialGradient id="ig-b-g1" cx="30%" cy="107%" r="150%">
+              <stop offset="0%" stopColor="#fdf497"/><stop offset="45%" stopColor="#fd5949"/>
+              <stop offset="60%" stopColor="#d6249f"/><stop offset="90%" stopColor="#285AEB"/>
+            </radialGradient>
+          </defs>
+          <rect width="24" height="24" rx="6" fill="url(#ig-b-g1)"/>
+          <circle cx="12" cy="12" r="4.5" stroke="white" strokeWidth="1.8" fill="none"/>
+          <circle cx="17.2" cy="6.8" r="1.1" fill="white"/>
+        </svg>
+      )
+    case 'tiktok':
+      return (
+        <svg className="w-3 h-3 shrink-0" viewBox="0 0 24 24"><rect width="24" height="24" rx="6" fill="#010101"/>
+          <path d="M16.5 5.5c.3 1.8 1.4 2.8 3 3v2.2c-1 .1-2-.2-3-.8v5.3c0 2.5-1.8 4.3-4.2 4.3-2.3 0-4.3-1.9-4.3-4.3s1.9-4.3 4.3-4.3c.2 0 .4 0 .6.1v2.3c-.2-.1-.4-.1-.6-.1-1.2 0-2.1 1-2.1 2.1s.9 2.1 2.1 2.1 2.1-1 2.1-2.1V5.5h2.1z" fill="white"/>
+        </svg>
+      )
+    case 'facebook':
+      return (
+        <svg className="w-3 h-3 shrink-0" viewBox="0 0 24 24"><rect width="24" height="24" rx="6" fill="#1877F2"/>
+          <path d="M16 12h-2.5v8h-3v-8H9V9.5h1.5V8c0-2 1.2-3 3-3 .9 0 1.8.1 2.5.2V8h-1.5c-.8 0-1 .4-1 .9v.6H16L16 12z" fill="white"/>
+        </svg>
+      )
+    case 'whatsapp':
+      return (
+        <svg className="w-3 h-3 shrink-0" viewBox="0 0 24 24"><rect width="24" height="24" rx="6" fill="#25D366"/>
+          <path d="M12 4.5C7.86 4.5 4.5 7.86 4.5 12c0 1.38.37 2.7 1.02 3.83L4.5 19.5l3.77-1c1.08.59 2.32.93 3.73.93 4.14 0 7.5-3.36 7.5-7.5S16.14 4.5 12 4.5zm3.6 10.6c-.15.42-1.05.8-1.44.85-.37.05-.84.07-1.35-.08-.31-.09-.71-.22-1.22-.43-2.14-.92-3.53-3.1-3.64-3.25-.1-.14-.85-1.13-.85-2.15s.54-1.53.73-1.74c.19-.2.42-.25.56-.25.14 0 .28 0 .4.01.13.01.3-.05.47.36.17.42.58 1.42.63 1.52.05.1.08.22.02.35-.06.14-.1.22-.19.34-.1.12-.2.27-.29.36-.1.1-.2.2-.08.4.11.19.5.83 1.08 1.34.74.66 1.36.87 1.56.97.19.1.31.08.42-.05.12-.14.5-.58.63-.78.13-.2.27-.17.45-.1.18.07 1.14.54 1.34.63.2.1.33.15.38.23.04.1.04.52-.11.94z" fill="white"/>
+        </svg>
+      )
+    default:
+      return null
+  }
+}
 
 function ChannelBadge({ channel }: { channel?: string | null }) {
   if (!channel) return null
@@ -54,7 +93,7 @@ function ChannelBadge({ channel }: { channel?: string | null }) {
   if (!m) return null
   return (
     <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${m.color}`}>
-      <span className="text-[10px] leading-none">{m.icon}</span>
+      <ChannelIcon channel={channel} />
       {m.label}
     </span>
   )
@@ -360,7 +399,7 @@ export default function OrdersManager({ orders: initial, products = [] }: { orde
             onClick={() => { setShowChannelDropdown(p => !p); setShowStatusDropdown(false); setShowSortDropdown(false); setShowDatePicker(false) }}
             className={`flex items-center gap-2 px-3 py-2 text-sm rounded-lg border transition-colors ${channelFilter !== 'all' ? 'border-gray-900 dark:border-white text-gray-900 dark:text-white' : 'border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800'}`}
           >
-            {channelFilter !== 'all' && <span className="text-sm leading-none">{CHANNEL_META[channelFilter]?.icon}</span>}
+            {channelFilter !== 'all' && <ChannelIcon channel={channelFilter} />}
             <span className="capitalize">{channelFilter === 'all' ? 'All channels' : CHANNEL_META[channelFilter]?.label ?? channelFilter}</span>
             <span className={`text-xs ${channelFilter !== 'all' ? 'text-gray-900/50 dark:text-white/50' : 'text-gray-400 dark:text-gray-600'}`}>{channelCounts[channelFilter] ?? 0}</span>
             <svg className="w-3.5 h-3.5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -385,7 +424,7 @@ export default function OrdersManager({ orders: initial, products = [] }: { orde
                   className={`flex items-center justify-between w-full px-3 py-2.5 text-sm transition-colors ${channelFilter === c ? 'text-gray-900 dark:text-white font-medium bg-gray-50 dark:bg-gray-800' : 'text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800'}`}
                 >
                   <span className="flex items-center gap-2">
-                    <span className="text-sm leading-none">{CHANNEL_META[c].icon}</span>
+                    <ChannelIcon channel={c} />
                     {CHANNEL_META[c].label}
                   </span>
                   <span className={`text-xs ${channelFilter === c ? 'text-gray-500 dark:text-gray-400' : 'text-gray-400 dark:text-gray-600'}`}>{channelCounts[c]}</span>

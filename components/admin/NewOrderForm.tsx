@@ -21,14 +21,85 @@ type LineItem = {
 }
 
 const CHANNELS = [
-  { value: 'store',     label: 'Store',     icon: '🛍️' },
-  { value: 'instagram', label: 'Instagram', icon: '📸' },
-  { value: 'tiktok',   label: 'TikTok',    icon: '🎵' },
-  { value: 'facebook',  label: 'Facebook',  icon: '📘' },
-  { value: 'whatsapp',  label: 'WhatsApp',  icon: '💬' },
-  { value: 'referral',  label: 'Referral',  icon: '🔗' },
-  { value: 'manual',    label: 'Manual',    icon: '✍️' },
+  { value: 'store',     label: 'Store' },
+  { value: 'instagram', label: 'Instagram' },
+  { value: 'tiktok',   label: 'TikTok' },
+  { value: 'facebook',  label: 'Facebook' },
+  { value: 'whatsapp',  label: 'WhatsApp' },
+  { value: 'referral',  label: 'Referral' },
+  { value: 'manual',    label: 'Manual' },
 ]
+
+function ChannelIcon({ channel, className = 'w-6 h-6' }: { channel: string; className?: string }) {
+  switch (channel) {
+    case 'instagram':
+      return (
+        <svg className={className} viewBox="0 0 24 24" fill="none">
+          <defs>
+            <radialGradient id="ig-g1" cx="30%" cy="107%" r="150%">
+              <stop offset="0%" stopColor="#fdf497"/>
+              <stop offset="5%" stopColor="#fdf497"/>
+              <stop offset="45%" stopColor="#fd5949"/>
+              <stop offset="60%" stopColor="#d6249f"/>
+              <stop offset="90%" stopColor="#285AEB"/>
+            </radialGradient>
+          </defs>
+          <rect width="24" height="24" rx="6" fill="url(#ig-g1)"/>
+          <circle cx="12" cy="12" r="4.5" stroke="white" strokeWidth="1.6" fill="none"/>
+          <circle cx="17.2" cy="6.8" r="1.1" fill="white"/>
+        </svg>
+      )
+    case 'tiktok':
+      return (
+        <svg className={className} viewBox="0 0 24 24" fill="none">
+          <rect width="24" height="24" rx="6" fill="#010101"/>
+          <path d="M16.5 5.5c.3 1.8 1.4 2.8 3 3v2.2c-1 .1-2-.2-3-.8v5.3c0 2.5-1.8 4.3-4.2 4.3-2.3 0-4.3-1.9-4.3-4.3s1.9-4.3 4.3-4.3c.2 0 .4 0 .6.1v2.3c-.2-.1-.4-.1-.6-.1-1.2 0-2.1 1-2.1 2.1s.9 2.1 2.1 2.1 2.1-1 2.1-2.1V5.5h2.1z" fill="white"/>
+          <path d="M16.5 5.5c.3 1.8 1.4 2.8 3 3v2.2c-1 .1-2-.2-3-.8v5.3c0 2.5-1.8 4.3-4.2 4.3-2.3 0-4.3-1.9-4.3-4.3s1.9-4.3 4.3-4.3c.2 0 .4 0 .6.1v2.3c-.2-.1-.4-.1-.6-.1-1.2 0-2.1 1-2.1 2.1s.9 2.1 2.1 2.1 2.1-1 2.1-2.1V5.5h2.1z" fill="#69C9D0" fillOpacity=".5"/>
+        </svg>
+      )
+    case 'facebook':
+      return (
+        <svg className={className} viewBox="0 0 24 24">
+          <rect width="24" height="24" rx="6" fill="#1877F2"/>
+          <path d="M16 12h-2.5v8h-3v-8H9V9.5h1.5V8c0-2 1.2-3 3-3 .9 0 1.8.1 2.5.2V8h-1.5c-.8 0-1 .4-1 .9v.6H16L16 12z" fill="white"/>
+        </svg>
+      )
+    case 'whatsapp':
+      return (
+        <svg className={className} viewBox="0 0 24 24">
+          <rect width="24" height="24" rx="6" fill="#25D366"/>
+          <path d="M12 4.5C7.86 4.5 4.5 7.86 4.5 12c0 1.38.37 2.7 1.02 3.83L4.5 19.5l3.77-1c1.08.59 2.32.93 3.73.93 4.14 0 7.5-3.36 7.5-7.5S16.14 4.5 12 4.5zm3.6 10.6c-.15.42-1.05.8-1.44.85-.37.05-.84.07-1.35-.08-.31-.09-.71-.22-1.22-.43-2.14-.92-3.53-3.1-3.64-3.25-.1-.14-.85-1.13-.85-2.15s.54-1.53.73-1.74c.19-.2.42-.25.56-.25.14 0 .28 0 .4.01.13.01.3-.05.47.36.17.42.58 1.42.63 1.52.05.1.08.22.02.35-.06.14-.1.22-.19.34-.1.12-.2.27-.29.36-.1.1-.2.2-.08.4.11.19.5.83 1.08 1.34.74.66 1.36.87 1.56.97.19.1.31.08.42-.05.12-.14.5-.58.63-.78.13-.2.27-.17.45-.1.18.07 1.14.54 1.34.63.2.1.33.15.38.23.04.1.04.52-.11.94z" fill="white"/>
+        </svg>
+      )
+    case 'store':
+      return (
+        <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.6} strokeLinecap="round" strokeLinejoin="round">
+          <path d="M3 9l1-5h16l1 5"/>
+          <path d="M3 9a1 1 0 0 0 1 1h1a2 2 0 0 0 4 0h4a2 2 0 0 0 4 0h1a1 1 0 0 0 1-1"/>
+          <path d="M5 10v9a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-9"/>
+          <path d="M10 14h4"/>
+        </svg>
+      )
+    case 'referral':
+      return (
+        <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.6} strokeLinecap="round" strokeLinejoin="round">
+          <circle cx="18" cy="5" r="2.5"/>
+          <circle cx="6" cy="12" r="2.5"/>
+          <circle cx="18" cy="19" r="2.5"/>
+          <path d="M8.5 10.5l7-4M8.5 13.5l7 4"/>
+        </svg>
+      )
+    case 'manual':
+      return (
+        <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.6} strokeLinecap="round" strokeLinejoin="round">
+          <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+          <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+        </svg>
+      )
+    default:
+      return null
+  }
+}
 
 const STATUSES = ['pending', 'paid', 'processing', 'shipped', 'delivered']
 
@@ -292,9 +363,9 @@ export default function NewOrderForm({ products }: { products: Product[] }) {
             <div className="grid grid-cols-4 gap-2">
               {CHANNELS.map(c => (
                 <button key={c.value} type="button" onClick={() => setChannel(c.value)}
-                  className={`flex flex-col items-center gap-1.5 px-3 py-3 rounded-xl border text-sm font-medium transition-colors ${channel === c.value ? 'border-gray-900 dark:border-white bg-gray-900 dark:bg-white text-white dark:text-gray-900' : 'border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 hover:border-gray-400 dark:hover:border-gray-500'}`}>
-                  <span className="text-lg leading-none">{c.icon}</span>
-                  <span className="text-xs">{c.label}</span>
+                  className={`flex flex-col items-center gap-2 px-3 py-3 rounded-xl border text-sm font-medium transition-all ${channel === c.value ? 'border-gray-900 dark:border-white bg-gray-50 dark:bg-gray-800 shadow-sm ring-2 ring-gray-900 dark:ring-white' : 'border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 hover:border-gray-300 dark:hover:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-800/50'}`}>
+                  <ChannelIcon channel={c.value} className="w-7 h-7" />
+                  <span className="text-xs text-gray-700 dark:text-gray-300">{c.label}</span>
                 </button>
               ))}
             </div>

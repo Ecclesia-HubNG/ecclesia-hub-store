@@ -5,14 +5,14 @@ import { OrderStatusSelect } from '@/components/admin/OrderStatusSelect'
 import { OrderQuickActions } from '@/components/admin/OrderQuickActions'
 import { OrderTracking } from '@/components/admin/OrderTracking'
 
-const CHANNEL_META: Record<string, { label: string; icon: string; color: string }> = {
-  store:     { label: 'Store',     icon: '🛍️', color: 'bg-blue-50 dark:bg-blue-950/30 text-blue-600 dark:text-blue-400' },
-  instagram: { label: 'Instagram', icon: '📸', color: 'bg-pink-50 dark:bg-pink-950/30 text-pink-600 dark:text-pink-400' },
-  tiktok:    { label: 'TikTok',    icon: '🎵', color: 'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300' },
-  facebook:  { label: 'Facebook',  icon: '📘', color: 'bg-blue-50 dark:bg-blue-950/30 text-blue-700 dark:text-blue-300' },
-  whatsapp:  { label: 'WhatsApp',  icon: '💬', color: 'bg-green-50 dark:bg-green-950/30 text-green-600 dark:text-green-400' },
-  referral:  { label: 'Referral',  icon: '🔗', color: 'bg-purple-50 dark:bg-purple-950/30 text-purple-600 dark:text-purple-400' },
-  manual:    { label: 'Manual',    icon: '✍️', color: 'bg-amber-50 dark:bg-amber-950/30 text-amber-600 dark:text-amber-400' },
+const CHANNEL_META: Record<string, { label: string; color: string }> = {
+  store:     { label: 'Store',     color: 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300' },
+  instagram: { label: 'Instagram', color: 'bg-pink-50 dark:bg-pink-950/30 text-pink-600 dark:text-pink-400' },
+  tiktok:    { label: 'TikTok',    color: 'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300' },
+  facebook:  { label: 'Facebook',  color: 'bg-blue-50 dark:bg-blue-950/30 text-blue-700 dark:text-blue-300' },
+  whatsapp:  { label: 'WhatsApp',  color: 'bg-green-50 dark:bg-green-950/30 text-green-600 dark:text-green-400' },
+  referral:  { label: 'Referral',  color: 'bg-purple-50 dark:bg-purple-950/30 text-purple-600 dark:text-purple-400' },
+  manual:    { label: 'Manual',    color: 'bg-amber-50 dark:bg-amber-950/30 text-amber-600 dark:text-amber-400' },
 }
 
 const STATUS_COLORS: Record<string, string> = {
@@ -89,8 +89,7 @@ export default async function OrderDetailPage({ params }: { params: { id: string
               {new Date(order.created_at).toLocaleTimeString('en', { hour: '2-digit', minute: '2-digit' })}
             </p>
             {channelMeta && (
-              <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${channelMeta.color}`}>
-                <span className="text-[10px] leading-none">{channelMeta.icon}</span>
+              <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${channelMeta.color}`}>
                 {channelMeta.label}
               </span>
             )}
