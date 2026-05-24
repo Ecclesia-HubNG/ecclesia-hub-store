@@ -40,7 +40,7 @@ export default function CheckoutPage() {
   const [selectedRateId, setSelectedRateId] = useState('')
 
   const [form, setForm] = useState({
-    firstName: '', lastName: '', email: '', phone: '', address: '',
+    firstName: '', lastName: '', email: '', phone: '', address: '', city: '', state: '',
   })
   const update = (k: keyof typeof form, v: string) => setForm(p => ({ ...p, [k]: v }))
 
@@ -84,7 +84,7 @@ export default function CheckoutPage() {
     setError(null)
 
     if (!selectedRate) { setError('Please select your delivery option.'); return }
-    if (!form.firstName || !form.lastName || !form.email || !form.phone || !form.address) {
+    if (!form.firstName || !form.lastName || !form.email || !form.phone || !form.address || !form.city || !form.state) {
       setError('Please fill in all fields.')
       return
     }
@@ -96,8 +96,8 @@ export default function CheckoutPage() {
         email: form.email,
         phone: form.phone,
         address: form.address,
-        city: selectedRate.name,
-        state: selectedZone?.name ?? '',
+        city: form.city,
+        state: form.state,
       }
 
       const sessionResult = await createCheckoutSession(
@@ -239,7 +239,7 @@ export default function CheckoutPage() {
                   {/* Zone selector — only if type has 2+ zones */}
                   {selectedType && zonesForType.length > 1 && (
                     <div>
-                      <p className="text-xs font-medium text-gray-600 dark:text-gray-400 mb-2.5">Select zone</p>
+                      <p className="text-xs font-medium text-gray-600 dark:text-gray-400 mb-2.5">Select your destination</p>
                       <div className="flex flex-wrap gap-2">
                         {zonesForType.map(zone => (
                           <button
@@ -265,7 +265,7 @@ export default function CheckoutPage() {
                   {/* Rate selector — shown when zone is selected and has 2+ rates */}
                   {selectedZone && ratesForZone.length > 1 && (
                     <div>
-                      <p className="text-xs font-medium text-gray-600 dark:text-gray-400 mb-2.5">Select rate</p>
+                      <p className="text-xs font-medium text-gray-600 dark:text-gray-400 mb-2.5">Select delivery option</p>
                       <div className="space-y-2">
                         {ratesForZone.map(rate => (
                           <button
@@ -351,13 +351,16 @@ export default function CheckoutPage() {
                   <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1.5">Phone number</label>
                   <input type="tel" placeholder="+234 800 000 0000" value={form.phone} onChange={e => update('phone', e.target.value)} className={inputCls} required />
                 </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1.5">State</label>
+                  <input type="text" placeholder="e.g. Lagos, Kaduna, Kano" value={form.state} onChange={e => update('state', e.target.value)} className={inputCls} required />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1.5">City / LGA</label>
+                  <input type="text" placeholder="e.g. Kafanchan, Ikeja, Wuse" value={form.city} onChange={e => update('city', e.target.value)} className={inputCls} required />
+                </div>
                 <div className="col-span-2">
-                  <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1.5">
-                    Street address
-                    {selectedZone && (
-                      <span className="ml-1 font-normal text-gray-400">· {selectedZone.name}</span>
-                    )}
-                  </label>
+                  <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1.5">Street address</label>
                   <input type="text" placeholder="12 Faith Avenue" value={form.address} onChange={e => update('address', e.target.value)} className={inputCls} required />
                 </div>
               </div>

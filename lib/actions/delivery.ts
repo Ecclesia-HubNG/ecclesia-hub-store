@@ -81,6 +81,47 @@ export async function deleteDeliveryType(id: string) {
 }
 
 // ── Delivery Zones ────────────────────────────────────────────────────────────
+
+// Creates one zone per location, each with a default rate — for the quick-add UI
+export async function createDeliveryLocations(
+  typeId: string,
+  locations: string[],
+  rateName: string,
+  price: number,
+  estimatedDays: string,
+) {
+  const locs = locations.map(l => l.trim()).filter(Boolean)
+  if (!locs.length) return { error: 'At least one location is required.' }
+  if (price < 0) return { error: 'Price cannot be negative.' }
+
+  const supabase = createAdminClient()
+  const { data: lastZone } = await supabase
+    .from('delivery_zones').select('sort_order')
+    .eq('type_id', typeId).order('sort_order', { ascending: false }).limit(1).maybeSingle()
+
+  let sortOrder = (lastZone?.sort_order ?? -1) + 1
+  const created: Array<{ id: string; name: string; description: string | null; is_active: boolean; sort_order: number; rates: object[] }> = []
+
+  for (const loc of locs) {
+    const { error: zErr, data: zone } = await supabase
+      .from('delivery_zones')
+      .insert({ type_id: typeId, name: loc, sort_order: sortOrder++ })
+      .select().single()
+    if (zErr) return { error: zErr.message }
+
+    const { error: rErr, data: rate } = await supabase
+      .from('delivery_rates')
+      .insert({ zone_id: zone.id, name: rateName.trim() || loc, areas: [], price, estimated_days: estimatedDays.trim() || null, sort_order: 0 })
+      .select().single()
+    if (rErr) return { error: rErr.message }
+
+    created.push({ ...zone, description: zone.description ?? null, is_active: zone.is_active ?? true, rates: [rate] })
+  }
+
+  revalidate()
+  return { success: true as const, zones: created }
+}
+
 export async function createDeliveryZone(typeId: string, name: string, description: string) {
   if (!name.trim()) return { error: 'Name is required.' }
   const supabase = createAdminClient()
