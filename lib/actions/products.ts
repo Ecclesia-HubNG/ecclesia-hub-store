@@ -225,3 +225,12 @@ export async function clearProductOfMonth() {
   revalidatePath('/')
   return { success: true as const }
 }
+
+export async function removeProductOfMonth(productId: string) {
+  const supabase = createAdminClient()
+  const { error } = await supabase.from('products').update({ is_product_of_month: false }).eq('id', productId)
+  if (error) return { error: error.message }
+  revalidatePath('/admin/products/product-of-month')
+  revalidatePath('/')
+  return { success: true as const }
+}

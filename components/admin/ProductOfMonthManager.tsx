@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useTransition } from 'react'
-import { setProductOfMonth, clearProductOfMonth } from '@/lib/actions/products'
+import { setProductOfMonth, removeProductOfMonth, clearProductOfMonth } from '@/lib/actions/products'
 
 type Product = {
   id: string
@@ -9,6 +9,23 @@ type Product = {
   thumbnail: string | null
   price: number
   is_active: boolean
+}
+
+function Thumbnail({ src, alt, size }: { src: string | null; alt: string; size: 'sm' | 'md' }) {
+  const cls = size === 'md' ? 'w-14 h-14' : 'w-10 h-10'
+  return (
+    <div className={`${cls} rounded-lg overflow-hidden bg-gray-100 dark:bg-gray-800 shrink-0`}>
+      {src ? (
+        <img src={src} alt={alt} className="w-full h-full object-cover" />
+      ) : (
+        <div className="w-full h-full flex items-center justify-center text-gray-300 dark:text-gray-600">
+          <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" d="m2.25 15.75 5.159-5.159a2.25 2.25 0 0 1 3.182 0l5.159 5.159m-1.5-1.5 1.409-1.409a2.25 2.25 0 0 1 3.182 0l2.909 2.909m-18 3.75h16.5a1.5 1.5 0 0 0 1.5-1.5V6a1.5 1.5 0 0 0-1.5-1.5H3.75A1.5 1.5 0 0 0 2.25 6v12a1.5 1.5 0 0 0 1.5 1.5Zm10.5-11.25h.008v.008h-.008V8.25Zm.375 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Z" />
+          </svg>
+        </div>
+      )}
+    </div>
+  )
 }
 
 export default function ProductOfMonthManager({
@@ -20,28 +37,37 @@ export default function ProductOfMonthManager({
 }) {
   const [search, setSearch] = useState('')
   const [pending, startTransition] = useTransition()
-  const [optimisticCurrentId, setOptimisticCurrentId] = useState<string | null>(
-    current.length === 1 ? current[0].id : null
+  // Track the set of currently-featured IDs optimistically
+  const [featuredIds, setFeaturedIds] = useState<Set<string>>(
+    () => new Set(current.map(p => p.id))
   )
 
-  const currentProduct =
-    optimisticCurrentId != null
-      ? products.find(p => p.id === optimisticCurrentId) ?? null
-      : null
+  const featuredProducts = products.filter(p => featuredIds.has(p.id))
 
   const filtered = products.filter(p =>
     p.name.toLowerCase().includes(search.toLowerCase())
   )
 
   function handleSelect(productId: string) {
-    setOptimisticCurrentId(productId)
+    setFeaturedIds(new Set([productId]))
     startTransition(async () => {
       await setProductOfMonth(productId)
     })
   }
 
-  function handleClear() {
-    setOptimisticCurrentId(null)
+  function handleRemoveOne(productId: string) {
+    setFeaturedIds(prev => {
+      const next = new Set(prev)
+      next.delete(productId)
+      return next
+    })
+    startTransition(async () => {
+      await removeProductOfMonth(productId)
+    })
+  }
+
+  function handleClearAll() {
+    setFeaturedIds(new Set())
     startTransition(async () => {
       await clearProductOfMonth()
     })
@@ -49,42 +75,43 @@ export default function ProductOfMonthManager({
 
   return (
     <div className="space-y-6">
-      {/* Current selection */}
+      {/* Currently featured */}
       <div className="rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden">
-        <div className="px-4 py-3 bg-gray-50 dark:bg-gray-800/50 border-b border-gray-200 dark:border-gray-700">
-          <p className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">Currently Featured</p>
+        <div className="px-4 py-3 bg-gray-50 dark:bg-gray-800/50 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
+          <p className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">
+            Currently Featured
+          </p>
+          {featuredProducts.length > 1 && (
+            <button
+              onClick={handleClearAll}
+              disabled={pending}
+              className="text-xs text-red-500 dark:text-red-400 hover:underline disabled:opacity-50"
+            >
+              Clear all
+            </button>
+          )}
         </div>
 
-        {currentProduct ? (
-          <div className="flex items-center gap-4 px-4 py-4">
-            <div className="w-14 h-14 rounded-lg overflow-hidden bg-gray-100 dark:bg-gray-800 shrink-0">
-              {currentProduct.thumbnail ? (
-                <img
-                  src={currentProduct.thumbnail}
-                  alt={currentProduct.name}
-                  className="w-full h-full object-cover"
-                />
-              ) : (
-                <div className="w-full h-full flex items-center justify-center text-gray-300 dark:text-gray-600">
-                  <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="m2.25 15.75 5.159-5.159a2.25 2.25 0 0 1 3.182 0l5.159 5.159m-1.5-1.5 1.409-1.409a2.25 2.25 0 0 1 3.182 0l2.909 2.909m-18 3.75h16.5a1.5 1.5 0 0 0 1.5-1.5V6a1.5 1.5 0 0 0-1.5-1.5H3.75A1.5 1.5 0 0 0 2.25 6v12a1.5 1.5 0 0 0 1.5 1.5Zm10.5-11.25h.008v.008h-.008V8.25Zm.375 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Z" />
-                  </svg>
+        {featuredProducts.length > 0 ? (
+          <div className="divide-y divide-gray-100 dark:divide-gray-800">
+            {featuredProducts.map(product => (
+              <div key={product.id} className="flex items-center gap-4 px-4 py-3.5">
+                <Thumbnail src={product.thumbnail} alt={product.name} size="md" />
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium text-gray-900 dark:text-white truncate">{product.name}</p>
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                    ₦{product.price.toLocaleString()}
+                  </p>
                 </div>
-              )}
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium text-gray-900 dark:text-white truncate">{currentProduct.name}</p>
-              <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
-                ₦{currentProduct.price.toLocaleString()}
-              </p>
-            </div>
-            <button
-              onClick={handleClear}
-              disabled={pending}
-              className="shrink-0 px-3 py-1.5 text-xs font-medium text-red-600 dark:text-red-400 border border-red-200 dark:border-red-800 rounded-lg hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors disabled:opacity-50"
-            >
-              Remove
-            </button>
+                <button
+                  onClick={() => handleRemoveOne(product.id)}
+                  disabled={pending}
+                  className="shrink-0 px-3 py-1.5 text-xs font-medium text-red-600 dark:text-red-400 border border-red-200 dark:border-red-800 rounded-lg hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors disabled:opacity-50"
+                >
+                  Remove
+                </button>
+              </div>
+            ))}
           </div>
         ) : (
           <div className="px-4 py-6 text-center">
@@ -121,7 +148,7 @@ export default function ProductOfMonthManager({
             <p className="px-4 py-6 text-sm text-center text-gray-400">No products found</p>
           ) : (
             filtered.map(product => {
-              const isSelected = product.id === optimisticCurrentId
+              const isSelected = featuredIds.has(product.id)
               return (
                 <button
                   key={product.id}
@@ -134,21 +161,7 @@ export default function ProductOfMonthManager({
                       : 'hover:bg-gray-50 dark:hover:bg-gray-800/50'
                   }`}
                 >
-                  <div className="w-10 h-10 rounded-lg overflow-hidden bg-gray-100 dark:bg-gray-800 shrink-0">
-                    {product.thumbnail ? (
-                      <img
-                        src={product.thumbnail}
-                        alt={product.name}
-                        className="w-full h-full object-cover"
-                      />
-                    ) : (
-                      <div className="w-full h-full flex items-center justify-center text-gray-300 dark:text-gray-600">
-                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" d="m2.25 15.75 5.159-5.159a2.25 2.25 0 0 1 3.182 0l5.159 5.159m-1.5-1.5 1.409-1.409a2.25 2.25 0 0 1 3.182 0l2.909 2.909M3.75 21h16.5M3.75 3h16.5M3.75 3v18M20.25 3v18" />
-                        </svg>
-                      </div>
-                    )}
-                  </div>
+                  <Thumbnail src={product.thumbnail} alt={product.name} size="sm" />
                   <div className="flex-1 min-w-0">
                     <p className={`text-sm font-medium truncate ${isSelected ? 'text-white' : 'text-gray-900 dark:text-white'}`}>
                       {product.name}
