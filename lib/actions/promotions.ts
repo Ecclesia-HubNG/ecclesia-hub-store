@@ -31,15 +31,42 @@ export async function setPromotionPlacement(
   return { success: true as const }
 }
 
-export async function createPromotion(name: string, discountPct: number) {
+export async function createPromotion(
+  name: string,
+  discountPct: number,
+  maxDiscountAmount?: number | null,
+  startsAt?: string | null,
+  endsAt?: string | null,
+) {
   if (!name.trim()) return { error: 'Name is required.' }
   if (discountPct <= 0 || discountPct > 100) return { error: 'Discount must be between 1 and 100.' }
 
   const supabase = createAdminClient()
   const { error } = await supabase
     .from('global_promotions')
-    .insert({ name: name.trim(), discount_pct: discountPct })
+    .insert({
+      name: name.trim(),
+      discount_pct: discountPct,
+      max_discount_amount: maxDiscountAmount ?? null,
+      starts_at: startsAt ?? null,
+      ends_at: endsAt ?? null,
+    })
 
+  if (error) return { error: error.message }
+  revalidatePath('/admin/promotions')
+  return { success: true as const }
+}
+
+export async function schedulePromotion(
+  id: string,
+  startsAt: string | null,
+  endsAt: string | null,
+) {
+  const supabase = createAdminClient()
+  const { error } = await supabase
+    .from('global_promotions')
+    .update({ starts_at: startsAt || null, ends_at: endsAt || null })
+    .eq('id', id)
   if (error) return { error: error.message }
   revalidatePath('/admin/promotions')
   return { success: true as const }
@@ -91,7 +118,7 @@ export async function activatePromotion(id: string) {
 
   const { data: promo } = await supabase
     .from('global_promotions')
-    .select('discount_pct, is_active')
+    .select('discount_pct, is_active, max_discount_amount')
     .eq('id', id)
     .single()
 
@@ -116,7 +143,7 @@ export async function activatePromotion(id: string) {
   const isSelective = linkedIds.length > 0
 
   const pct = Number(promo.discount_pct)
-  const multiplier = 1 - pct / 100
+  const cap = promo.max_discount_amount != null ? Number(promo.max_discount_amount) : null
 
   let productsQuery = supabase
     .from('products')
@@ -131,7 +158,10 @@ export async function activatePromotion(id: string) {
   for (const p of products ?? []) {
     if (p.promo_original_price != null) continue
     const originalPrice = Number(p.price)
-    const discountedPrice = Math.round(originalPrice * multiplier * 100) / 100
+    const discountAmount = cap !== null
+      ? Math.min(originalPrice * pct / 100, cap)
+      : originalPrice * pct / 100
+    const discountedPrice = Math.round((originalPrice - discountAmount) * 100) / 100
     await supabase.from('products').update({
       promo_original_price: originalPrice,
       compare_at_price: p.compare_at_price ?? originalPrice,

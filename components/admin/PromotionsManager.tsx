@@ -9,6 +9,7 @@ import {
   addProductToPromotion,
   removeProductFromPromotion,
   setPromotionPlacement,
+  schedulePromotion,
 } from '@/lib/actions/promotions'
 
 type PromoProduct = {
@@ -27,6 +28,9 @@ type Promotion = {
   created_at: string
   show_on_homepage: boolean
   show_on_promotions_page: boolean
+  max_discount_amount: number | null
+  starts_at: string | null
+  ends_at: string | null
   products: PromoProduct[]
 }
 
@@ -41,11 +45,15 @@ function fmt(d: string) {
   return new Date(d).toLocaleDateString('en-NG', { day: 'numeric', month: 'short', year: 'numeric' })
 }
 
+function fmtDateTime(d: string) {
+  return new Date(d).toLocaleDateString('en-NG', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })
+}
+
 function money(n: number) {
   return '₦' + n.toLocaleString('en', { minimumFractionDigits: 0, maximumFractionDigits: 0 })
 }
 
-// ── Product panel for a single promotion ─────────────────────────────────────
+// ── Product panel ─────────────────────────────────────────────────────────────
 function PromoProductPanel({
   promo,
   allProducts,
@@ -62,7 +70,8 @@ function PromoProductPanel({
   const [pendingProductId, setPendingProductId] = useState<string | null>(null)
 
   const addedIds = useMemo(() => new Set(promo.products.map(p => p.id)), [promo.products])
-  const multiplier = 1 - promo.discount_pct / 100
+  const pct = promo.discount_pct
+  const cap = promo.max_discount_amount
 
   const pool = useMemo(() => {
     if (!search.trim()) return promo.products.map(p => p.id)
@@ -74,6 +83,20 @@ function PromoProductPanel({
     const productMap = new Map(allProducts.map(p => [p.id, p]))
     return pool.map(id => productMap.get(id)).filter(Boolean) as AllProduct[]
   }, [pool, allProducts])
+
+  function calcDiscounted(price: number) {
+    const discountAmount = cap !== null
+      ? Math.min(price * pct / 100, cap)
+      : price * pct / 100
+    return Math.round(price - discountAmount)
+  }
+
+  function discountLabel(price: number) {
+    if (cap !== null && price * pct / 100 > cap) {
+      return `- ${money(cap)} (capped)`
+    }
+    return `${pct}% off`
+  }
 
   function handleAdd(productId: string) {
     setPendingProductId(productId)
@@ -95,15 +118,12 @@ function PromoProductPanel({
 
   return (
     <div className="border-t border-gray-100 dark:border-gray-800 bg-gray-50 dark:bg-gray-900/50 px-5 py-4 space-y-3">
-      <div className="flex items-center justify-between">
-        <p className="text-xs font-medium text-gray-500 dark:text-gray-400">
-          {promo.products.length > 0
-            ? `${promo.products.length} product${promo.products.length !== 1 ? 's' : ''} selected — discount applies only to these`
-            : 'No products selected — discount will apply to all active products'}
-        </p>
-      </div>
+      <p className="text-xs font-medium text-gray-500 dark:text-gray-400">
+        {promo.products.length > 0
+          ? `${promo.products.length} product${promo.products.length !== 1 ? 's' : ''} selected — discount applies only to these`
+          : 'No products selected — discount will apply to all active products'}
+      </p>
 
-      {/* Search */}
       <input
         type="text"
         value={search}
@@ -112,7 +132,6 @@ function PromoProductPanel({
         className="w-full px-3 py-2 text-sm bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-900/10 dark:focus:ring-white/20"
       />
 
-      {/* Product list */}
       <div className="space-y-1 max-h-72 overflow-y-auto">
         {displayProducts.length === 0 ? (
           <p className="text-xs text-gray-400 py-4 text-center">
@@ -121,7 +140,7 @@ function PromoProductPanel({
         ) : (
           displayProducts.map(p => {
             const isAdded = addedIds.has(p.id)
-            const discounted = Math.round(p.price * multiplier)
+            const discounted = calcDiscounted(p.price)
             const isPending = pendingProductId === p.id && pending
 
             return (
@@ -135,7 +154,7 @@ function PromoProductPanel({
                     {money(p.price)}
                     {isAdded && (
                       <span className="ml-1 text-emerald-600 dark:text-emerald-400 font-semibold">
-                        → {money(discounted)} <span className="text-gray-400">({promo.discount_pct}% off)</span>
+                        → {money(discounted)} <span className="text-gray-400">({discountLabel(p.price)})</span>
                       </span>
                     )}
                   </p>
@@ -175,6 +194,74 @@ function PromoProductPanel({
   )
 }
 
+// ── Schedule panel ────────────────────────────────────────────────────────────
+function SchedulePanel({
+  promo,
+  onSave,
+}: {
+  promo: Promotion
+  onSave: (startsAt: string | null, endsAt: string | null) => void
+}) {
+  const [startsAt, setStartsAt] = useState(promo.starts_at ? promo.starts_at.slice(0, 16) : '')
+  const [endsAt, setEndsAt] = useState(promo.ends_at ? promo.ends_at.slice(0, 16) : '')
+  const [pending, startTransition] = useTransition()
+
+  function handleSave() {
+    startTransition(async () => {
+      await schedulePromotion(promo.id, startsAt || null, endsAt || null)
+      onSave(startsAt || null, endsAt || null)
+    })
+  }
+
+  return (
+    <div className="border-t border-gray-100 dark:border-gray-800 bg-gray-50 dark:bg-gray-900/50 px-5 py-4 space-y-3">
+      <p className="text-xs font-medium text-gray-500 dark:text-gray-400">
+        Set optional start/end times. The edge function <code className="bg-gray-200 dark:bg-gray-700 px-1 rounded text-[11px]">schedule-promotions</code> will auto-activate and deactivate based on these.
+      </p>
+      <div className="grid grid-cols-2 gap-3">
+        <div>
+          <label className="block text-[10px] font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-1.5">Starts at</label>
+          <input
+            type="datetime-local"
+            value={startsAt}
+            onChange={e => setStartsAt(e.target.value)}
+            className="w-full px-3 py-2 text-sm bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-gray-900/10 dark:focus:ring-white/20"
+          />
+        </div>
+        <div>
+          <label className="block text-[10px] font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-1.5">Ends at</label>
+          <input
+            type="datetime-local"
+            value={endsAt}
+            onChange={e => setEndsAt(e.target.value)}
+            className="w-full px-3 py-2 text-sm bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-gray-900/10 dark:focus:ring-white/20"
+          />
+        </div>
+      </div>
+      <div className="flex gap-2">
+        <button
+          type="button"
+          disabled={pending}
+          onClick={handleSave}
+          className="px-4 py-2 bg-gray-900 dark:bg-white text-white dark:text-gray-900 text-sm font-semibold rounded-lg hover:bg-gray-700 dark:hover:bg-gray-100 transition-colors disabled:opacity-50"
+        >
+          {pending ? 'Saving…' : 'Save Schedule'}
+        </button>
+        {(startsAt || endsAt) && (
+          <button
+            type="button"
+            disabled={pending}
+            onClick={() => { setStartsAt(''); setEndsAt(''); startTransition(async () => { await schedulePromotion(promo.id, null, null); onSave(null, null) }) }}
+            className="px-4 py-2 text-sm text-gray-500 hover:text-red-600 transition-colors"
+          >
+            Clear schedule
+          </button>
+        )}
+      </div>
+    </div>
+  )
+}
+
 // ── Main component ────────────────────────────────────────────────────────────
 export default function PromotionsManager({
   initial,
@@ -189,10 +276,14 @@ export default function PromotionsManager({
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
   const [expandedId, setExpandedId] = useState<string | null>(null)
+  const [scheduleExpandedId, setScheduleExpandedId] = useState<string | null>(null)
 
   // Create form
   const [name, setName] = useState('')
   const [pct, setPct] = useState('')
+  const [capAmount, setCapAmount] = useState('')
+  const [startsAt, setStartsAt] = useState('')
+  const [endsAt, setEndsAt] = useState('')
   const [showForm, setShowForm] = useState(false)
 
   const active = promotions.find(p => p.is_active) ?? null
@@ -207,10 +298,11 @@ export default function PromotionsManager({
     e.preventDefault()
     const pctNum = parseFloat(pct)
     if (!name.trim() || isNaN(pctNum)) return
+    const capNum = capAmount ? parseFloat(capAmount) : null
     startTransition(async () => {
-      const res = await createPromotion(name, pctNum)
+      const res = await createPromotion(name, pctNum, capNum, startsAt || null, endsAt || null)
       if ('error' in res) { notify(res.error ?? 'Something went wrong.', true); return }
-      setName(''); setPct(''); setShowForm(false)
+      setName(''); setPct(''); setCapAmount(''); setStartsAt(''); setEndsAt(''); setShowForm(false)
       notify('Promotion created.')
       setTimeout(() => window.location.reload(), 800)
     })
@@ -255,6 +347,7 @@ export default function PromotionsManager({
       if ('error' in res) { notify(res.error ?? 'Something went wrong.', true); return }
       setPromotions(prev => prev.filter(p => p.id !== id))
       if (expandedId === id) setExpandedId(null)
+      if (scheduleExpandedId === id) setScheduleExpandedId(null)
       notify('Promotion deleted.')
     })
   }
@@ -277,23 +370,25 @@ export default function PromotionsManager({
     const product = allProducts.find(p => p.id === productId)
     if (!product) return
     setPromotions(prev =>
-      prev.map(p =>
-        p.id === promoId
-          ? { ...p, products: [...p.products, product] }
-          : p
-      )
+      prev.map(p => p.id === promoId ? { ...p, products: [...p.products, product] } : p)
     )
   }
 
   function handleProductRemove(promoId: string, productId: string) {
     setPromotions(prev =>
-      prev.map(p =>
-        p.id === promoId
-          ? { ...p, products: p.products.filter(pp => pp.id !== productId) }
-          : p
-      )
+      prev.map(p => p.id === promoId ? { ...p, products: p.products.filter(pp => pp.id !== productId) } : p)
     )
   }
+
+  function handleScheduleSave(promoId: string, sa: string | null, ea: string | null) {
+    setPromotions(prev =>
+      prev.map(p => p.id === promoId ? { ...p, starts_at: sa, ends_at: ea } : p)
+    )
+    notify('Schedule saved.')
+    setScheduleExpandedId(null)
+  }
+
+  const now = new Date()
 
   return (
     <div className="space-y-6">
@@ -314,7 +409,7 @@ export default function PromotionsManager({
           <div className="w-2.5 h-2.5 rounded-full bg-emerald-500 shrink-0 animate-pulse" />
           <div className="flex-1 min-w-0">
             <p className="text-sm font-semibold text-emerald-800 dark:text-emerald-300">
-              {active.name} — {active.discount_pct}% off{' '}
+              {active.name} — {active.discount_pct}% off{active.max_discount_amount ? ` (cap ₦${active.max_discount_amount.toLocaleString()})` : ''}{' '}
               {active.products.length > 0 ? `${active.products.length} selected products` : 'all products'}
             </p>
             {active.applied_at && (
@@ -349,11 +444,8 @@ export default function PromotionsManager({
               <div>
                 <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1.5">Promotion name</label>
                 <input
-                  type="text"
-                  value={name}
-                  onChange={e => setName(e.target.value)}
-                  placeholder="e.g. Summer Sale"
-                  required
+                  type="text" value={name} onChange={e => setName(e.target.value)}
+                  placeholder="e.g. Summer Sale" required
                   className="w-full px-3 py-2 text-sm bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-900/10 dark:focus:ring-white/20"
                 />
               </div>
@@ -361,23 +453,58 @@ export default function PromotionsManager({
                 <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1.5">Discount %</label>
                 <div className="relative">
                   <input
-                    type="number"
-                    min="1"
-                    max="100"
-                    step="0.5"
-                    value={pct}
-                    onChange={e => setPct(e.target.value)}
-                    placeholder="50"
-                    required
+                    type="number" min="1" max="100" step="0.5" value={pct}
+                    onChange={e => setPct(e.target.value)} placeholder="50" required
                     className="w-full px-3 py-2 pr-8 text-sm bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-900/10 dark:focus:ring-white/20"
                   />
                   <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-gray-400">%</span>
                 </div>
               </div>
             </div>
+
+            <div>
+              <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1.5">
+                Max discount per product (₦) <span className="text-gray-400 font-normal">— optional cap</span>
+              </label>
+              <div className="relative max-w-xs">
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-gray-400">₦</span>
+                <input
+                  type="number" min="1" step="1" value={capAmount}
+                  onChange={e => setCapAmount(e.target.value)} placeholder="e.g. 5000"
+                  className="w-full pl-7 pr-3 py-2 text-sm bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-900/10 dark:focus:ring-white/20"
+                />
+              </div>
+              {pct && capAmount && !isNaN(parseFloat(pct)) && !isNaN(parseFloat(capAmount)) && (
+                <p className="text-xs text-amber-600 dark:text-amber-400 mt-1.5">
+                  Products priced above ₦{(parseFloat(capAmount) / (parseFloat(pct) / 100)).toLocaleString()} will be capped at ₦{parseFloat(capAmount).toLocaleString()} off.
+                </p>
+              )}
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1.5">
+                  Starts at <span className="text-gray-400 font-normal">— optional</span>
+                </label>
+                <input
+                  type="datetime-local" value={startsAt} onChange={e => setStartsAt(e.target.value)}
+                  className="w-full px-3 py-2 text-sm bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-gray-900/10 dark:focus:ring-white/20"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1.5">
+                  Ends at <span className="text-gray-400 font-normal">— optional</span>
+                </label>
+                <input
+                  type="datetime-local" value={endsAt} onChange={e => setEndsAt(e.target.value)}
+                  className="w-full px-3 py-2 text-sm bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-gray-900/10 dark:focus:ring-white/20"
+                />
+              </div>
+            </div>
+
             {pct && !isNaN(parseFloat(pct)) && (
               <p className="text-xs text-gray-500 dark:text-gray-400 bg-gray-50 dark:bg-gray-800 px-3 py-2 rounded-lg">
-                A ₦10,000 product will sell for <strong>₦{(10000 * (1 - parseFloat(pct) / 100)).toLocaleString()}</strong> during this promotion.
+                A ₦10,000 product will sell for <strong>₦{(10000 - Math.min(10000 * parseFloat(pct) / 100, capAmount ? parseFloat(capAmount) : Infinity)).toLocaleString()}</strong> during this promotion.
               </p>
             )}
             <p className="text-xs text-gray-400 dark:text-gray-500">After creating, open the promotion to select specific products — or leave empty to apply to all.</p>
@@ -395,8 +522,9 @@ export default function PromotionsManager({
 
       {/* Promotions list */}
       <div className="rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden">
-        <div className="px-5 py-3 bg-gray-50 dark:bg-gray-800/50 border-b border-gray-200 dark:border-gray-700">
+        <div className="px-5 py-3 bg-gray-50 dark:bg-gray-800/50 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
           <p className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">All Promotions</p>
+          <p className="text-xs text-gray-400">{promotions.length} total</p>
         </div>
 
         {promotions.length === 0 ? (
@@ -405,119 +533,161 @@ export default function PromotionsManager({
           </div>
         ) : (
           <div className="divide-y divide-gray-100 dark:divide-gray-800">
-            {[...promotions].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()).map(promo => (
-              <div key={promo.id}>
-                {/* Promotion row */}
-                <div className="flex items-center gap-4 px-5 py-4">
-                  <div className={`w-2 h-2 rounded-full shrink-0 ${promo.is_active ? 'bg-emerald-500 animate-pulse' : 'bg-gray-300 dark:bg-gray-600'}`} />
+            {[...promotions].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()).map(promo => {
+              const isScheduled = !promo.is_active && promo.starts_at && new Date(promo.starts_at) > now
+              const isExpired = !promo.is_active && promo.ends_at && new Date(promo.ends_at) <= now
 
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2">
-                      <p className="text-sm font-medium text-gray-900 dark:text-white truncate">{promo.name}</p>
-                      <span className={`shrink-0 px-2 py-0.5 text-[10px] font-bold rounded-full ${
-                        promo.is_active
-                          ? 'bg-emerald-100 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-400'
-                          : 'bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400'
-                      }`}>
-                        {promo.is_active ? 'LIVE' : 'INACTIVE'}
-                      </span>
+              return (
+                <div key={promo.id}>
+                  {/* Promotion row */}
+                  <div className="flex items-center gap-4 px-5 py-4">
+                    <div className={`w-2 h-2 rounded-full shrink-0 ${promo.is_active ? 'bg-emerald-500 animate-pulse' : isScheduled ? 'bg-blue-400' : 'bg-gray-300 dark:bg-gray-600'}`} />
+
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <p className="text-sm font-medium text-gray-900 dark:text-white truncate">{promo.name}</p>
+                        <span className={`shrink-0 px-2 py-0.5 text-[10px] font-bold rounded-full ${
+                          promo.is_active
+                            ? 'bg-emerald-100 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-400'
+                            : isScheduled
+                              ? 'bg-blue-100 dark:bg-blue-950/50 text-blue-700 dark:text-blue-400'
+                              : isExpired
+                                ? 'bg-gray-100 dark:bg-gray-800 text-gray-400 dark:text-gray-500'
+                                : 'bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400'
+                        }`}>
+                          {promo.is_active ? 'LIVE' : isScheduled ? 'SCHEDULED' : isExpired ? 'ENDED' : 'INACTIVE'}
+                        </span>
+                      </div>
+                      <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                        {promo.discount_pct}% off{promo.max_discount_amount ? ` (cap ₦${promo.max_discount_amount.toLocaleString()})` : ''}{' '}
+                        {promo.products.length > 0
+                          ? `${promo.products.length} selected product${promo.products.length !== 1 ? 's' : ''}`
+                          : 'all products'
+                        }
+                        {promo.applied_at && ` · Last run ${fmt(promo.applied_at)}`}
+                        {!promo.applied_at && ` · Created ${fmt(promo.created_at)}`}
+                      </p>
+                      {(promo.starts_at || promo.ends_at) && (
+                        <p className="text-xs text-blue-500 dark:text-blue-400 mt-0.5">
+                          {promo.starts_at && `Starts ${fmtDateTime(promo.starts_at)}`}
+                          {promo.starts_at && promo.ends_at && ' · '}
+                          {promo.ends_at && `Ends ${fmtDateTime(promo.ends_at)}`}
+                        </p>
+                      )}
                     </div>
-                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
-                      {promo.discount_pct}% off{' '}
-                      {promo.products.length > 0
-                        ? `${promo.products.length} selected product${promo.products.length !== 1 ? 's' : ''}`
-                        : 'all products'
-                      }
-                      {promo.applied_at && ` · Last run ${fmt(promo.applied_at)}`}
-                      {!promo.applied_at && ` · Created ${fmt(promo.created_at)}`}
-                    </p>
-                  </div>
 
-                  <span className="shrink-0 px-3 py-1 text-sm font-bold text-gray-900 dark:text-white bg-gray-100 dark:bg-gray-800 rounded-full">
-                    -{promo.discount_pct}%
-                  </span>
+                    <span className="shrink-0 px-3 py-1 text-sm font-bold text-gray-900 dark:text-white bg-gray-100 dark:bg-gray-800 rounded-full">
+                      -{promo.discount_pct}%{promo.max_discount_amount ? ` / ₦${promo.max_discount_amount.toLocaleString()} cap` : ''}
+                    </span>
 
-                  {/* Placement toggles */}
-                  <div className="flex items-center gap-1.5 shrink-0">
-                    {(['homepage', 'promotions_page'] as const).map(placement => {
-                      const active = placement === 'homepage' ? promo.show_on_homepage : promo.show_on_promotions_page
-                      const label = placement === 'homepage' ? 'Home' : 'Sale Page'
-                      return (
-                        <button
-                          key={placement}
-                          type="button"
-                          onClick={() => handlePlacement(promo.id, placement, !active)}
-                          title={active ? `Remove from ${label}` : `Show on ${label}`}
-                          className={`px-2 py-1 text-[10px] font-semibold rounded-lg border transition-colors ${
-                            active
-                              ? 'bg-[#4A0F1C] dark:bg-[#E8C4CB] text-white dark:text-gray-900 border-[#4A0F1C] dark:border-[#E8C4CB]'
-                              : 'text-gray-400 dark:text-gray-600 border-gray-200 dark:border-gray-700 hover:border-gray-400 dark:hover:border-gray-500'
-                          }`}
-                        >
-                          {label}
-                        </button>
-                      )
-                    })}
-                  </div>
+                    {/* Placement toggles */}
+                    <div className="flex items-center gap-1.5 shrink-0">
+                      {(['homepage', 'promotions_page'] as const).map(placement => {
+                        const isActive = placement === 'homepage' ? promo.show_on_homepage : promo.show_on_promotions_page
+                        const label = placement === 'homepage' ? 'Home' : 'Sale Page'
+                        return (
+                          <button
+                            key={placement}
+                            type="button"
+                            onClick={() => handlePlacement(promo.id, placement, !isActive)}
+                            title={isActive ? `Remove from ${label}` : `Show on ${label}`}
+                            className={`px-2 py-1 text-[10px] font-semibold rounded-lg border transition-colors ${
+                              isActive
+                                ? 'bg-[#4A0F1C] dark:bg-[#E8C4CB] text-white dark:text-gray-900 border-[#4A0F1C] dark:border-[#E8C4CB]'
+                                : 'text-gray-400 dark:text-gray-600 border-gray-200 dark:border-gray-700 hover:border-gray-400 dark:hover:border-gray-500'
+                            }`}
+                          >
+                            {label}
+                          </button>
+                        )
+                      })}
+                    </div>
 
-                  <div className="flex items-center gap-2 shrink-0">
-                    {/* Products toggle */}
-                    <button
-                      type="button"
-                      onClick={() => setExpandedId(id => id === promo.id ? null : promo.id)}
-                      className={`px-3 py-1.5 text-xs font-medium rounded-lg border transition-colors ${
-                        expandedId === promo.id
-                          ? 'border-gray-900 dark:border-white bg-gray-900 dark:bg-white text-white dark:text-gray-900'
-                          : 'border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800'
-                      }`}
-                    >
-                      Products{promo.products.length > 0 ? ` (${promo.products.length})` : ''}
-                    </button>
-
-                    {promo.is_active ? (
+                    <div className="flex items-center gap-2 shrink-0">
+                      {/* Products toggle */}
                       <button
-                        onClick={() => handleDeactivate(promo.id)}
-                        disabled={pending}
-                        className="px-3 py-1.5 text-xs font-medium text-red-600 dark:text-red-400 border border-red-200 dark:border-red-800 rounded-lg hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors disabled:opacity-50"
+                        type="button"
+                        onClick={() => { setExpandedId(id => id === promo.id ? null : promo.id); setScheduleExpandedId(null) }}
+                        className={`px-3 py-1.5 text-xs font-medium rounded-lg border transition-colors ${
+                          expandedId === promo.id
+                            ? 'border-gray-900 dark:border-white bg-gray-900 dark:bg-white text-white dark:text-gray-900'
+                            : 'border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800'
+                        }`}
                       >
-                        {pendingId === promo.id ? '…' : 'End Sale'}
+                        Products{promo.products.length > 0 ? ` (${promo.products.length})` : ''}
                       </button>
-                    ) : (
-                      <>
-                        <button
-                          onClick={() => handleActivate(promo.id)}
-                          disabled={pending || !!active}
-                          title={active && !promo.is_active ? 'End the current sale first' : undefined}
-                          className="px-3 py-1.5 text-xs font-medium text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-                        >
-                          {pendingId === promo.id ? '…' : 'Run Sale'}
-                        </button>
-                        <button
-                          onClick={() => handleDelete(promo.id)}
-                          disabled={pending}
-                          className="p-1.5 text-gray-400 hover:text-red-500 dark:hover:text-red-400 transition-colors disabled:opacity-50"
-                          title="Delete"
-                        >
-                          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0" />
-                          </svg>
-                        </button>
-                      </>
-                    )}
-                  </div>
-                </div>
 
-                {/* Expandable product panel */}
-                {expandedId === promo.id && (
-                  <PromoProductPanel
-                    promo={promo}
-                    allProducts={allProducts}
-                    onAdd={productId => handleProductAdd(promo.id, productId)}
-                    onRemove={productId => handleProductRemove(promo.id, productId)}
-                  />
-                )}
-              </div>
-            ))}
+                      {/* Schedule toggle */}
+                      <button
+                        type="button"
+                        onClick={() => { setScheduleExpandedId(id => id === promo.id ? null : promo.id); setExpandedId(null) }}
+                        title="Set schedule"
+                        className={`p-1.5 rounded-lg border transition-colors ${
+                          scheduleExpandedId === promo.id
+                            ? 'border-blue-400 bg-blue-50 dark:bg-blue-950/30 text-blue-500'
+                            : (promo.starts_at || promo.ends_at)
+                              ? 'border-blue-200 dark:border-blue-800 text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-950/30'
+                              : 'border-gray-200 dark:border-gray-700 text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800'
+                        }`}
+                      >
+                        <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 0 1 2.25-2.25h13.5A2.25 2.25 0 0 1 21 7.5v11.25m-18 0A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75m-18 0v-7.5A2.25 2.25 0 0 1 5.25 9h13.5A2.25 2.25 0 0 1 21 11.25v7.5" />
+                        </svg>
+                      </button>
+
+                      {promo.is_active ? (
+                        <button
+                          onClick={() => handleDeactivate(promo.id)}
+                          disabled={pending}
+                          className="px-3 py-1.5 text-xs font-medium text-red-600 dark:text-red-400 border border-red-200 dark:border-red-800 rounded-lg hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors disabled:opacity-50"
+                        >
+                          {pendingId === promo.id ? '…' : 'End Sale'}
+                        </button>
+                      ) : (
+                        <>
+                          <button
+                            onClick={() => handleActivate(promo.id)}
+                            disabled={pending || !!active}
+                            title={active && !promo.is_active ? 'End the current sale first' : undefined}
+                            className="px-3 py-1.5 text-xs font-medium text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                          >
+                            {pendingId === promo.id ? '…' : 'Run Sale'}
+                          </button>
+                          <button
+                            onClick={() => handleDelete(promo.id)}
+                            disabled={pending}
+                            className="p-1.5 text-gray-400 hover:text-red-500 dark:hover:text-red-400 transition-colors disabled:opacity-50"
+                            title="Delete"
+                          >
+                            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0" />
+                            </svg>
+                          </button>
+                        </>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Expandable product panel */}
+                  {expandedId === promo.id && (
+                    <PromoProductPanel
+                      promo={promo}
+                      allProducts={allProducts}
+                      onAdd={productId => handleProductAdd(promo.id, productId)}
+                      onRemove={productId => handleProductRemove(promo.id, productId)}
+                    />
+                  )}
+
+                  {/* Expandable schedule panel */}
+                  {scheduleExpandedId === promo.id && (
+                    <SchedulePanel
+                      promo={promo}
+                      onSave={(sa, ea) => handleScheduleSave(promo.id, sa, ea)}
+                    />
+                  )}
+                </div>
+              )
+            })}
           </div>
         )}
       </div>

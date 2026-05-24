@@ -12,6 +12,7 @@ export default async function PromotionsPage() {
       .select(`
         id, name, discount_pct, is_active, applied_at, created_at,
         show_on_homepage, show_on_promotions_page,
+        max_discount_amount, starts_at, ends_at,
         promotion_products ( product_id, products ( id, name, thumbnail, price ) )
       `)
       .order('created_at', { ascending: false }),
@@ -31,6 +32,9 @@ export default async function PromotionsPage() {
     created_at: p.created_at,
     show_on_homepage: p.show_on_homepage,
     show_on_promotions_page: p.show_on_promotions_page,
+    max_discount_amount: p.max_discount_amount ?? null,
+    starts_at: p.starts_at ?? null,
+    ends_at: p.ends_at ?? null,
     products: (p.promotion_products ?? [])
       .map((pp: any) => pp.products)
       .filter(Boolean),
