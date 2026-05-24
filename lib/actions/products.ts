@@ -206,3 +206,22 @@ export async function duplicateProduct(formData: FormData) {
   revalidatePath('/admin/products')
   redirect(`/admin/products/${data.id}/edit`)
 }
+
+// Atomically sets one product as product of the month, clearing all others.
+export async function setProductOfMonth(productId: string) {
+  const supabase = createAdminClient()
+  await supabase.from('products').update({ is_product_of_month: false }).eq('is_product_of_month', true)
+  const { error } = await supabase.from('products').update({ is_product_of_month: true }).eq('id', productId)
+  if (error) return { error: error.message }
+  revalidatePath('/admin/products/product-of-month')
+  revalidatePath('/')
+  return { success: true as const }
+}
+
+export async function clearProductOfMonth() {
+  const supabase = createAdminClient()
+  await supabase.from('products').update({ is_product_of_month: false }).eq('is_product_of_month', true)
+  revalidatePath('/admin/products/product-of-month')
+  revalidatePath('/')
+  return { success: true as const }
+}
