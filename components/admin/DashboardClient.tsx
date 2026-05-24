@@ -311,7 +311,9 @@ export function DashboardClient({
         <div className="bg-white dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-xl overflow-hidden">
           <div className="px-6 py-4 border-b border-gray-100 dark:border-white/10 flex items-center justify-between">
             <h2 className="text-sm font-semibold text-gray-900 dark:text-white">Stock alerts</h2>
-            <Link href="/admin/products" className="text-xs text-[#6B1A2A] dark:text-[#D4849A] hover:underline">Manage →</Link>
+            <Link href="/admin/stock-alerts" className="text-xs text-[#6B1A2A] dark:text-[#D4849A] hover:underline">
+              {outOfStock.length + lowStock.length > 0 ? `View all (${outOfStock.length + lowStock.length}) →` : 'Manage →'}
+            </Link>
           </div>
           {!outOfStock.length && !lowStock.length ? (
             <div className="px-6 py-12 text-center">
@@ -319,36 +321,36 @@ export function DashboardClient({
               <p className="text-xs text-gray-400 mt-1">No stock alerts</p>
             </div>
           ) : (
-            <div className="divide-y divide-gray-100 dark:divide-white/5">
-              {outOfStock.map((p: any) => (
-                <div key={p.id} className="px-6 py-3 flex items-center gap-3">
-                  {p.thumbnail ? (
-                    <img src={p.thumbnail} alt="" className="w-8 h-8 rounded-lg object-cover bg-gray-100 shrink-0" />
-                  ) : (
-                    <div className="w-8 h-8 rounded-lg bg-gray-100 dark:bg-white/10 shrink-0" />
-                  )}
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-gray-900 dark:text-white truncate">{p.name}</p>
-                    <p className="text-xs text-red-500 font-medium">Out of stock</p>
-                  </div>
-                  {icons.warning()}
+            <>
+              <div className="divide-y divide-gray-100 dark:divide-white/5">
+                {[...outOfStock, ...lowStock].slice(0, 5).map((p: any) => {
+                  const isOut = p.stock === 0
+                  return (
+                    <div key={p.id} className="px-6 py-3 flex items-center gap-3">
+                      {p.thumbnail ? (
+                        <img src={p.thumbnail} alt="" className="w-8 h-8 rounded-lg object-cover bg-gray-100 shrink-0" />
+                      ) : (
+                        <div className="w-8 h-8 rounded-lg bg-gray-100 dark:bg-white/10 shrink-0" />
+                      )}
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium text-gray-900 dark:text-white truncate">{p.name}</p>
+                        <p className={`text-xs font-medium ${isOut ? 'text-red-500' : 'text-amber-500'}`}>
+                          {isOut ? 'Out of stock' : `${p.stock} left`}
+                        </p>
+                      </div>
+                      {icons.warning()}
+                    </div>
+                  )
+                })}
+              </div>
+              {outOfStock.length + lowStock.length > 5 && (
+                <div className="px-6 py-3 border-t border-gray-100 dark:border-white/5">
+                  <Link href="/admin/stock-alerts" className="text-xs text-[#6B1A2A] dark:text-[#D4849A] hover:underline">
+                    +{outOfStock.length + lowStock.length - 5} more items →
+                  </Link>
                 </div>
-              ))}
-              {lowStock.map((p: any) => (
-                <div key={p.id} className="px-6 py-3 flex items-center gap-3">
-                  {p.thumbnail ? (
-                    <img src={p.thumbnail} alt="" className="w-8 h-8 rounded-lg object-cover bg-gray-100 shrink-0" />
-                  ) : (
-                    <div className="w-8 h-8 rounded-lg bg-gray-100 dark:bg-white/10 shrink-0" />
-                  )}
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-gray-900 dark:text-white truncate">{p.name}</p>
-                    <p className="text-xs text-amber-500">{p.stock} left</p>
-                  </div>
-                  {icons.warning()}
-                </div>
-              ))}
-            </div>
+              )}
+            </>
           )}
         </div>
       </div>

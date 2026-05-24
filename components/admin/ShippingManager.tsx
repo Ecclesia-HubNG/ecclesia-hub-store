@@ -24,6 +24,14 @@ type FormState = {
 
 const EMPTY_FORM: FormState = { name: '', country: 'Nigeria', state: '', area: '', price: '', is_active: true }
 
+const NG_STATES = [
+  'Abia','Adamawa','Akwa Ibom','Anambra','Bauchi','Bayelsa','Benue','Borno',
+  'Cross River','Delta','Ebonyi','Edo','Ekiti','Enugu','FCT (Abuja)','Gombe',
+  'Imo','Jigawa','Kaduna','Kano','Katsina','Kebbi','Kogi','Kwara','Lagos',
+  'Nasarawa','Niger','Ogun','Ondo','Osun','Oyo','Plateau','Rivers','Sokoto',
+  'Taraba','Yobe','Zamfara',
+]
+
 function ZoneForm({
   initial,
   onSave,
@@ -52,12 +60,14 @@ function ZoneForm({
         </div>
         <div>
           <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1.5">State <span className="text-red-500">*</span></label>
-          <input
+          <select
             value={form.state}
             onChange={e => set('state', e.target.value)}
-            className="w-full px-3.5 py-2.5 text-sm bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[#4A0F1C]/20 focus:border-[#4A0F1C]/40 transition-colors"
-            placeholder="e.g. Lagos"
-          />
+            className="w-full px-3.5 py-2.5 text-sm bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[#4A0F1C]/20 focus:border-[#4A0F1C]/40 transition-colors appearance-none cursor-pointer"
+          >
+            <option value="">Select state…</option>
+            {NG_STATES.map(s => <option key={s} value={s}>{s}</option>)}
+          </select>
         </div>
         <div>
           <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1.5">

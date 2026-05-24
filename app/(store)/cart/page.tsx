@@ -32,11 +32,11 @@ export default function CartPage() {
 
       <div className="flex flex-col lg:flex-row gap-10 items-start">
         {/* Items list */}
-        <div className="flex-1 min-w-0 divide-y divide-gray-100 dark:divide-gray-800">
+        <div className="flex-1 min-w-0 space-y-3">
           {items.map(item => {
             const key = itemKey(item.productId, item.selectedVariants)
             return (
-              <div key={key} className="flex gap-4 py-5">
+              <div key={key} className="flex gap-4 p-4 bg-gray-50 dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800">
                 {/* Thumbnail */}
                 <Link href={`/product/${item.slug}`} className="shrink-0">
                   <div className="w-20 h-20 rounded-xl bg-gray-50 dark:bg-gray-800 overflow-hidden border border-gray-100 dark:border-gray-700">

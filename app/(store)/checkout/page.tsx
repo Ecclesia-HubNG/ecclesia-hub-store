@@ -7,7 +7,7 @@ import { useRouter } from 'next/navigation'
 import { useCart } from '@/lib/cart-context'
 import { createCheckoutSession } from '@/lib/actions/customer-orders'
 import { initializePayment } from '@/lib/actions/flutterwave'
-import { getShippingZones, type ShippingZone } from '@/lib/actions/shipping'
+import { adminGetShippingZones, type ShippingZone } from '@/lib/actions/shipping'
 
 const inputCls = 'w-full px-3.5 py-2.5 text-sm bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-600 focus:outline-none focus:ring-2 focus:ring-[#4A0F1C]/20 focus:border-[#4A0F1C]/40 transition-colors'
 const selectCls = inputCls + ' appearance-none cursor-pointer'
@@ -28,7 +28,7 @@ export default function CheckoutPage() {
   })
   const update = (k: keyof typeof form, v: string) => setForm(p => ({ ...p, [k]: v }))
 
-  useEffect(() => { getShippingZones().then(setZones) }, [])
+  useEffect(() => { adminGetShippingZones().then(zones => setZones(zones.filter(z => z.is_active))) }, [])
   useEffect(() => { if (items.length === 0) router.replace('/cart') }, [items.length, router])
 
   // ── Derived location state ─────────────────────────────────────────
