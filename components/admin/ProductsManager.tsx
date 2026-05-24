@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useMemo, useTransition } from 'react'
+import { useState, useMemo, useTransition, useEffect } from 'react'
 import { createPortal } from 'react-dom'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
@@ -468,6 +468,10 @@ export function ProductsManager({
   const [openActionId, setOpenActionId] = useState<string | null>(null)
   const [actionMenuPos, setActionMenuPos] = useState<{ top: number; right: number } | null>(null)
 
+  // Pagination
+  const PAGE_SIZE = 50
+  const [currentPage, setCurrentPage] = useState(1)
+
   // CSV import
   const [showImportPicker, setShowImportPicker] = useState(false)
   const [importFormat, setImportFormat] = useState<ImportFormat | null>(null)
@@ -615,6 +619,15 @@ export function ProductsManager({
       }
     })
   }, [filtered, sortBy])
+
+  // Reset to page 1 whenever filters/sort change
+  useEffect(() => { setCurrentPage(1) }, [search, status, stockFilter, categoryId, dateFrom, dateTo, sortBy])
+
+  const totalPages = Math.ceil(sorted.length / PAGE_SIZE)
+  const paged = useMemo(
+    () => sorted.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE),
+    [sorted, currentPage, PAGE_SIZE]
+  )
 
   const hasFilters = !!(search || status !== 'all' || stockFilter !== 'all' || categoryId || dateFrom || dateTo)
   const clearFilters = () => { setSearch(''); setStatus('all'); setStockFilter('all'); setCategoryId(''); setDateFrom(''); setDateTo('') }
@@ -1009,7 +1022,7 @@ export function ProductsManager({
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100 dark:divide-gray-800 bg-white dark:bg-gray-900">
-              {sorted.map(product => (
+              {paged.map(product => (
                 <tr key={product.id} className={`transition-colors ${selected.has(product.id) ? 'bg-blue-50/60 dark:bg-blue-950/20' : 'hover:bg-gray-50 dark:hover:bg-gray-800/40'}`}>
                   <td className="pl-4 pr-2 py-3 w-8">
                     <input
@@ -1097,6 +1110,56 @@ export function ProductsManager({
               ))}
             </tbody>
           </table>
+          {totalPages > 1 && (
+            <div className="flex items-center justify-between px-4 py-3 border-t border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-900/80">
+              <span className="text-xs text-gray-500 dark:text-gray-400">
+                Showing {(currentPage - 1) * PAGE_SIZE + 1}–{Math.min(currentPage * PAGE_SIZE, sorted.length)} of {sorted.length}
+              </span>
+              <div className="flex items-center gap-1">
+                <button
+                  type="button"
+                  onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                  disabled={currentPage === 1}
+                  className="px-3 py-1.5 text-xs font-medium rounded-lg border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                >
+                  ← Prev
+                </button>
+                {Array.from({ length: totalPages }, (_, i) => i + 1)
+                  .filter(p => p === 1 || p === totalPages || Math.abs(p - currentPage) <= 2)
+                  .reduce<(number | '…')[]>((acc, p, i, arr) => {
+                    if (i > 0 && (p as number) - (arr[i - 1] as number) > 1) acc.push('…')
+                    acc.push(p)
+                    return acc
+                  }, [])
+                  .map((item, i) =>
+                    item === '…' ? (
+                      <span key={`e${i}`} className="w-7 text-center text-xs text-gray-400 dark:text-gray-600">…</span>
+                    ) : (
+                      <button
+                        key={item}
+                        type="button"
+                        onClick={() => setCurrentPage(item as number)}
+                        className={`w-8 h-8 text-xs font-medium rounded-lg transition-colors ${
+                          item === currentPage
+                            ? 'bg-gray-900 dark:bg-white text-white dark:text-gray-900'
+                            : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800'
+                        }`}
+                      >
+                        {item}
+                      </button>
+                    )
+                  )}
+                <button
+                  type="button"
+                  onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                  disabled={currentPage === totalPages}
+                  className="px-3 py-1.5 text-xs font-medium rounded-lg border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                >
+                  Next →
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       )}
 
