@@ -11,10 +11,19 @@ function secretKey() {
   return key
 }
 
-export async function initializePayment(orderId: string, email: string, amountNaira: number, customerName: string, phone: string) {
+// ── Step 1: initialize ──────────────────────────────────────────────────
+// Called with a checkout session ID — NOT an order ID.
+// No order row is written here; that only happens after payment succeeds.
+export async function initializePayment(
+  sessionId: string,
+  email: string,
+  amountNaira: number,
+  customerName: string,
+  phone: string,
+) {
   try {
     const key = secretKey()
-    const txRef = `EH-${orderId.replace(/-/g, '').slice(0, 10)}-${Date.now()}`
+    const txRef = `EH-${sessionId.replace(/-/g, '').slice(0, 10)}-${Date.now()}`
     const redirectUrl = `${process.env.NEXT_PUBLIC_APP_URL}/payment/verify`
 
     const res = await fetch(`${FLW_BASE}/payments`, {
@@ -28,12 +37,8 @@ export async function initializePayment(orderId: string, email: string, amountNa
         amount: amountNaira,
         currency: 'NGN',
         redirect_url: redirectUrl,
-        customer: {
-          email,
-          name: customerName,
-          phonenumber: phone,
-        },
-        meta: { order_id: orderId },
+        customer: { email, name: customerName, phonenumber: phone },
+        meta: { session_id: sessionId },
         customizations: {
           title: 'Ecclesia Hub',
           description: 'Complete your purchase',
@@ -48,12 +53,12 @@ export async function initializePayment(orderId: string, email: string, amountNa
 
     const { link } = json.data as { link: string }
 
-    // Persist tx_ref on order so webhook/verify can look it up
+    // Store tx_ref back on the session so verify can look it up via tx_ref
     const supabase = createAdminClient()
     await supabase
-      .from('orders')
-      .update({ payment_reference: txRef })
-      .eq('id', orderId)
+      .from('checkout_sessions')
+      .update({ tx_ref: txRef })
+      .eq('id', sessionId)
 
     return { paymentLink: link, txRef }
   } catch {
@@ -61,16 +66,24 @@ export async function initializePayment(orderId: string, email: string, amountNa
   }
 }
 
+// ── Step 2: verify + finalise ───────────────────────────────────────────
+// Called when Flutterwave redirects back with ?transaction_id=xxx.
+// Verifies the payment, reads the checkout session, creates the order
+// as "paid" in one step, decrements stock, sends confirmation email,
+// and deletes the session.
+//
+// Idempotent: if called twice (e.g. user refreshes), returns the already-
+// created order ID without double-charging or double-creating.
 export async function verifyAndFinalizeOrder(transactionId: string) {
   if (!transactionId?.trim()) return { error: 'Missing transaction ID.' }
 
   try {
     const key = secretKey()
 
-    const res = await fetch(`${FLW_BASE}/transactions/${encodeURIComponent(transactionId)}/verify`, {
-      headers: { Authorization: `Bearer ${key}` },
-      cache: 'no-store',
-    })
+    const res = await fetch(
+      `${FLW_BASE}/transactions/${encodeURIComponent(transactionId)}/verify`,
+      { headers: { Authorization: `Bearer ${key}` }, cache: 'no-store' },
+    )
 
     if (!res.ok) return { error: 'Could not verify payment.' }
     const json = await res.json()
@@ -82,6 +95,7 @@ export async function verifyAndFinalizeOrder(transactionId: string) {
       currency: string
       tx_ref: string
       payment_type: string
+      meta?: { session_id?: string }
       card?: { first_6digits?: string; last_4digits?: string; type?: string }
       bank?: string
     }
@@ -91,28 +105,85 @@ export async function verifyAndFinalizeOrder(transactionId: string) {
 
     const supabase = createAdminClient()
 
-    const { data: order } = await supabase
+    // ── Idempotency: if we already created the order, return it ────────
+    const { data: existingOrder } = await supabase
       .from('orders')
-      .select('id, status, total, shipping_address, items')
+      .select('id, status')
       .eq('payment_reference', tx.tx_ref)
-      .single()
+      .maybeSingle()
 
-    if (!order) return { error: 'Order not found for this payment.' }
+    if (existingOrder) return { orderId: existingOrder.id }
+    // ──────────────────────────────────────────────────────────────────
 
-    // Already processed — safe to redirect
-    if (order.status !== 'pending') return { orderId: order.id }
+    // Find the checkout session by tx_ref (stored at init time)
+    const { data: session } = await supabase
+      .from('checkout_sessions')
+      .select('*')
+      .eq('tx_ref', tx.tx_ref)
+      .maybeSingle()
 
-    // Amount verification (Flutterwave amounts are in Naira)
-    const expectedNaira = order.total as number
-    if (Math.abs(tx.amount - expectedNaira) > 1) {
+    if (!session) return { error: 'Checkout session not found. It may have expired.' }
+
+    // Amount check (never trust the client)
+    if (Math.abs(tx.amount - (session.total as number)) > 1) {
       return { error: 'Payment amount does not match order total.' }
     }
 
-    const { error: updateErr } = await supabase
+    type SessionItem = {
+      productId: string
+      slug: string
+      name: string
+      price: number
+      quantity: number
+      thumbnail: string | null
+      selectedVariants: Array<{ groupName: string; value: string }> | null
+    }
+    const cartItems = (session.cart_items ?? []) as SessionItem[]
+    const shipping = session.shipping as Record<string, string>
+
+    // ── Re-validate stock (race condition guard) ──────────────────────
+    const variantItems = cartItems.filter(i => Array.isArray(i.selectedVariants) && i.selectedVariants.length > 0)
+    if (variantItems.length > 0) {
+      const productIds = Array.from(new Set(variantItems.map(i => i.productId)))
+      const { data: products } = await supabase
+        .from('products')
+        .select('id, name, variants')
+        .in('id', productIds)
+
+      for (const item of variantItems) {
+        const product = products?.find(p => p.id === item.productId)
+        if (!product) continue
+        const productVariants = Array.isArray(product.variants) ? product.variants : []
+        for (const sv of item.selectedVariants ?? []) {
+          const group = productVariants.find((v: { name: string }) => v.name === sv.groupName)
+          if (!group) continue
+          const opt = (group.options ?? []).find((o: { value: string; stock?: number | null }) => o.value === sv.value)
+          if (opt?.stock != null && opt.stock < item.quantity) {
+            return {
+              error: opt.stock === 0
+                ? `"${item.name} — ${sv.value}" sold out while you were paying. Please contact us.`
+                : `"${item.name} — ${sv.value}" only has ${opt.stock} left. Please contact us.`,
+            }
+          }
+        }
+      }
+    }
+    // ─────────────────────────────────────────────────────────────────
+
+    // ── Create order directly as paid — no pending state ever ────────
+    const { data: newOrder, error: orderError } = await supabase
       .from('orders')
-      .update({
+      .insert({
+        customer_id: session.customer_id ?? null,
         status: 'paid',
+        total: session.total,
+        shipping_fee: session.shipping_fee,
+        subtotal: session.subtotal,
+        items: cartItems,
+        shipping_address: shipping,
+        payment_reference: tx.tx_ref,
         paid_at: new Date().toISOString(),
+        order_channel: 'store',
         payment_metadata: {
           provider: 'flutterwave',
           transaction_id: transactionId,
@@ -121,29 +192,22 @@ export async function verifyAndFinalizeOrder(transactionId: string) {
           bank: tx.bank ?? null,
         },
       })
-      .eq('id', order.id)
-      .eq('status', 'pending')
+      .select('id')
+      .single()
 
-    if (updateErr) return { error: updateErr.message }
+    if (orderError) return { error: orderError.message }
+    // ─────────────────────────────────────────────────────────────────
 
-    // ── Decrement per-variant stock ───────────────────────
-    const orderItems = (order.items as Array<Record<string, unknown>>) ?? []
-    const variantProductIds = Array.from(new Set(
-      orderItems.filter(i => Array.isArray(i.selectedVariants) && (i.selectedVariants as unknown[]).length > 0)
-        .map(i => i.productId as string)
-    ))
-
-    if (variantProductIds.length > 0) {
-      const { data: variantProducts } = await supabase
+    // ── Decrement variant stock ───────────────────────────────────────
+    if (variantItems.length > 0) {
+      const productIds = Array.from(new Set(variantItems.map(i => i.productId)))
+      const { data: products } = await supabase
         .from('products')
         .select('id, variants')
-        .in('id', variantProductIds)
+        .in('id', productIds)
 
-      for (const item of orderItems) {
-        const svs = item.selectedVariants as Array<{ groupName: string; value: string }> | null
-        if (!svs?.length) continue
-
-        const product = variantProducts?.find(p => p.id === item.productId)
+      for (const item of variantItems) {
+        const product = products?.find(p => p.id === item.productId)
         if (!product) continue
 
         type VOption = { value: string; stock?: number | null }
@@ -153,17 +217,15 @@ export async function verifyAndFinalizeOrder(transactionId: string) {
           : []
         let changed = false
 
-        for (const sv of svs) {
+        for (const sv of item.selectedVariants ?? []) {
           const groupIdx = productVariants.findIndex(v => v.name === sv.groupName)
           if (groupIdx === -1) continue
-
           const group: VGroup = { ...productVariants[groupIdx], options: [...productVariants[groupIdx].options] }
           const optIdx = group.options.findIndex(o => o.value === sv.value)
           if (optIdx === -1) continue
-
           const opt = { ...group.options[optIdx] }
           if (opt.stock != null) {
-            opt.stock = Math.max(0, opt.stock - ((item.quantity as number) ?? 1))
+            opt.stock = Math.max(0, opt.stock - item.quantity)
             group.options[optIdx] = opt
             productVariants[groupIdx] = group
             changed = true
@@ -171,31 +233,32 @@ export async function verifyAndFinalizeOrder(transactionId: string) {
         }
 
         if (changed) {
-          await supabase.from('products').update({ variants: productVariants }).eq('id', item.productId as string)
+          await supabase.from('products').update({ variants: productVariants }).eq('id', item.productId)
         }
       }
     }
-    // ─────────────────────────────────────────────────────
+    // ─────────────────────────────────────────────────────────────────
 
-    const shipping = order.shipping_address as Record<string, string>
-    const items = (order.items as Array<Record<string, unknown>>) ?? []
+    // ── Delete the session (cleanup) ─────────────────────────────────
+    await supabase.from('checkout_sessions').delete().eq('id', session.id)
+    // ─────────────────────────────────────────────────────────────────
+
+    // ── Confirmation email (non-blocking) ────────────────────────────
     sendOrderConfirmation(shipping.email, {
-      orderNumber: order.id.slice(0, 8).toUpperCase(),
+      orderNumber: newOrder.id.slice(0, 8).toUpperCase(),
       customerName: `${shipping.firstName} ${shipping.lastName}`,
-      items: items.map(i => ({
-        name: i.name as string,
-        quantity: i.quantity as number,
-        price: i.price as number,
-        thumbnail: (i.thumbnail as string) ?? undefined,
-        variant: Array.isArray(i.selectedVariants) && (i.selectedVariants as Array<{ value: string }>).length
-          ? (i.selectedVariants as Array<{ value: string }>).map(sv => sv.value).join(', ')
-          : i.selectedVariant
-          ? Object.values(i.selectedVariant as Record<string, string>).join(' / ')
+      items: cartItems.map(i => ({
+        name: i.name,
+        quantity: i.quantity,
+        price: i.price,
+        thumbnail: i.thumbnail ?? undefined,
+        variant: Array.isArray(i.selectedVariants) && i.selectedVariants.length
+          ? i.selectedVariants.map(sv => sv.value).join(', ')
           : undefined,
       })),
-      subtotal: order.total as number,
-      shipping: 0,
-      total: order.total as number,
+      subtotal: session.subtotal as number,
+      shipping: session.shipping_fee as number,
+      total: session.total as number,
       shippingAddress: {
         firstName: shipping.firstName,
         lastName: shipping.lastName,
@@ -205,8 +268,9 @@ export async function verifyAndFinalizeOrder(transactionId: string) {
         state: shipping.state,
       },
     }).catch(() => {})
+    // ─────────────────────────────────────────────────────────────────
 
-    return { orderId: order.id }
+    return { orderId: newOrder.id }
   } catch {
     return { error: 'An unexpected error occurred during verification.' }
   }
