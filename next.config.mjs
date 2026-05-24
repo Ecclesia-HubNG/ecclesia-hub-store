@@ -7,6 +7,11 @@ const nextConfig = {
         hostname: 'pub-10bc4fec8b2b43a0992e28a4cf1acf41.r2.dev',
         pathname: '/**',
       },
+      {
+        protocol: 'https',
+        hostname: 'paiongqpgggxgfiacspt.supabase.co',
+        pathname: '/**',
+      },
     ],
   },
 };

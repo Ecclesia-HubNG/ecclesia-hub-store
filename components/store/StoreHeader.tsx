@@ -2,7 +2,6 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react'
 import Link from 'next/link'
-import Image from 'next/image'
 import { usePathname, useRouter } from 'next/navigation'
 import { useCart } from '@/lib/cart-context'
 import { useWishlist } from '@/lib/wishlist-context'
@@ -103,7 +102,7 @@ function SearchOverlay({ onClose }: { onClose: () => void }) {
               >
                 <div className="w-11 h-11 rounded-xl overflow-hidden bg-[#F8EEF0] dark:bg-[#2a1a1d] shrink-0">
                   {p.thumbnail
-                    ? <Image src={p.thumbnail} alt={p.name} width={44} height={44} className="w-full h-full object-cover" />
+                    ? <img src={p.thumbnail} alt={p.name} className="w-full h-full object-cover" />
                     : <div className="w-full h-full" />}
                 </div>
                 <div className="flex-1 min-w-0">

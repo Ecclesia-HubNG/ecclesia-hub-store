@@ -1,7 +1,6 @@
 'use client'
 
 import { useState, useTransition } from 'react'
-import Image from 'next/image'
 import { setProductOfMonth, clearProductOfMonth } from '@/lib/actions/products'
 
 type Product = {
@@ -60,11 +59,9 @@ export default function ProductOfMonthManager({
           <div className="flex items-center gap-4 px-4 py-4">
             <div className="w-14 h-14 rounded-lg overflow-hidden bg-gray-100 dark:bg-gray-800 shrink-0">
               {currentProduct.thumbnail ? (
-                <Image
+                <img
                   src={currentProduct.thumbnail}
                   alt={currentProduct.name}
-                  width={56}
-                  height={56}
                   className="w-full h-full object-cover"
                 />
               ) : (
@@ -139,11 +136,9 @@ export default function ProductOfMonthManager({
                 >
                   <div className="w-10 h-10 rounded-lg overflow-hidden bg-gray-100 dark:bg-gray-800 shrink-0">
                     {product.thumbnail ? (
-                      <Image
+                      <img
                         src={product.thumbnail}
                         alt={product.name}
-                        width={40}
-                        height={40}
                         className="w-full h-full object-cover"
                       />
                     ) : (
