@@ -14,8 +14,6 @@ export default async function BrandTicker() {
     .select('id, name, slug, logo')
     .order('name')
 
-  const hasLogos = dbBrands?.some(b => b.logo)
-
   // Use DB brands if any exist, otherwise fall back to static names
   const items: { id: string; name: string; slug?: string; logo?: string | null }[] =
     dbBrands?.length
@@ -35,15 +33,7 @@ export default async function BrandTicker() {
         <div className="flex items-center gap-10 ticker-track" style={{ animationDuration: `${duration}s` }}>
           {doubled.map((brand, i) => (
             <span key={`${brand.id}-${i}`} className="flex items-center gap-10 shrink-0">
-              {hasLogos && brand.logo ? (
-                <Link href={brand.slug ? `/brands/${brand.slug}` : '/shop'}>
-                  <img
-                    src={brand.logo}
-                    alt={brand.name}
-                    className="h-6 w-auto object-contain opacity-50 hover:opacity-100 transition-opacity grayscale hover:grayscale-0"
-                  />
-                </Link>
-              ) : brand.slug ? (
+              {brand.slug ? (
                 <Link
                   href={`/brands/${brand.slug}`}
                   className="text-sm font-semibold tracking-[0.1em] uppercase text-white/70 dark:text-[#4A0F1C]/60 hover:text-white dark:hover:text-[#4A0F1C] underline-offset-4 hover:underline whitespace-nowrap transition-colors"
