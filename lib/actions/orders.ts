@@ -80,3 +80,59 @@ export async function bulkUpdateOrderStatus(ids: string[], status: string) {
   revalidatePath('/admin/orders')
   revalidatePath('/admin')
 }
+
+type ManualOrderItem = {
+  product_id?: string
+  name: string
+  price: number
+  quantity: number
+  thumbnail?: string | null
+}
+
+export async function createManualOrder(payload: {
+  customer_name: string
+  customer_email: string
+  customer_phone: string
+  address: string
+  city: string
+  state: string
+  items: ManualOrderItem[]
+  total: number
+  status: string
+  order_channel: string
+  payment_reference: string
+  admin_notes: string
+}): Promise<{ error?: string; id?: string }> {
+  const supabase = createClient()
+
+  const shipping_address = {
+    name: payload.customer_name,
+    email: payload.customer_email,
+    phone: payload.customer_phone,
+    address: payload.address,
+    city: payload.city,
+    state: payload.state,
+    country: 'Nigeria',
+  }
+
+  const { data, error } = await supabase
+    .from('orders')
+    .insert({
+      status: payload.status,
+      total: payload.total,
+      items: payload.items,
+      shipping_address,
+      payment_reference: payload.payment_reference || null,
+      order_channel: payload.order_channel,
+      is_manual: true,
+      admin_notes: payload.admin_notes || null,
+    })
+    .select('id')
+    .single()
+
+  if (error) return { error: error.message }
+
+  revalidatePath('/admin/orders')
+  revalidatePath('/admin')
+  return { id: data.id }
+}

@@ -4,6 +4,7 @@ import { useState, useMemo, useTransition } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { updateOrderStatus, bulkUpdateOrderStatus } from '@/lib/actions/orders'
+import CreateOrderModal from './CreateOrderModal'
 
 type OrderItem = {
   product_id?: string
@@ -22,7 +23,41 @@ type Order = {
   shipping_address: Record<string, string> | null
   payment_reference: string | null
   created_at: string
+  order_channel?: string | null
+  is_manual?: boolean
   customers: { full_name: string | null; email: string | null } | null
+}
+
+type Product = {
+  id: string
+  name: string
+  price: number
+  thumbnail: string | null
+  stock: number
+}
+
+const CHANNEL_META: Record<string, { label: string; icon: string; color: string }> = {
+  store:     { label: 'Store',     icon: '🛍️', color: 'bg-blue-50 dark:bg-blue-950/30 text-blue-600 dark:text-blue-400' },
+  instagram: { label: 'Instagram', icon: '📸', color: 'bg-pink-50 dark:bg-pink-950/30 text-pink-600 dark:text-pink-400' },
+  tiktok:    { label: 'TikTok',    icon: '🎵', color: 'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300' },
+  facebook:  { label: 'Facebook',  icon: '📘', color: 'bg-blue-50 dark:bg-blue-950/30 text-blue-700 dark:text-blue-300' },
+  whatsapp:  { label: 'WhatsApp',  icon: '💬', color: 'bg-green-50 dark:bg-green-950/30 text-green-600 dark:text-green-400' },
+  referral:  { label: 'Referral',  icon: '🔗', color: 'bg-purple-50 dark:bg-purple-950/30 text-purple-600 dark:text-purple-400' },
+  manual:    { label: 'Manual',    icon: '✍️', color: 'bg-amber-50 dark:bg-amber-950/30 text-amber-600 dark:text-amber-400' },
+}
+
+const ALL_CHANNELS = Object.keys(CHANNEL_META)
+
+function ChannelBadge({ channel }: { channel?: string | null }) {
+  if (!channel) return null
+  const m = CHANNEL_META[channel]
+  if (!m) return null
+  return (
+    <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${m.color}`}>
+      <span className="text-[10px] leading-none">{m.icon}</span>
+      {m.label}
+    </span>
+  )
 }
 
 const STATUS_COLORS: Record<string, { bg: string; text: string; dot: string }> = {
@@ -52,12 +87,13 @@ function fmt(n: number) {
 }
 
 function exportOrdersCSV(orders: Order[]) {
-  const headers = ['Order ID', 'Customer', 'Email', 'Status', 'Total', 'Items', 'Date']
+  const headers = ['Order ID', 'Customer', 'Email', 'Status', 'Channel', 'Total', 'Items', 'Date']
   const rows = orders.map(o => [
     o.id.slice(0, 8).toUpperCase(),
-    `"${(o.customers?.full_name ?? 'Guest').replace(/"/g, '""')}"`,
-    `"${(o.customers?.email ?? '').replace(/"/g, '""')}"`,
+    `"${(o.customers?.full_name ?? (o.shipping_address as any)?.name ?? 'Guest').replace(/"/g, '""')}"`,
+    `"${(o.customers?.email ?? (o.shipping_address as any)?.email ?? '').replace(/"/g, '""')}"`,
     o.status,
+    o.order_channel ?? 'store',
     Number(o.total).toFixed(2),
     Array.isArray(o.items) ? o.items.length : 0,
     new Date(o.created_at).toLocaleDateString('en'),
@@ -120,34 +156,40 @@ function InlineStatusSelect({ id, status }: { id: string; status: string }) {
 
 type StatusFilter = 'all' | typeof ALL_STATUSES[number]
 
-export default function OrdersManager({ orders: initial }: { orders: Order[] }) {
+export default function OrdersManager({ orders: initial, products = [] }: { orders: Order[]; products?: Product[] }) {
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState<string>('all')
+  const [channelFilter, setChannelFilter] = useState<string>('all')
   const [dateFrom, setDateFrom] = useState('')
   const [dateTo, setDateTo] = useState('')
   const [showDatePicker, setShowDatePicker] = useState(false)
   const [showStatusDropdown, setShowStatusDropdown] = useState(false)
+  const [showChannelDropdown, setShowChannelDropdown] = useState(false)
   const [sortBy, setSortBy] = useState<'newest' | 'oldest' | 'total_high' | 'total_low'>('newest')
   const [showSortDropdown, setShowSortDropdown] = useState(false)
   const [selected, setSelected] = useState<Set<string>>(new Set())
+  const [showCreateModal, setShowCreateModal] = useState(false)
   const [, startBulkUpdate] = useTransition()
 
   const filtered = useMemo(() => {
     return initial.filter(o => {
       if (statusFilter !== 'all' && o.status !== statusFilter) return false
+      if (channelFilter !== 'all' && (o.order_channel ?? 'store') !== channelFilter) return false
       if (search) {
         const q = search.toLowerCase()
         const id = o.id.toLowerCase()
         const name = o.customers?.full_name?.toLowerCase() ?? ''
         const email = o.customers?.email?.toLowerCase() ?? ''
         const ref = o.payment_reference?.toLowerCase() ?? ''
-        if (!id.includes(q) && !name.includes(q) && !email.includes(q) && !ref.includes(q)) return false
+        const addr = o.shipping_address
+        const addrName = typeof addr?.name === 'string' ? addr.name.toLowerCase() : ''
+        if (!id.includes(q) && !name.includes(q) && !email.includes(q) && !ref.includes(q) && !addrName.includes(q)) return false
       }
       if (dateFrom && new Date(o.created_at) < new Date(dateFrom)) return false
       if (dateTo && new Date(o.created_at) > new Date(dateTo + 'T23:59:59')) return false
       return true
     })
-  }, [initial, search, statusFilter, dateFrom, dateTo])
+  }, [initial, search, statusFilter, channelFilter, dateFrom, dateTo])
 
   const sorted = useMemo(() => {
     return [...filtered].sort((a, b) => {
@@ -207,24 +249,44 @@ export default function OrdersManager({ orders: initial }: { orders: Order[] }) 
   const tabCounts: Record<string, number> = { all: initial.length }
   ALL_STATUSES.forEach(s => { tabCounts[s] = initial.filter(o => o.status === s).length })
 
+  const channelCounts: Record<string, number> = { all: initial.length }
+  ALL_CHANNELS.forEach(c => { channelCounts[c] = initial.filter(o => (o.order_channel ?? 'store') === c).length })
+
   return (
     <div>
+      {/* Create order modal */}
+      {showCreateModal && (
+        <CreateOrderModal products={products} onClose={() => setShowCreateModal(false)} />
+      )}
+
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className="text-xl font-semibold text-gray-900 dark:text-white">Orders</h1>
           <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">{initial.length} total orders</p>
         </div>
-        <button
-          type="button"
-          onClick={() => exportOrdersCSV(filtered)}
-          className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
-        >
-          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5M16.5 12 12 16.5m0 0L7.5 12m4.5 4.5V3" />
-          </svg>
-          Export CSV
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => exportOrdersCSV(filtered)}
+            className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+          >
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5M16.5 12 12 16.5m0 0L7.5 12m4.5 4.5V3" />
+            </svg>
+            Export CSV
+          </button>
+          <button
+            type="button"
+            onClick={() => setShowCreateModal(true)}
+            className="flex items-center gap-2 px-4 py-2 text-sm font-semibold bg-gray-900 dark:bg-white text-white dark:text-gray-900 rounded-lg hover:bg-gray-800 dark:hover:bg-gray-100 transition-colors"
+          >
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+            </svg>
+            New Order
+          </button>
+        </div>
       </div>
 
       {/* Stats */}
@@ -261,7 +323,7 @@ export default function OrdersManager({ orders: initial }: { orders: Order[] }) 
           {showStatusDropdown && <div className="fixed inset-0 z-10" onClick={() => setShowStatusDropdown(false)} />}
           <button
             type="button"
-            onClick={() => { setShowStatusDropdown(p => !p); setShowSortDropdown(false); setShowDatePicker(false) }}
+            onClick={() => { setShowStatusDropdown(p => !p); setShowSortDropdown(false); setShowDatePicker(false); setShowChannelDropdown(false) }}
             className={`flex items-center gap-2 px-3 py-2 text-sm rounded-lg border transition-colors ${statusFilter !== 'all' ? 'border-gray-900 dark:border-white text-gray-900 dark:text-white' : 'border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800'}`}
           >
             <span className="capitalize">{statusFilter === 'all' ? 'All statuses' : statusFilter}</span>
@@ -284,6 +346,49 @@ export default function OrdersManager({ orders: initial }: { orders: Order[] }) 
                     {s === 'all' ? 'All statuses' : s}
                   </span>
                   <span className={`text-xs ${statusFilter === s ? 'text-gray-500 dark:text-gray-400' : 'text-gray-400 dark:text-gray-600'}`}>{tabCounts[s] ?? 0}</span>
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Channel filter dropdown */}
+        <div className="relative">
+          {showChannelDropdown && <div className="fixed inset-0 z-10" onClick={() => setShowChannelDropdown(false)} />}
+          <button
+            type="button"
+            onClick={() => { setShowChannelDropdown(p => !p); setShowStatusDropdown(false); setShowSortDropdown(false); setShowDatePicker(false) }}
+            className={`flex items-center gap-2 px-3 py-2 text-sm rounded-lg border transition-colors ${channelFilter !== 'all' ? 'border-gray-900 dark:border-white text-gray-900 dark:text-white' : 'border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800'}`}
+          >
+            {channelFilter !== 'all' && <span className="text-sm leading-none">{CHANNEL_META[channelFilter]?.icon}</span>}
+            <span className="capitalize">{channelFilter === 'all' ? 'All channels' : CHANNEL_META[channelFilter]?.label ?? channelFilter}</span>
+            <span className={`text-xs ${channelFilter !== 'all' ? 'text-gray-900/50 dark:text-white/50' : 'text-gray-400 dark:text-gray-600'}`}>{channelCounts[channelFilter] ?? 0}</span>
+            <svg className="w-3.5 h-3.5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
+            </svg>
+          </button>
+          {showChannelDropdown && (
+            <div className="absolute left-0 top-full mt-1 z-20 w-48 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl shadow-lg py-1 overflow-hidden">
+              <button
+                type="button"
+                onClick={() => { setChannelFilter('all'); setShowChannelDropdown(false) }}
+                className={`flex items-center justify-between w-full px-3 py-2.5 text-sm transition-colors ${channelFilter === 'all' ? 'text-gray-900 dark:text-white font-medium bg-gray-50 dark:bg-gray-800' : 'text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800'}`}
+              >
+                All channels
+                <span className="text-xs text-gray-400 dark:text-gray-600">{channelCounts.all}</span>
+              </button>
+              {ALL_CHANNELS.filter(c => channelCounts[c] > 0).map(c => (
+                <button
+                  key={c}
+                  type="button"
+                  onClick={() => { setChannelFilter(c); setShowChannelDropdown(false) }}
+                  className={`flex items-center justify-between w-full px-3 py-2.5 text-sm transition-colors ${channelFilter === c ? 'text-gray-900 dark:text-white font-medium bg-gray-50 dark:bg-gray-800' : 'text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800'}`}
+                >
+                  <span className="flex items-center gap-2">
+                    <span className="text-sm leading-none">{CHANNEL_META[c].icon}</span>
+                    {CHANNEL_META[c].label}
+                  </span>
+                  <span className={`text-xs ${channelFilter === c ? 'text-gray-500 dark:text-gray-400' : 'text-gray-400 dark:text-gray-600'}`}>{channelCounts[c]}</span>
                 </button>
               ))}
             </div>
@@ -367,10 +472,10 @@ export default function OrdersManager({ orders: initial }: { orders: Order[] }) 
       </div>
 
       {/* Result count */}
-      {(search || statusFilter !== 'all' || dateFrom || dateTo) && (
+      {(search || statusFilter !== 'all' || channelFilter !== 'all' || dateFrom || dateTo) && (
         <div className="flex items-center gap-3 mb-3">
           <span className="text-xs text-gray-500 dark:text-gray-400">{filtered.length} result{filtered.length !== 1 ? 's' : ''}</span>
-          <button type="button" onClick={() => { setSearch(''); setStatusFilter('all'); setDateFrom(''); setDateTo('') }}
+          <button type="button" onClick={() => { setSearch(''); setStatusFilter('all'); setChannelFilter('all'); setDateFrom(''); setDateTo('') }}
             className="text-xs text-gray-400 underline underline-offset-2 hover:text-gray-600 transition-colors">Clear filters</button>
         </div>
       )}
@@ -425,6 +530,7 @@ export default function OrdersManager({ orders: initial }: { orders: Order[] }) 
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">Customer</th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">Items</th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">Total</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">Channel</th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">Status</th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">Date</th>
                 <th className="px-4 py-3" />
@@ -449,9 +555,14 @@ export default function OrdersManager({ orders: initial }: { orders: Order[] }) 
 
                     {/* Order */}
                     <td className="px-4 py-3">
-                      <p className="font-mono text-xs font-semibold text-gray-900 dark:text-white tracking-wide">
-                        #{order.id.slice(0, 8).toUpperCase()}
-                      </p>
+                      <div className="flex items-center gap-1.5">
+                        <p className="font-mono text-xs font-semibold text-gray-900 dark:text-white tracking-wide">
+                          #{order.id.slice(0, 8).toUpperCase()}
+                        </p>
+                        {order.is_manual && (
+                          <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-50 dark:bg-amber-950/30 text-amber-600 dark:text-amber-400 font-medium">manual</span>
+                        )}
+                      </div>
                       {order.payment_reference && (
                         <p className="text-xs text-gray-400 font-mono mt-0.5 truncate max-w-[130px]">{order.payment_reference}</p>
                       )}
@@ -484,6 +595,11 @@ export default function OrdersManager({ orders: initial }: { orders: Order[] }) 
                     {/* Total */}
                     <td className="px-4 py-3">
                       <span className="font-semibold text-gray-900 dark:text-white">{fmt(Number(order.total))}</span>
+                    </td>
+
+                    {/* Channel */}
+                    <td className="px-4 py-3">
+                      <ChannelBadge channel={order.order_channel ?? 'store'} />
                     </td>
 
                     {/* Status */}

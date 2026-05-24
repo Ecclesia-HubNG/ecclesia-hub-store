@@ -4,10 +4,10 @@ import OrdersManager from '@/components/admin/OrdersManager'
 export default async function AdminOrdersPage() {
   const supabase = createAdminClient()
 
-  const { data: orders } = await supabase
-    .from('orders')
-    .select('*')
-    .order('created_at', { ascending: false })
+  const [{ data: orders }, { data: products }] = await Promise.all([
+    supabase.from('orders').select('*').order('created_at', { ascending: false }),
+    supabase.from('products').select('id, name, price, thumbnail, stock').eq('is_active', true).order('name'),
+  ])
 
   // Fetch customer names/emails separately — orders.customer_id → auth.users,
   // but PostgREST can only auto-join public tables, so we do it manually.
@@ -25,7 +25,7 @@ export default async function AdminOrdersPage() {
 
   return (
     <div className="p-8">
-      <OrdersManager orders={enriched as any} />
+      <OrdersManager orders={enriched as any} products={products ?? []} />
     </div>
   )
 }

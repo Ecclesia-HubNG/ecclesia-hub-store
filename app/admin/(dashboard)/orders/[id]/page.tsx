@@ -5,6 +5,16 @@ import { OrderStatusSelect } from '@/components/admin/OrderStatusSelect'
 import { OrderQuickActions } from '@/components/admin/OrderQuickActions'
 import { OrderTracking } from '@/components/admin/OrderTracking'
 
+const CHANNEL_META: Record<string, { label: string; icon: string; color: string }> = {
+  store:     { label: 'Store',     icon: '🛍️', color: 'bg-blue-50 dark:bg-blue-950/30 text-blue-600 dark:text-blue-400' },
+  instagram: { label: 'Instagram', icon: '📸', color: 'bg-pink-50 dark:bg-pink-950/30 text-pink-600 dark:text-pink-400' },
+  tiktok:    { label: 'TikTok',    icon: '🎵', color: 'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300' },
+  facebook:  { label: 'Facebook',  icon: '📘', color: 'bg-blue-50 dark:bg-blue-950/30 text-blue-700 dark:text-blue-300' },
+  whatsapp:  { label: 'WhatsApp',  icon: '💬', color: 'bg-green-50 dark:bg-green-950/30 text-green-600 dark:text-green-400' },
+  referral:  { label: 'Referral',  icon: '🔗', color: 'bg-purple-50 dark:bg-purple-950/30 text-purple-600 dark:text-purple-400' },
+  manual:    { label: 'Manual',    icon: '✍️', color: 'bg-amber-50 dark:bg-amber-950/30 text-amber-600 dark:text-amber-400' },
+}
+
 const STATUS_COLORS: Record<string, string> = {
   pending:    'bg-amber-50 dark:bg-amber-950/30 text-amber-700 dark:text-amber-400',
   paid:       'bg-blue-50 dark:bg-blue-950/30 text-blue-700 dark:text-blue-400',
@@ -43,6 +53,9 @@ export default async function OrderDetailPage({ params }: { params: { id: string
   const trackingNumber: string | null = (order as Record<string, unknown>).tracking_number as string | null ?? null
   const carrier: string | null = (order as Record<string, unknown>).carrier as string | null ?? null
   const adminNotes: string | null = (order as Record<string, unknown>).admin_notes as string | null ?? null
+  const orderChannel: string = ((order as Record<string, unknown>).order_channel as string) ?? 'store'
+  const isManual: boolean = ((order as Record<string, unknown>).is_manual as boolean) ?? false
+  const channelMeta = CHANNEL_META[orderChannel]
 
   const subtotal = items.reduce((s, i) => s + i.price * i.quantity, 0)
   const isTerminal = ['cancelled', 'refunded'].includes(order.status)
@@ -61,14 +74,27 @@ export default async function OrderDetailPage({ params }: { params: { id: string
       {/* Header */}
       <div className="flex items-start justify-between mb-6">
         <div>
-          <h1 className="text-xl font-semibold text-gray-900 dark:text-white font-mono">
-            Order #{order.id.slice(0, 8).toUpperCase()}
-          </h1>
-          <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">
-            Placed on {new Date(order.created_at).toLocaleDateString('en', { day: 'numeric', month: 'long', year: 'numeric' })}
-            {' · '}
-            {new Date(order.created_at).toLocaleTimeString('en', { hour: '2-digit', minute: '2-digit' })}
-          </p>
+          <div className="flex items-center gap-2">
+            <h1 className="text-xl font-semibold text-gray-900 dark:text-white font-mono">
+              Order #{order.id.slice(0, 8).toUpperCase()}
+            </h1>
+            {isManual && (
+              <span className="text-xs px-2 py-0.5 rounded bg-amber-50 dark:bg-amber-950/30 text-amber-600 dark:text-amber-400 font-medium">manual</span>
+            )}
+          </div>
+          <div className="flex items-center gap-2 mt-0.5">
+            <p className="text-sm text-gray-500 dark:text-gray-400">
+              Placed on {new Date(order.created_at).toLocaleDateString('en', { day: 'numeric', month: 'long', year: 'numeric' })}
+              {' · '}
+              {new Date(order.created_at).toLocaleTimeString('en', { hour: '2-digit', minute: '2-digit' })}
+            </p>
+            {channelMeta && (
+              <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${channelMeta.color}`}>
+                <span className="text-[10px] leading-none">{channelMeta.icon}</span>
+                {channelMeta.label}
+              </span>
+            )}
+          </div>
         </div>
         <div className="flex items-center gap-3">
           <Link
