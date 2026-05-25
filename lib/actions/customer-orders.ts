@@ -199,9 +199,9 @@ export async function createBankTransferOrder(sessionId: string): Promise<
   await admin.from('checkout_sessions').delete().eq('id', sessionId)
 
   const bankDetails = {
-    bankName: process.env.BANK_NAME ?? 'Access Bank',
-    accountNumber: process.env.BANK_ACCOUNT_NUMBER ?? '0123456789',
-    accountName: process.env.BANK_ACCOUNT_NAME ?? 'Ecclesia Hub Ltd',
+    bankName: 'UBA',
+    accountNumber: '1028049723',
+    accountName: 'Ecclesia Hub',
   }
 
   const orderNumber = order.id.slice(0, 8).toUpperCase()

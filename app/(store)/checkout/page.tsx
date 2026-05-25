@@ -7,14 +7,13 @@ import { useRouter } from 'next/navigation'
 import { useCart } from '@/lib/cart-context'
 import { createCheckoutSession, createBankTransferOrder } from '@/lib/actions/customer-orders'
 import { initializePayment as initFlutterwave } from '@/lib/actions/flutterwave'
-import { initializePayment as initPaystack } from '@/lib/actions/paystack'
 import { getActiveDeliveryOptions } from '@/lib/actions/delivery'
 
 type DeliveryRate = { id: string; zone_id: string; name: string; areas: string[]; price: number; estimated_days: string | null }
 type DeliveryZone = { id: string; type_id: string; name: string; description: string | null; rates: DeliveryRate[] }
 type DeliveryType = { id: string; name: string; description: string | null; zones: DeliveryZone[] }
 
-type PaymentMethod = 'paystack' | 'flutterwave' | 'bank_transfer'
+type PaymentMethod = 'flutterwave' | 'bank_transfer'
 
 type BankConfirm = {
   orderId: string
@@ -30,7 +29,7 @@ export default function CheckoutPage() {
   const router = useRouter()
   const [pending, startTransition] = useTransition()
   const [error, setError] = useState<string | null>(null)
-  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('paystack')
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('bank_transfer')
   const [bankConfirm, setBankConfirm] = useState<BankConfirm | null>(null)
 
   // Delivery options
@@ -122,11 +121,6 @@ export default function CheckoutPage() {
         const payResult = await initFlutterwave(sid, form.email, orderTotal, customerName, form.phone)
         if ('error' in payResult) { setError(payResult.error ?? 'Could not initialize payment.'); return }
         window.location.href = payResult.paymentLink
-
-      } else if (paymentMethod === 'paystack') {
-        const payResult = await initPaystack(sid, form.email, orderTotal, customerName, form.phone)
-        if ('error' in payResult) { setError(payResult.error ?? 'Could not initialize payment.'); return }
-        window.location.href = payResult.authorizationUrl
 
       } else {
         const bankResult = await createBankTransferOrder(sid)
@@ -422,9 +416,8 @@ export default function CheckoutPage() {
                 <p className="text-xs font-semibold text-gray-700 dark:text-gray-300 mb-3">Payment method</p>
                 <div className="space-y-2">
                   {([
-                    { id: 'paystack' as PaymentMethod, label: 'Paystack', desc: 'Card, bank transfer, USSD' },
+                    { id: 'bank_transfer' as PaymentMethod, label: 'Bank Transfer', desc: 'Transfer directly to our UBA account' },
                     { id: 'flutterwave' as PaymentMethod, label: 'Flutterwave', desc: 'Card, bank, mobile money' },
-                    { id: 'bank_transfer' as PaymentMethod, label: 'Direct Bank Transfer', desc: 'Manually transfer to our account' },
                   ] as const).map(m => (
                     <button
                       key={m.id}
@@ -464,8 +457,8 @@ export default function CheckoutPage() {
                   : !selectedRate
                   ? 'Select delivery option'
                   : paymentMethod === 'bank_transfer'
-                  ? 'Place Order (Bank Transfer)'
-                  : `Pay with ${paymentMethod === 'paystack' ? 'Paystack' : 'Flutterwave'}`}
+                  ? 'Place Order — Bank Transfer'
+                  : 'Pay with Flutterwave'}
               </button>
               <p className="text-[10px] text-gray-400 text-center mt-3">
                 By placing your order you agree to our terms of service.

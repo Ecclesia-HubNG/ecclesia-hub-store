@@ -10,12 +10,14 @@ function slugify(s: string) {
 function parseForm(formData: FormData) {
   const name = formData.get('name') as string
   const slug = ((formData.get('slug') as string) || '').trim()
+  const parentId = (formData.get('parent_id') as string) || null
   return {
     name,
     slug: slug || slugify(name),
     description: (formData.get('description') as string) || null,
     image: (formData.get('image') as string) || null,
     is_featured: formData.get('is_featured') === 'on',
+    parent_id: parentId || null,
   }
 }
 

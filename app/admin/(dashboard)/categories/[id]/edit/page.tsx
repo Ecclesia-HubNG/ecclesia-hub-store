@@ -7,11 +7,10 @@ import SuccessToast from '@/components/admin/SuccessToast'
 
 export default async function EditCategoryPage({ params }: { params: { id: string } }) {
   const supabase = createAdminClient()
-  const { data: category } = await supabase
-    .from('categories')
-    .select('*')
-    .eq('id', params.id)
-    .single()
+  const [{ data: category }, { data: allCategories }] = await Promise.all([
+    supabase.from('categories').select('*').eq('id', params.id).single(),
+    supabase.from('categories').select('id, name, slug, description, image, is_featured, parent_id').order('name'),
+  ])
 
   if (!category) notFound()
 
@@ -25,7 +24,7 @@ export default async function EditCategoryPage({ params }: { params: { id: strin
         </Link>
         <h1 className="text-xl font-semibold text-gray-900 dark:text-white mt-2">{category.name}</h1>
       </div>
-      <CategoryForm action={boundAction} category={category} submitLabel="Save changes" />
+      <CategoryForm action={boundAction} category={category} categories={allCategories ?? []} submitLabel="Save changes" />
       <SuccessToast message="Category created" />
     </div>
   )

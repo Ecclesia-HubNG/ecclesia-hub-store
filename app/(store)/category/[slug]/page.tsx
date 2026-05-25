@@ -8,7 +8,7 @@ export default async function CategoryPage({ params }: { params: { slug: string 
 
   const [{ data: category }, { data: allCategories }] = await Promise.all([
     supabase.from('categories').select('*').eq('slug', params.slug).single(),
-    supabase.from('categories').select('id, name, slug').order('name'),
+    supabase.from('categories').select('id, name, slug, parent_id').order('name'),
   ])
 
   if (!category) notFound()
@@ -55,30 +55,69 @@ export default async function CategoryPage({ params }: { params: { slug: string 
       </div>
 
       <div className="max-w-6xl mx-auto px-6 py-12">
-        {/* Other categories */}
-        {allCategories && allCategories.length > 1 && (
-          <div className="flex items-center gap-2 mb-10 flex-wrap">
-            <Link
-              href="/shop"
-              className="px-4 py-1.5 rounded-full text-sm font-medium bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
-            >
-              All
-            </Link>
-            {allCategories.map(cat => (
-              <Link
-                key={cat.id}
-                href={`/category/${cat.slug}`}
-                className={`px-4 py-1.5 rounded-full text-sm font-medium transition-colors ${
-                  cat.slug === params.slug
-                    ? 'bg-gray-900 dark:bg-white text-white dark:text-gray-900'
-                    : 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700'
-                }`}
-              >
-                {cat.name}
-              </Link>
-            ))}
-          </div>
-        )}
+        {(() => {
+          const parentCat = category.parent_id ? allCategories?.find(c => c.id === category.parent_id) : null
+          const siblings = parentCat
+            ? allCategories?.filter(c => c.parent_id === parentCat.id) ?? []
+            : allCategories?.filter(c => !c.parent_id) ?? []
+          const subcategories = allCategories?.filter(c => c.parent_id === category.id) ?? []
+
+          return (
+            <>
+              {/* Breadcrumb nav: siblings of current category (or top-level if no parent) */}
+              {siblings.length > 1 && (
+                <div className="flex items-center gap-2 mb-6 flex-wrap">
+                  {parentCat ? (
+                    <Link
+                      href={`/category/${parentCat.slug}`}
+                      className="px-4 py-1.5 rounded-full text-sm font-medium bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
+                    >
+                      ← {parentCat.name}
+                    </Link>
+                  ) : (
+                    <Link
+                      href="/shop"
+                      className="px-4 py-1.5 rounded-full text-sm font-medium bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
+                    >
+                      All
+                    </Link>
+                  )}
+                  {siblings.map(cat => (
+                    <Link
+                      key={cat.id}
+                      href={`/category/${cat.slug}`}
+                      className={`px-4 py-1.5 rounded-full text-sm font-medium transition-colors ${
+                        cat.slug === params.slug
+                          ? 'bg-gray-900 dark:bg-white text-white dark:text-gray-900'
+                          : 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700'
+                      }`}
+                    >
+                      {cat.name}
+                    </Link>
+                  ))}
+                </div>
+              )}
+
+              {/* Subcategories of current category */}
+              {subcategories.length > 0 && (
+                <div className="mb-10">
+                  <p className="text-xs font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-widest mb-3">Browse subcategories</p>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    {subcategories.map(sub => (
+                      <Link
+                        key={sub.id}
+                        href={`/category/${sub.slug}`}
+                        className="px-4 py-1.5 rounded-full text-sm font-medium bg-[#4A0F1C]/8 dark:bg-[#4A0F1C]/20 text-[#4A0F1C] dark:text-[#E8C4CB] hover:bg-[#4A0F1C]/15 dark:hover:bg-[#4A0F1C]/30 transition-colors"
+                      >
+                        {sub.name}
+                      </Link>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </>
+          )
+        })()}
 
         {/* Product grid */}
         {!products?.length ? (

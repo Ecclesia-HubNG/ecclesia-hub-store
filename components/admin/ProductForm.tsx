@@ -11,7 +11,7 @@ import { resizeImage } from '@/lib/resize-image'
 
 // ─── Types ────────────────────────────────────────────────
 
-type Category = { id: string; name: string }
+type Category = { id: string; name: string; parent_id?: string | null }
 type Brand = { id: string; name: string }
 type RelatedProduct = { id: string; name: string; thumbnail: string | null }
 
@@ -206,9 +206,16 @@ export default function ProductForm({
   const [tags, setTags] = useState<string[]>(Array.isArray(product?.tags) ? product.tags : [])
   const [tagInput, setTagInput] = useState('')
 
-  // Category
+  // Category — two-level (parent → subcategory)
   const [localCategories, setLocalCategories] = useState<Category[]>(categories)
-  const [selectedCategoryId, setSelectedCategoryId] = useState(product?.category_id ?? '')
+  // Derive initial parent/sub from product.category_id
+  const _initCat = categories.find(c => c.id === (product?.category_id ?? ''))
+  const [selectedParentId, setSelectedParentId] = useState(
+    _initCat?.parent_id ? _initCat.parent_id : (product?.category_id ?? '')
+  )
+  const [selectedSubId, setSelectedSubId] = useState(
+    _initCat?.parent_id ? (product?.category_id ?? '') : ''
+  )
   const [showNewCategory, setShowNewCategory] = useState(false)
   const [newCategoryName, setNewCategoryName] = useState('')
   const [addingCategory, setAddingCategory] = useState(false)
@@ -707,13 +714,42 @@ export default function ProductForm({
           <Card title="Organisation">
             <div className="space-y-3">
               <div>
+                {/* Hidden input carries the effective category_id */}
+                <input type="hidden" name="category_id" value={selectedSubId || selectedParentId} />
+
                 <FieldLabel>Category</FieldLabel>
                 <SelectWrap>
-                  <select name="category_id" value={selectedCategoryId} onChange={e => setSelectedCategoryId(e.target.value)} className={selectCls}>
+                  <select
+                    value={selectedParentId}
+                    onChange={e => { setSelectedParentId(e.target.value); setSelectedSubId('') }}
+                    className={selectCls}
+                  >
                     <option value="">No category</option>
-                    {localCategories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                    {localCategories.filter(c => !c.parent_id).map(c => (
+                      <option key={c.id} value={c.id}>{c.name}</option>
+                    ))}
                   </select>
                 </SelectWrap>
+
+                {/* Subcategory — shown when selected parent has children */}
+                {selectedParentId && localCategories.filter(c => c.parent_id === selectedParentId).length > 0 && (
+                  <div className="mt-2">
+                    <FieldLabel optional>Subcategory</FieldLabel>
+                    <SelectWrap>
+                      <select
+                        value={selectedSubId}
+                        onChange={e => setSelectedSubId(e.target.value)}
+                        className={selectCls}
+                      >
+                        <option value="">None</option>
+                        {localCategories.filter(c => c.parent_id === selectedParentId).map(c => (
+                          <option key={c.id} value={c.id}>{c.name}</option>
+                        ))}
+                      </select>
+                    </SelectWrap>
+                  </div>
+                )}
+
                 {showNewCategory ? (
                   <div className="mt-2 space-y-1.5">
                     <div className="flex gap-2">

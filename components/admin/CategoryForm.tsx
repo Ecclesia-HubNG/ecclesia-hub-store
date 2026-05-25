@@ -15,6 +15,7 @@ type Category = {
   description: string | null
   image: string | null
   is_featured: boolean
+  parent_id?: string | null
 }
 
 type ActionResult = { error: string } | { success: true; id?: string } | undefined | null
@@ -48,6 +49,7 @@ export default function CategoryForm({
   const [slugEdited, setSlugEdited] = useState(!!category)
   const [description, setDescription] = useState(category?.description ?? '')
   const [isFeatured, setIsFeatured] = useState(category?.is_featured ?? false)
+  const [parentId, setParentId] = useState(category?.parent_id ?? '')
 
   const [imagePreview, setImagePreview] = useState<string | null>(category?.image ?? null)
   const [imageUrl, setImageUrl] = useState<string | null>(category?.image ?? null)
@@ -114,6 +116,7 @@ export default function CategoryForm({
     if (uploading) return
     const fd = new FormData(formRef.current!)
     fd.set('image', imageUrl ?? '')
+    fd.set('parent_id', parentId)
     startTransition(() => { formAction(fd) })
   }
 
@@ -206,6 +209,26 @@ export default function CategoryForm({
           {/* Details */}
           <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-5 space-y-4">
             <h2 className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Details</h2>
+
+            {/* Parent category — only shown if there are other root categories to pick from */}
+            {categories && categories.filter(c => !c.parent_id && c.id !== category?.id).length > 0 && (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
+                  Parent category <span className="text-xs font-normal text-gray-400 dark:text-gray-600">(optional)</span>
+                </label>
+                <select
+                  value={parentId}
+                  onChange={e => setParentId(e.target.value)}
+                  className={inputCls}
+                >
+                  <option value="">None (top-level category)</option>
+                  {categories
+                    .filter(c => !c.parent_id && c.id !== category?.id)
+                    .map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                </select>
+                <p className="text-xs text-gray-400 dark:text-gray-600 mt-1">Makes this a subcategory of the selected parent.</p>
+              </div>
+            )}
 
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">Name</label>

@@ -7,8 +7,8 @@ export default async function NewCategoryPage() {
   const supabase = createAdminClient()
   const { data: categories } = await supabase
     .from('categories')
-    .select('id, name, slug, description, image, is_featured')
-    .order('created_at', { ascending: false })
+    .select('id, name, slug, description, image, is_featured, parent_id')
+    .order('name')
 
   return (
     <div className="p-6">
