@@ -1,6 +1,7 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect, useCallback } from 'react'
+import { useSearchParams, useRouter, usePathname } from 'next/navigation'
 import ProductCard from '@/components/store/ProductCard'
 
 type Category = { id: string; name: string; slug: string }
@@ -32,6 +33,7 @@ const SORT_LABELS: Record<SortBy, string> = {
 }
 
 const ITEMS_PER_PAGE = 24
+const SCROLL_KEY = 'shop-scroll'
 
 function getPagination(current: number, total: number): (number | '...')[] {
   if (total <= 7) return Array.from({ length: total }, (_, i) => i + 1)
@@ -180,19 +182,56 @@ export default function ShopClient({
   pageTitle?: string
   pageTag?: string
 }) {
-  const [categoryId, setCategoryId] = useState<string | null>(null)
-  const [search, setSearch] = useState('')
-  const [sortBy, setSortBy] = useState<SortBy>('newest')
-  const [showSortDropdown, setShowSortDropdown] = useState(false)
-  const [minPrice, setMinPrice] = useState('')
-  const [maxPrice, setMaxPrice] = useState('')
-  const [inStockOnly, setInStockOnly] = useState(false)
-  const [onSaleOnly, setOnSaleOnly] = useState(false)
-  const [showMobileFilters, setShowMobileFilters] = useState(false)
-  const [page, setPage] = useState(1)
+  const searchParams = useSearchParams()
+  const router = useRouter()
+  const pathname = usePathname()
 
-  // Wrap setters to reset pagination
-  const set = <T,>(setter: (v: T) => void) => (v: T) => { setter(v); setPage(1) }
+  // All filter state lives in the URL so back navigation restores it automatically
+  const categoryId = searchParams.get('category')
+  const search = searchParams.get('q') ?? ''
+  const sortBy = (searchParams.get('sort') ?? 'newest') as SortBy
+  const minPrice = searchParams.get('min') ?? ''
+  const maxPrice = searchParams.get('max') ?? ''
+  const inStockOnly = searchParams.get('stock') === '1'
+  const onSaleOnly = searchParams.get('sale') === '1'
+  const page = Math.max(1, parseInt(searchParams.get('page') ?? '1', 10))
+
+  // Restore scroll position when landing back from a product page
+  useEffect(() => {
+    const saved = sessionStorage.getItem(SCROLL_KEY)
+    if (saved) {
+      sessionStorage.removeItem(SCROLL_KEY)
+      const y = parseInt(saved, 10)
+      // rAF ensures the grid has painted before we scroll
+      requestAnimationFrame(() => window.scrollTo({ top: y, behavior: 'instant' }))
+    }
+  }, [])
+
+  const updateParams = useCallback((updates: Record<string, string | null>, resetPage = true) => {
+    const params = new URLSearchParams(searchParams.toString())
+    for (const [key, value] of Object.entries(updates)) {
+      if (!value) params.delete(key)
+      else params.set(key, value)
+    }
+    if (resetPage && !('page' in updates)) params.delete('page')
+    const qs = params.toString()
+    router.push(qs ? `${pathname}?${qs}` : pathname, { scroll: false })
+  }, [searchParams, router, pathname])
+
+  const setCategoryId = (v: string | null) => updateParams({ category: v ?? '' })
+  const setSearch = (v: string) => updateParams({ q: v })
+  const setSortBy = (v: SortBy) => updateParams({ sort: v === 'newest' ? '' : v })
+  const setMinPrice = (v: string) => updateParams({ min: v })
+  const setMaxPrice = (v: string) => updateParams({ max: v })
+  const setInStockOnly = (v: boolean) => updateParams({ stock: v ? '1' : '' })
+  const setOnSaleOnly = (v: boolean) => updateParams({ sale: v ? '1' : '' })
+  const setPage = (v: number) => updateParams({ page: v === 1 ? '' : String(v) }, false)
+
+  const clearFilters = () => router.push(pathname, { scroll: false })
+
+  // UI-only state (not worth putting in URL)
+  const [showSortDropdown, setShowSortDropdown] = useState(false)
+  const [showMobileFilters, setShowMobileFilters] = useState(false)
 
   const categoryCounts = useMemo(() => {
     const counts: Record<string, number> = {}
@@ -226,29 +265,24 @@ export default function ShopClient({
   const activeFilterCount = [!!categoryId, !!minPrice, !!maxPrice, inStockOnly, onSaleOnly].filter(Boolean).length
   const activeCategory = categories.find(c => c.id === categoryId)
 
-  const clearFilters = () => {
-    setCategoryId(null); setSearch(''); setMinPrice(''); setMaxPrice('')
-    setInStockOnly(false); setOnSaleOnly(false); setPage(1)
-  }
-
   const handlePageChange = (p: number) => {
     setPage(p)
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }
 
   const activeChips: { key: string; label: string; remove: () => void }[] = [
-    categoryId ? { key: 'cat', label: activeCategory?.name ?? 'Category', remove: () => { setCategoryId(null); setPage(1) } } : null,
-    (minPrice || maxPrice) ? { key: 'price', label: `₦${minPrice || '0'} – ${maxPrice ? '₦' + maxPrice : 'any'}`, remove: () => { setMinPrice(''); setMaxPrice(''); setPage(1) } } : null,
-    inStockOnly ? { key: 'stock', label: 'In stock', remove: () => { setInStockOnly(false); setPage(1) } } : null,
-    onSaleOnly ? { key: 'sale', label: 'On sale', remove: () => { setOnSaleOnly(false); setPage(1) } } : null,
+    categoryId ? { key: 'cat', label: activeCategory?.name ?? 'Category', remove: () => setCategoryId(null) } : null,
+    (minPrice || maxPrice) ? { key: 'price', label: `₦${minPrice || '0'} – ${maxPrice ? '₦' + maxPrice : 'any'}`, remove: () => { setMinPrice(''); setMaxPrice('') } } : null,
+    inStockOnly ? { key: 'stock', label: 'In stock', remove: () => setInStockOnly(false) } : null,
+    onSaleOnly ? { key: 'sale', label: 'On sale', remove: () => setOnSaleOnly(false) } : null,
   ].filter(Boolean) as { key: string; label: string; remove: () => void }[]
 
   const sidebarProps = {
-    categories, categoryId, setCategoryId: set(setCategoryId),
-    minPrice, setMinPrice: set(setMinPrice),
-    maxPrice, setMaxPrice: set(setMaxPrice),
-    inStockOnly, setInStockOnly: set(setInStockOnly),
-    onSaleOnly, setOnSaleOnly: set(setOnSaleOnly),
+    categories, categoryId, setCategoryId,
+    minPrice, setMinPrice,
+    maxPrice, setMaxPrice,
+    inStockOnly, setInStockOnly,
+    onSaleOnly, setOnSaleOnly,
     categoryCounts, priceFloor, priceCeil,
     hasFilters, clearFilters,
   }
@@ -331,11 +365,11 @@ export default function ShopClient({
               </svg>
               <input
                 type="text" placeholder="Search products…" value={search}
-                onChange={e => { setSearch(e.target.value); setPage(1) }}
+                onChange={e => setSearch(e.target.value)}
                 className="w-full pl-9 pr-8 py-2 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-lg text-sm text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-600 focus:outline-none focus:ring-2 focus:ring-[#4A0F1C]/20 focus:border-[#4A0F1C]/30 transition-colors"
               />
               {search && (
-                <button type="button" onClick={() => { setSearch(''); setPage(1) }} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors">
+                <button type="button" onClick={() => setSearch('')} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors">
                   <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                     <path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" />
                   </svg>
@@ -364,7 +398,7 @@ export default function ShopClient({
                   {(Object.entries(SORT_LABELS) as [SortBy, string][]).map(([val, label]) => (
                     <button
                       key={val} type="button"
-                      onClick={() => { setSortBy(val); setShowSortDropdown(false); setPage(1) }}
+                      onClick={() => { setSortBy(val); setShowSortDropdown(false) }}
                       className={`flex items-center justify-between w-full px-4 py-2.5 text-sm transition-colors ${sortBy === val ? 'text-gray-900 dark:text-white font-medium bg-gray-50 dark:bg-gray-800' : 'text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800'}`}
                     >
                       {label}
@@ -436,10 +470,13 @@ export default function ShopClient({
             </div>
           )}
 
-          {/* Grid */}
+          {/* Grid — clicking any product card saves scroll before navigating */}
           {filtered.length > 0 ? (
             <>
-              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
+              <div
+                className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4"
+                onClick={() => sessionStorage.setItem(SCROLL_KEY, String(window.scrollY))}
+              >
                 {paginated.map(product => (
                   <ProductCard
                     key={product.id}

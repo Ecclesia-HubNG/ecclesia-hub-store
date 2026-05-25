@@ -1,5 +1,6 @@
 export const dynamic = 'force-dynamic'
 
+import { Suspense } from 'react'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import ShopClient from '@/components/store/ShopClient'
@@ -61,11 +62,13 @@ export default async function PromotionsPage() {
   }
 
   return (
-    <ShopClient
-      products={products as any}
-      categories={categories ?? []}
-      pageTag={tag}
-      pageTitle={title}
-    />
+    <Suspense>
+      <ShopClient
+        products={products as any}
+        categories={categories ?? []}
+        pageTag={tag}
+        pageTitle={title}
+      />
+    </Suspense>
   )
 }
