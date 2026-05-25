@@ -1,18 +1,62 @@
 /** @type {import('next').NextConfig} */
+
+const supabaseHost = 'paiongqpgggxgfiacspt.supabase.co'
+const r2Host = 'pub-10bc4fec8b2b43a0992e28a4cf1acf41.r2.dev'
+
+const securityHeaders = [
+  { key: 'X-DNS-Prefetch-Control', value: 'on' },
+  { key: 'X-Frame-Options', value: 'DENY' },
+  { key: 'X-Content-Type-Options', value: 'nosniff' },
+  { key: 'X-XSS-Protection', value: '1; mode=block' },
+  { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
+  { key: 'Permissions-Policy', value: 'camera=(), microphone=(), geolocation=(), payment=()' },
+  {
+    key: 'Strict-Transport-Security',
+    value: 'max-age=63072000; includeSubDomains; preload',
+  },
+  {
+    key: 'Content-Security-Policy',
+    value: [
+      "default-src 'self'",
+      // Next.js requires unsafe-inline for its hydration scripts
+      "script-src 'self' 'unsafe-inline'",
+      // Tailwind + Next.js inject inline styles
+      "style-src 'self' 'unsafe-inline'",
+      // R2 CDN, Supabase Storage, data URIs for previews, blobs for resized images
+      `img-src 'self' data: blob: https://${r2Host} https://${supabaseHost}`,
+      "font-src 'self'",
+      // Supabase API + realtime
+      `connect-src 'self' https://${supabaseHost} wss://${supabaseHost}`,
+      "frame-src 'none'",
+      "object-src 'none'",
+      "base-uri 'self'",
+      "form-action 'self'",
+    ].join('; '),
+  },
+]
+
 const nextConfig = {
   images: {
     remotePatterns: [
       {
         protocol: 'https',
-        hostname: 'pub-10bc4fec8b2b43a0992e28a4cf1acf41.r2.dev',
+        hostname: r2Host,
         pathname: '/**',
       },
       {
         protocol: 'https',
-        hostname: 'paiongqpgggxgfiacspt.supabase.co',
+        hostname: supabaseHost,
         pathname: '/**',
       },
     ],
+  },
+  async headers() {
+    return [
+      {
+        source: '/(.*)',
+        headers: securityHeaders,
+      },
+    ]
   },
 };
 

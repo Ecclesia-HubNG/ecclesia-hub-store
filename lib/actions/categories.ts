@@ -2,6 +2,7 @@
 
 import { createAdminClient } from '@/lib/supabase/admin'
 import { revalidatePath } from 'next/cache'
+import { logAudit } from '@/lib/audit'
 
 function slugify(s: string) {
   return s.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '')
@@ -23,8 +24,10 @@ function parseForm(formData: FormData) {
 
 export async function createCategory(_: unknown, formData: FormData) {
   const supabase = createAdminClient()
-  const { data, error } = await supabase.from('categories').insert(parseForm(formData)).select('id').single()
+  const parsed = parseForm(formData)
+  const { data, error } = await supabase.from('categories').insert(parsed).select('id').single()
   if (error) return { error: error.message }
+  logAudit('category.create', 'category', data.id, { name: parsed.name }).catch(() => {})
   revalidatePath('/admin/categories')
   revalidatePath('/admin/categories/new')
   return { success: true as const, id: data.id }
@@ -32,8 +35,10 @@ export async function createCategory(_: unknown, formData: FormData) {
 
 export async function updateCategory(id: string, _: unknown, formData: FormData) {
   const supabase = createAdminClient()
-  const { error } = await supabase.from('categories').update(parseForm(formData)).eq('id', id)
+  const parsed = parseForm(formData)
+  const { error } = await supabase.from('categories').update(parsed).eq('id', id)
   if (error) return { error: error.message }
+  logAudit('category.update', 'category', id, { name: parsed.name }).catch(() => {})
   revalidatePath('/admin/categories')
   revalidatePath('/', 'page')
   revalidatePath('/home', 'page')
@@ -42,7 +47,9 @@ export async function updateCategory(id: string, _: unknown, formData: FormData)
 
 export async function deleteCategory(formData: FormData) {
   const supabase = createAdminClient()
-  await supabase.from('categories').delete().eq('id', formData.get('id') as string)
+  const id = formData.get('id') as string
+  await supabase.from('categories').delete().eq('id', id)
+  logAudit('category.delete', 'category', id).catch(() => {})
   revalidatePath('/admin/categories')
 }
 

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createHmac } from 'crypto'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { sendOrderConfirmation } from '@/lib/email'
+import { logAudit } from '@/lib/audit'
 
 export const runtime = 'nodejs'
 
@@ -81,6 +82,13 @@ export async function POST(req: NextRequest) {
     console.error('Webhook order update failed:', updateErr.message)
     return NextResponse.json({ error: updateErr.message }, { status: 500 })
   }
+
+  logAudit('order.paid', 'order', order.id, {
+    provider: 'paystack',
+    reference: tx.reference,
+    amount: tx.amount,
+    channel: tx.channel,
+  }, { email: 'paystack-webhook' }).catch(() => {})
 
   const shipping = order.shipping_address as Record<string, string>
   const items = (order.items as Array<Record<string, unknown>>) ?? []

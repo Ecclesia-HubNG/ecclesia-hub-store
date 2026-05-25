@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { sendOrderConfirmation } from '@/lib/email'
+import { logAudit } from '@/lib/audit'
 
 export const runtime = 'nodejs'
 
@@ -101,6 +102,14 @@ export async function POST(req: NextRequest) {
     console.error('FLW webhook order update failed:', updateErr.message)
     return NextResponse.json({ error: updateErr.message }, { status: 500 })
   }
+
+  logAudit('order.paid', 'order', order.id, {
+    provider: 'flutterwave',
+    transaction_id: tx.id,
+    reference: tx.tx_ref,
+    amount: verifiedAmount,
+    payment_type: tx.payment_type,
+  }, { email: 'flutterwave-webhook' }).catch(() => {})
 
   const shipping = order.shipping_address as Record<string, string>
   const items = (order.items as Array<Record<string, unknown>>) ?? []

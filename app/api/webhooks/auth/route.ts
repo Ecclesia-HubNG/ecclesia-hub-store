@@ -4,15 +4,18 @@ import { sendWelcomeEmail } from '@/lib/email'
 // Supabase Auth webhook — fires on user.created
 // Configure in Supabase Dashboard → Auth → Hooks → "Send Email" webhook
 // Set URL to: https://ecclesiahub.store/api/webhooks/auth
-// Set secret in SUPABASE_WEBHOOK_SECRET env var to verify requests
+// Set secret in SUPABASE_WEBHOOK_SECRET env var
 
 export async function POST(req: NextRequest) {
   const secret = process.env.SUPABASE_WEBHOOK_SECRET
-  if (secret) {
-    const sig = req.headers.get('x-supabase-signature')
-    if (sig !== secret) {
-      return NextResponse.json({ error: 'Invalid signature' }, { status: 401 })
-    }
+  if (!secret) {
+    console.error('SUPABASE_WEBHOOK_SECRET env var is not configured')
+    return NextResponse.json({ error: 'Webhook not configured' }, { status: 500 })
+  }
+
+  const sig = req.headers.get('x-supabase-signature')
+  if (!sig || sig !== secret) {
+    return NextResponse.json({ error: 'Invalid signature' }, { status: 401 })
   }
 
   const payload = await req.json()

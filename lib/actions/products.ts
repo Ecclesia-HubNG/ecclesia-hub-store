@@ -3,6 +3,7 @@
 import { createAdminClient } from '@/lib/supabase/admin'
 import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
+import { logAudit } from '@/lib/audit'
 
 function slugify(s: string) {
   return s.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '')
@@ -49,16 +50,20 @@ function parseForm(formData: FormData) {
 
 export async function createProduct(_: unknown, formData: FormData) {
   const supabase = createAdminClient()
-  const { data, error } = await supabase.from('products').insert(parseForm(formData)).select('id').single()
+  const parsed = parseForm(formData)
+  const { data, error } = await supabase.from('products').insert(parsed).select('id, name').single()
   if (error) return { error: error.message }
+  logAudit('product.create', 'product', data.id, { name: data.name }).catch(() => {})
   revalidatePath('/admin/products')
   redirect(`/admin/products/${data.id}/edit?saved=1`)
 }
 
 export async function updateProduct(id: string, _: unknown, formData: FormData) {
   const supabase = createAdminClient()
-  const { error } = await supabase.from('products').update(parseForm(formData)).eq('id', id)
+  const parsed = parseForm(formData)
+  const { error } = await supabase.from('products').update(parsed).eq('id', id)
   if (error) return { error: error.message }
+  logAudit('product.update', 'product', id, { name: parsed.name }).catch(() => {})
   revalidatePath('/admin/products')
   revalidatePath(`/admin/products/${id}/edit`)
   return { success: true as const }
@@ -66,7 +71,9 @@ export async function updateProduct(id: string, _: unknown, formData: FormData) 
 
 export async function deleteProduct(formData: FormData) {
   const supabase = createAdminClient()
-  await supabase.from('products').delete().eq('id', formData.get('id') as string)
+  const id = formData.get('id') as string
+  await supabase.from('products').delete().eq('id', id)
+  logAudit('product.delete', 'product', id).catch(() => {})
   revalidatePath('/admin/products')
 }
 
