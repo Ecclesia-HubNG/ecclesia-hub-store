@@ -40,7 +40,7 @@ export default async function CategoryPage({ params }: { params: { slug: string 
             <div className="absolute inset-0 bg-black/50" />
           </>
         )}
-        <div className={`relative max-w-6xl mx-auto px-6 h-full flex flex-col justify-center ${category.image ? 'text-white' : ''}`}>
+        <div className={`relative max-w-6xl mx-auto px-6 flex flex-col justify-center ${category.image ? 'h-full text-white' : 'py-4'}`}>
           <nav className="flex items-center gap-1.5 text-sm mb-4 opacity-70">
             <Link href="/shop" className="hover:opacity-100 transition-opacity">Shop</Link>
             <span>/</span>
