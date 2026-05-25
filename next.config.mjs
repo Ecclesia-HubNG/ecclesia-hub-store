@@ -22,8 +22,8 @@ const securityHeaders = [
       "script-src 'self' 'unsafe-inline'",
       // Tailwind + Next.js inject inline styles
       "style-src 'self' 'unsafe-inline'",
-      // R2 CDN, Supabase Storage, data URIs for previews, blobs for resized images
-      `img-src 'self' data: blob: https://${r2Host} https://${supabaseHost}`,
+      // Allow images from any HTTPS source — product images can come from any URL
+      "img-src 'self' data: blob: https:",
       "font-src 'self'",
       // Supabase API + realtime
       `connect-src 'self' https://${supabaseHost} wss://${supabaseHost}`,
