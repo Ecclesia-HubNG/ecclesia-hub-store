@@ -354,7 +354,8 @@ export default function ProductForm({
       setCategoryError(result.error)
     } else {
       setLocalCategories(prev => [...prev, result].sort((a, b) => a.name.localeCompare(b.name)))
-      setSelectedCategoryId(result.id)
+      setSelectedParentId(result.id)
+      setSelectedSubId('')
       setNewCategoryName(''); setShowNewCategory(false)
     }
     setAddingCategory(false)
