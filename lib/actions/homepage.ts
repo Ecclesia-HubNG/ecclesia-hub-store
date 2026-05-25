@@ -13,10 +13,21 @@ export async function getHeroWidget() {
   return data
 }
 
+type HeroSlide = {
+  id: string
+  image?: string | null
+  heading?: string | null
+  subheading?: string | null
+  cta_label?: string | null
+  cta_href?: string | null
+}
+
 export async function upsertHeroWidget(config: {
-  hero_image?: string | null
+  slides?: HeroSlide[]
   product_id?: string | null
   category_id?: string | null
+  // legacy
+  hero_image?: string | null
 }) {
   const supabase = createAdminClient()
   const { data: existing } = await supabase

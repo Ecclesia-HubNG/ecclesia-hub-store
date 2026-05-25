@@ -3,7 +3,7 @@ export const dynamic = 'force-dynamic'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import Link from 'next/link'
-import HeroSection from '@/components/store/HeroSection'
+import HeroSection, { type HeroSlide } from '@/components/store/HeroSection'
 import BrandTicker from '@/components/store/BrandTicker'
 import CategoryShowcase from '@/components/store/CategoryShowcase'
 import FeaturedProducts from '@/components/store/FeaturedProducts'
@@ -44,9 +44,22 @@ export default async function HomePage() {
       .maybeSingle(),
   ])
 
-  const widgetConfig = heroWidget?.config as { hero_image?: string; product_id?: string; category_id?: string } | null
+  type WidgetConfig = {
+    slides?: HeroSlide[]
+    hero_image?: string
+    product_id?: string
+    category_id?: string
+  }
+  const widgetConfig = heroWidget?.config as WidgetConfig | null
 
-  // Resolve hero product — fetch directly by ID if not in the featured list
+  // Normalize to slides — support legacy single-image config
+  const heroSlides: HeroSlide[] = widgetConfig?.slides?.length
+    ? widgetConfig.slides
+    : widgetConfig?.hero_image
+    ? [{ id: 'legacy', image: widgetConfig.hero_image }]
+    : []
+
+  // Resolve featured product for the corner card
   let heroProductRaw: (typeof featured extends (infer T)[] | null ? T : never) | null = null
   if (widgetConfig?.product_id) {
     const inFeatured = featured?.find(p => p.id === widgetConfig.product_id)
@@ -65,9 +78,6 @@ export default async function HomePage() {
     heroProductRaw = featured?.[0] ?? null
   }
 
-  // Hero background: explicit upload first, then the selected product thumbnail, then nothing
-  const heroImage = widgetConfig?.hero_image ?? heroProductRaw?.thumbnail ?? null
-
   const featuredProduct = heroProductRaw ? {
     ...heroProductRaw,
     categories: Array.isArray(heroProductRaw.categories)
@@ -77,7 +87,7 @@ export default async function HomePage() {
 
   return (
     <div>
-      <HeroSection heroImage={heroImage} featuredProduct={featuredProduct} />
+      <HeroSection slides={heroSlides} featuredProduct={featuredProduct} />
       <BrandTicker />
 
       <CategoryShowcase categories={categories ?? []} />
