@@ -13,11 +13,17 @@ export default async function CategoryPage({ params }: { params: { slug: string 
 
   if (!category) notFound()
 
+  // Collect category IDs to query: the category itself + any direct subcategories
+  const subcategoryIds = (allCategories ?? [])
+    .filter(c => c.parent_id === category.id)
+    .map(c => c.id)
+  const categoryIds = [category.id, ...subcategoryIds]
+
   const { data: products } = await supabase
     .from('products')
     .select('id, name, slug, price, compare_at_price, thumbnail')
     .eq('is_active', true)
-    .eq('category_id', category.id)
+    .in('category_id', categoryIds)
     .order('created_at', { ascending: false })
 
   return (
