@@ -33,6 +33,7 @@ export default async function HomePage() {
     supabase
       .from('categories')
       .select('id, name, slug, image')
+      .is('parent_id', null)
       .order('name'),
     supabase
       .from('products')

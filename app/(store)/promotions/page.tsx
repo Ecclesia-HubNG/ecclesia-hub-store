@@ -17,7 +17,7 @@ export default async function PromotionsPage() {
     .maybeSingle()
 
   const [{ data: categories }] = await Promise.all([
-    supabase.from('categories').select('id, name, slug').order('name'),
+    supabase.from('categories').select('id, name, slug').is('parent_id', null).order('name'),
   ])
 
   let products: any[] = []
