@@ -220,7 +220,7 @@ export default function CategoryForm({
 
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">URL Slug</label>
-              <input name="slug" value={slug} onChange={e => { setSlug(e.target.value); setSlugEdited(true) }} required placeholder="bibles" className={`${inputCls} font-mono`} />
+              <input name="slug" value={slug} onChange={e => { setSlug(slugify(e.target.value)); setSlugEdited(true) }} required placeholder="bibles" className={`${inputCls} font-mono`} />
               <p className="text-xs text-gray-400 dark:text-gray-600 mt-1">Auto-generated from name.</p>
             </div>
 

@@ -14,7 +14,7 @@ function parseForm(formData: FormData) {
   const parentId = (formData.get('parent_id') as string) || null
   return {
     name,
-    slug: slug || slugify(name),
+    slug: slugify(slug || name),
     description: (formData.get('description') as string) || null,
     image: (formData.get('image') as string) || null,
     is_featured: formData.get('is_featured') === 'on',
