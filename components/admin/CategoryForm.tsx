@@ -50,6 +50,7 @@ export default function CategoryForm({
   const [description, setDescription] = useState(category?.description ?? '')
   const [isFeatured, setIsFeatured] = useState(category?.is_featured ?? false)
   const [parentId, setParentId] = useState(category?.parent_id ?? '')
+  const [isSubcategory, setIsSubcategory] = useState(!!(category?.parent_id))
 
   const [imagePreview, setImagePreview] = useState<string | null>(category?.image ?? null)
   const [imageUrl, setImageUrl] = useState<string | null>(category?.image ?? null)
@@ -74,6 +75,8 @@ export default function CategoryForm({
         setSlugEdited(false)
         setDescription('')
         setIsFeatured(false)
+        setIsSubcategory(false)
+        setParentId('')
         setImagePreview(null)
         setImageUrl(null)
       }
@@ -116,7 +119,7 @@ export default function CategoryForm({
     if (uploading) return
     const fd = new FormData(formRef.current!)
     fd.set('image', imageUrl ?? '')
-    fd.set('parent_id', parentId)
+    fd.set('parent_id', isSubcategory ? parentId : '')
     startTransition(() => { formAction(fd) })
   }
 
@@ -210,26 +213,6 @@ export default function CategoryForm({
           <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-5 space-y-4">
             <h2 className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Details</h2>
 
-            {/* Parent category — only shown if there are other root categories to pick from */}
-            {categories && categories.filter(c => !c.parent_id && c.id !== category?.id).length > 0 && (
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
-                  Parent category <span className="text-xs font-normal text-gray-400 dark:text-gray-600">(optional)</span>
-                </label>
-                <select
-                  value={parentId}
-                  onChange={e => setParentId(e.target.value)}
-                  className={inputCls}
-                >
-                  <option value="">None (top-level category)</option>
-                  {categories
-                    .filter(c => !c.parent_id && c.id !== category?.id)
-                    .map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-                </select>
-                <p className="text-xs text-gray-400 dark:text-gray-600 mt-1">Makes this a subcategory of the selected parent.</p>
-              </div>
-            )}
-
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">Name</label>
               <input name="name" value={name} onChange={e => setName(e.target.value)} required placeholder="e.g. Bibles" className={inputCls} />
@@ -247,6 +230,40 @@ export default function CategoryForm({
               </label>
               <textarea name="description" value={description} onChange={e => setDescription(e.target.value)} rows={3} placeholder="A short description shown on the category page…" className={`${inputCls} resize-none`} />
             </div>
+
+            {/* Subcategory toggle — only shown when there are root categories to nest under */}
+            {categories && categories.filter(c => !c.parent_id && c.id !== category?.id).length > 0 && (
+              <div className="pt-1 border-t border-gray-100 dark:border-gray-800">
+                <label className="flex items-center gap-3 cursor-pointer" onClick={() => { setIsSubcategory(p => !p); setParentId('') }}>
+                  <div className={`w-4 h-4 rounded border-2 flex items-center justify-center transition-colors shrink-0 ${isSubcategory ? 'bg-gray-900 dark:bg-white border-gray-900 dark:border-white' : 'border-gray-300 dark:border-gray-600'}`}>
+                    {isSubcategory && (
+                      <svg className="w-2.5 h-2.5 text-white dark:text-gray-900" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="m4.5 12.75 6 6 9-13.5" />
+                      </svg>
+                    )}
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-gray-700 dark:text-gray-300">This is a subcategory</p>
+                    <p className="text-xs text-gray-400 dark:text-gray-600">Nest it under an existing category</p>
+                  </div>
+                </label>
+
+                {isSubcategory && (
+                  <div className="mt-3 ml-7">
+                    <select
+                      value={parentId}
+                      onChange={e => setParentId(e.target.value)}
+                      className={inputCls}
+                    >
+                      <option value="">Select a parent category…</option>
+                      {categories
+                        .filter(c => !c.parent_id && c.id !== category?.id)
+                        .map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                    </select>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
 
           {/* Marketing */}
