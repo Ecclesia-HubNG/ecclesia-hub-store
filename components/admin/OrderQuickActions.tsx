@@ -42,6 +42,14 @@ const REOPEN_ICON = (
 )
 
 const ACTIONS_BY_STATUS: Record<string, Action[]> = {
+  pending_verification: [
+    { label: 'Confirm Payment', toStatus: 'paid', style: 'bg-blue-600 hover:bg-blue-700 text-white', icon: PAID_ICON },
+    { label: 'Cancel', toStatus: 'cancelled', style: 'bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20', icon: CANCEL_ICON },
+  ],
+  pending_bank_transfer: [
+    { label: 'Confirm Transfer', toStatus: 'paid', style: 'bg-blue-600 hover:bg-blue-700 text-white', icon: PAID_ICON },
+    { label: 'Cancel', toStatus: 'cancelled', style: 'bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20', icon: CANCEL_ICON },
+  ],
   pending: [
     { label: 'Confirm Order', toStatus: 'processing', style: 'bg-[#4A0F1C] hover:bg-[#3A0B15] text-white', icon: CONFIRM_ICON },
     { label: 'Mark Paid', toStatus: 'paid', style: 'bg-blue-600 hover:bg-blue-700 text-white', icon: PAID_ICON },

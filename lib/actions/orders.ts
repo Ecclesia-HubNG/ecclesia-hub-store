@@ -82,6 +82,15 @@ export async function bulkUpdateOrderStatus(ids: string[], status: string) {
   revalidatePath('/admin')
 }
 
+export async function deleteOrder(id: string): Promise<{ error?: string }> {
+  const supabase = createAdminClient()
+  const { error } = await supabase.from('orders').delete().eq('id', id)
+  if (error) return { error: error.message }
+  revalidatePath('/admin/orders')
+  revalidatePath('/admin')
+  return {}
+}
+
 type ManualOrderItem = {
   product_id?: string
   name: string

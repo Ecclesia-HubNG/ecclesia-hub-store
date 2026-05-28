@@ -4,6 +4,7 @@ import { notFound } from 'next/navigation'
 import { OrderStatusSelect } from '@/components/admin/OrderStatusSelect'
 import { OrderQuickActions } from '@/components/admin/OrderQuickActions'
 import { OrderTracking } from '@/components/admin/OrderTracking'
+import { DeleteOrderButton } from '@/components/admin/DeleteOrderButton'
 
 const CHANNEL_META: Record<string, { label: string; color: string }> = {
   store:     { label: 'Store',     color: 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300' },
@@ -106,6 +107,7 @@ export default async function OrderDetailPage({ params }: { params: { id: string
             </svg>
             Invoice
           </Link>
+          <DeleteOrderButton id={order.id} orderNumber={order.id.slice(0, 8).toUpperCase()} />
           <span className={`px-3 py-1.5 rounded-full text-xs font-semibold capitalize ${STATUS_COLORS[order.status] ?? STATUS_COLORS.pending}`}>
             {order.status}
           </span>
