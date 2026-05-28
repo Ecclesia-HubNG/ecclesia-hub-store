@@ -135,6 +135,7 @@ export async function getOrder(id: string) {
     .from('orders')
     .select('*')
     .eq('id', id)
+    .is('deleted_at', null)
     .single()
 
   if (error || !order) return null

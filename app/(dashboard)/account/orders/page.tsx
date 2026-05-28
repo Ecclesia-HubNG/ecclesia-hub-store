@@ -39,6 +39,7 @@ export default function OrdersPage() {
         .from('orders')
         .select('id, status, total, items, created_at')
         .eq('customer_id', user.id)
+        .is('deleted_at', null)
         .order('created_at', { ascending: false })
         .then(({ data }) => {
           setOrders((data ?? []) as Order[])
