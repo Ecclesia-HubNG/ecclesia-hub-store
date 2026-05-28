@@ -5,26 +5,30 @@ import Link from 'next/link'
 import { getOrder } from '@/lib/actions/customer-orders'
 
 const STATUS_STEPS = ['pending', 'paid', 'processing', 'shipped', 'delivered'] as const
-type Status = typeof STATUS_STEPS[number] | 'cancelled' | 'refunded'
+type Status = typeof STATUS_STEPS[number] | 'cancelled' | 'refunded' | 'pending_verification' | 'pending_bank_transfer'
 
 const STATUS_LABEL: Record<string, string> = {
-  pending: 'Order placed',
-  paid: 'Payment confirmed',
-  processing: 'Being prepared',
-  shipped: 'Out for delivery',
-  delivered: 'Delivered',
-  cancelled: 'Cancelled',
-  refunded: 'Refunded',
+  pending_verification:  'Awaiting verification',
+  pending_bank_transfer: 'Awaiting bank transfer',
+  pending:               'Order placed',
+  paid:                  'Payment confirmed',
+  processing:            'Being prepared',
+  shipped:               'Out for delivery',
+  delivered:             'Delivered',
+  cancelled:             'Cancelled',
+  refunded:              'Refunded',
 }
 
 const STATUS_COLOUR: Record<string, string> = {
-  pending: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400',
-  paid: 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400',
-  processing: 'bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-400',
-  shipped: 'bg-indigo-100 text-indigo-800 dark:bg-indigo-900/30 dark:text-indigo-400',
-  delivered: 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400',
-  cancelled: 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400',
-  refunded: 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-400',
+  pending_verification:  'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400',
+  pending_bank_transfer: 'bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-400',
+  pending:               'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400',
+  paid:                  'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400',
+  processing:            'bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-400',
+  shipped:               'bg-indigo-100 text-indigo-800 dark:bg-indigo-900/30 dark:text-indigo-400',
+  delivered:             'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400',
+  cancelled:             'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400',
+  refunded:              'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-400',
 }
 
 function Timeline({ status }: { status: Status }) {
@@ -99,6 +103,26 @@ export default async function OrderPage({ params }: { params: { id: string } }) 
       <div className={`inline-flex items-center px-3 py-1.5 rounded-full text-xs font-semibold mb-6 ${STATUS_COLOUR[order.status] ?? STATUS_COLOUR.pending}`}>
         {STATUS_LABEL[order.status] ?? order.status}
       </div>
+
+      {/* Notice for orders awaiting confirmation */}
+      {order.status === 'pending_verification' && (
+        <div className="bg-yellow-50 dark:bg-yellow-950/30 border border-yellow-200 dark:border-yellow-800 rounded-2xl p-5 mb-6">
+          <p className="text-sm font-semibold text-yellow-800 dark:text-yellow-300 mb-1">Payment verification in progress</p>
+          <p className="text-sm text-yellow-700 dark:text-yellow-400">
+            Your payment is being confirmed. This usually takes a few seconds. If it doesn&apos;t update automatically,
+            please quote your order number <span className="font-mono font-semibold">#{order.id.slice(0, 8).toUpperCase()}</span> when contacting us.
+          </p>
+        </div>
+      )}
+      {order.status === 'pending_bank_transfer' && (
+        <div className="bg-orange-50 dark:bg-orange-950/30 border border-orange-200 dark:border-orange-800 rounded-2xl p-5 mb-6">
+          <p className="text-sm font-semibold text-orange-800 dark:text-orange-300 mb-1">Waiting for your bank transfer</p>
+          <p className="text-sm text-orange-700 dark:text-orange-400">
+            Once we confirm your transfer, your order will be processed. Use order number{' '}
+            <span className="font-mono font-semibold">#{order.id.slice(0, 8).toUpperCase()}</span> as your transfer reference.
+          </p>
+        </div>
+      )}
 
       {/* Timeline */}
       <div className="bg-gray-50 dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl p-6 mb-6 overflow-x-auto">

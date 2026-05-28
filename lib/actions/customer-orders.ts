@@ -127,15 +127,26 @@ export async function createOrder(items: CartItem[], shipping: ShippingAddress, 
 }
 
 export async function getOrder(id: string) {
-  const supabase = createClient()
-  const { data, error } = await supabase
+  // Use admin client so guest orders (customer_id = null) are accessible.
+  // Access control: logged-in users can see their own orders; guests can see
+  // any order by UUID (UUIDs are unguessable, so this is safe).
+  const admin = createAdminClient()
+  const { data: order, error } = await admin
     .from('orders')
     .select('*')
     .eq('id', id)
     .single()
 
-  if (error) return null
-  return data
+  if (error || !order) return null
+
+  // If order belongs to a specific customer, verify the requester is that customer
+  if (order.customer_id) {
+    const supabase = createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user || user.id !== order.customer_id) return null
+  }
+
+  return order
 }
 
 export async function getMyOrders() {
