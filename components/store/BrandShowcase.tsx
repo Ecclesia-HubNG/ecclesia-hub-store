@@ -28,7 +28,7 @@ export default async function BrandShowcase() {
       {/* Header */}
       <div className="flex items-end justify-between mb-5">
         <div>
-          <p className="text-[10px] font-bold uppercase tracking-[0.25em] text-[#6B1A2A] dark:text-[#D4849A] mb-1">Our partners</p>
+          <p className="text-[10px] font-bold uppercase tracking-[0.25em] text-[#6B1A2A] dark:text-[#D4849A] mb-1">Brands we trust</p>
           <h2 className="text-2xl md:text-3xl font-black uppercase tracking-tight text-gray-900 dark:text-white">
             Shop by Brand
           </h2>

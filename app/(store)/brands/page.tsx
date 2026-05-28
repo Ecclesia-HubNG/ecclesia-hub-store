@@ -26,7 +26,7 @@ export default async function BrandsPage() {
     <div className="max-w-7xl mx-auto px-4 md:px-8 py-10">
       {/* Header */}
       <div className="mb-8">
-        <p className="text-[10px] font-bold uppercase tracking-[0.25em] text-[#6B1A2A] dark:text-[#D4849A] mb-1">Our partners</p>
+        <p className="text-[10px] font-bold uppercase tracking-[0.25em] text-[#6B1A2A] dark:text-[#D4849A] mb-1">Brands we trust</p>
         <h1 className="text-3xl md:text-4xl font-black uppercase tracking-tight text-gray-900 dark:text-white">
           Shop by Brand
         </h1>

@@ -20,6 +20,7 @@ function parseForm(formData: FormData) {
     short_description: (formData.get('short_description') as string) || null,
     description:       (formData.get('description') as string) || null,
     price:             parseFloat(formData.get('price') as string),
+    cost_price:        formData.get('cost_price') ? parseFloat(formData.get('cost_price') as string) : null,
     compare_at_price:  formData.get('compare_at_price') ? parseFloat(formData.get('compare_at_price') as string) : null,
     sale_price:        formData.get('sale_price') ? parseFloat(formData.get('sale_price') as string) : null,
     sale_starts_at:    (formData.get('sale_starts_at') as string) || null,

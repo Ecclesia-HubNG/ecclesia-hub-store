@@ -22,6 +22,7 @@ type Product = {
   short_description: string | null
   description: string | null
   price: number
+  cost_price: number | null
   compare_at_price: number | null
   sale_price: number | null
   sale_starts_at: string | null
@@ -688,6 +689,11 @@ export default function ProductForm({
               <div>
                 <FieldLabel>Price (₦)</FieldLabel>
                 <input name="price" type="number" step="any" min="0" defaultValue={product?.price ?? ''} required placeholder="0.00" className={inputCls} />
+              </div>
+              <div>
+                <FieldLabel optional>Cost Price (₦)</FieldLabel>
+                <input name="cost_price" type="number" step="any" min="0" defaultValue={product?.cost_price ?? ''} placeholder="0.00" className={inputCls} />
+                <p className="text-xs text-gray-400 dark:text-gray-600 mt-1">Your purchase/production cost. Used for inventory value reporting only — not shown to customers.</p>
               </div>
               <div>
                 <FieldLabel optional>Compare-at Price (₦)</FieldLabel>

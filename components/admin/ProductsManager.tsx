@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useMemo, useTransition, useEffect } from 'react'
+import { useState, useMemo, useTransition, useEffect, useRef } from 'react'
 import { createPortal } from 'react-dom'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
@@ -410,6 +410,9 @@ function exportToCSV(products: Product[]) {
 const inputCls = 'w-full px-3 py-2 text-sm bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-gray-900 dark:focus:ring-white placeholder-gray-400'
 const labelCls = 'block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1.5'
 
+const SCROLL_KEY = 'admin-products-scroll'
+const PAGE_KEY = 'admin-products-page'
+
 export function ProductsManager({
   products,
   categories,
@@ -470,7 +473,12 @@ export function ProductsManager({
 
   // Pagination
   const PAGE_SIZE = 50
-  const [currentPage, setCurrentPage] = useState(1)
+  const [currentPage, setCurrentPage] = useState(() => {
+    if (typeof window === 'undefined') return 1
+    const saved = sessionStorage.getItem(PAGE_KEY)
+    return saved ? parseInt(saved, 10) || 1 : 1
+  })
+  const isFirstRender = useRef(true)
 
   // CSV import
   const [showImportPicker, setShowImportPicker] = useState(false)
@@ -620,8 +628,22 @@ export function ProductsManager({
     })
   }, [filtered, sortBy])
 
-  // Reset to page 1 whenever filters/sort change
-  useEffect(() => { setCurrentPage(1) }, [search, status, stockFilter, categoryId, dateFrom, dateTo, sortBy])
+  // Restore scroll position when landing back from the edit page
+  useEffect(() => {
+    const savedScroll = sessionStorage.getItem(SCROLL_KEY)
+    sessionStorage.removeItem(PAGE_KEY)
+    if (savedScroll) {
+      const y = parseFloat(savedScroll)
+      sessionStorage.removeItem(SCROLL_KEY)
+      requestAnimationFrame(() => window.scrollTo({ top: y, behavior: 'instant' }))
+    }
+  }, [])
+
+  // Reset to page 1 whenever filters/sort change (skip the very first render so restored page survives)
+  useEffect(() => {
+    if (isFirstRender.current) { isFirstRender.current = false; return }
+    setCurrentPage(1)
+  }, [search, status, stockFilter, categoryId, dateFrom, dateTo, sortBy])
 
   const totalPages = Math.ceil(sorted.length / PAGE_SIZE)
   const paged = useMemo(
@@ -1033,7 +1055,14 @@ export function ProductsManager({
                     />
                   </td>
                   <td className="px-4 py-3">
-                    <Link href={`/admin/products/${product.id}/edit`} className="flex items-center gap-3 group/row">
+                    <Link
+                      href={`/admin/products/${product.id}/edit`}
+                      className="flex items-center gap-3 group/row"
+                      onClick={() => {
+                        sessionStorage.setItem(SCROLL_KEY, String(window.scrollY))
+                        sessionStorage.setItem(PAGE_KEY, String(currentPage))
+                      }}
+                    >
                       {product.thumbnail ? (
                         <img src={product.thumbnail} alt="" className="w-9 h-9 rounded-lg object-cover bg-gray-100 dark:bg-gray-800 shrink-0" />
                       ) : (
