@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useMemo, useEffect, useCallback } from 'react'
+import { useState, useMemo, useEffect, useCallback, useRef } from 'react'
 import { useSearchParams, useRouter, usePathname } from 'next/navigation'
 import ProductCard from '@/components/store/ProductCard'
 
@@ -190,6 +190,13 @@ export default function ShopClient({
   const categoryId = searchParams.get('category')
   const search = searchParams.get('q') ?? ''
   const sortBy = (searchParams.get('sort') ?? 'newest') as SortBy
+
+  // Local input state so typing is instant; URL (and filtering) updates after a short pause
+  const [searchInput, setSearchInput] = useState(search)
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  // If external changes clear the search (e.g. "Clear all filters"), sync the input
+  useEffect(() => { setSearchInput(search) }, [search])
   const minPrice = searchParams.get('min') ?? ''
   const maxPrice = searchParams.get('max') ?? ''
   const inStockOnly = searchParams.get('stock') === '1'
@@ -219,7 +226,17 @@ export default function ShopClient({
   }, [searchParams, router, pathname])
 
   const setCategoryId = (v: string | null) => updateParams({ category: v ?? '' })
-  const setSearch = (v: string) => updateParams({ q: v })
+
+  const handleSearchChange = (v: string) => {
+    setSearchInput(v)
+    if (debounceRef.current) clearTimeout(debounceRef.current)
+    debounceRef.current = setTimeout(() => updateParams({ q: v }), 350)
+  }
+  const clearSearch = () => {
+    if (debounceRef.current) clearTimeout(debounceRef.current)
+    setSearchInput('')
+    updateParams({ q: '' })
+  }
   const setSortBy = (v: SortBy) => updateParams({ sort: v === 'newest' ? '' : v })
   const setMinPrice = (v: string) => updateParams({ min: v })
   const setMaxPrice = (v: string) => updateParams({ max: v })
@@ -364,12 +381,12 @@ export default function ShopClient({
                 <path strokeLinecap="round" strokeLinejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z" />
               </svg>
               <input
-                type="text" placeholder="Search products…" value={search}
-                onChange={e => setSearch(e.target.value)}
+                type="text" placeholder="Search products…" value={searchInput}
+                onChange={e => handleSearchChange(e.target.value)}
                 className="w-full pl-9 pr-8 py-2 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-lg text-sm text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-600 focus:outline-none focus:ring-2 focus:ring-[#4A0F1C]/20 focus:border-[#4A0F1C]/30 transition-colors"
               />
-              {search && (
-                <button type="button" onClick={() => setSearch('')} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors">
+              {searchInput && (
+                <button type="button" onClick={clearSearch} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors">
                   <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                     <path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" />
                   </svg>
