@@ -12,15 +12,6 @@ type Order = {
   payment_reference: string | null
 }
 
-type Product = {
-  id: string
-  name: string
-  price: number
-  cost_price: number | null
-  stock: number
-  is_active: boolean
-}
-
 const PAID_STATUSES = ['paid', 'processing', 'shipped', 'delivered']
 
 function ngn(amount: number) {
@@ -124,7 +115,7 @@ function StatusBadge({ status }: { status: string }) {
 }
 
 // ── Main ─────────────────────────────────────────────────────────────────────
-export default function FinanceOverview({ orders, products = [] }: { orders: Order[]; products?: Product[] }) {
+export default function FinanceOverview({ orders }: { orders: Order[] }) {
   const now = new Date()
   const thisMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`
   const lastMonthDate = new Date(now.getFullYear(), now.getMonth() - 1, 1)
@@ -148,17 +139,6 @@ export default function FinanceOverview({ orders, products = [] }: { orders: Ord
   ]
 
   const recent = [...orders].sort((a, b) => b.created_at.localeCompare(a.created_at)).slice(0, 8)
-
-  // Inventory value
-  const totalSellValue = products.reduce((s, p) => s + p.price * p.stock, 0)
-  const totalCostValue = products.reduce((s, p) => p.cost_price != null ? s + p.cost_price * p.stock : s, 0)
-  const potentialProfit = totalCostValue > 0 ? totalSellValue - totalCostValue : null
-  const productsWithCost = products.filter(p => p.cost_price != null).length
-  const totalUnits = products.reduce((s, p) => s + p.stock, 0)
-  const topByValue = [...products]
-    .filter(p => p.stock > 0)
-    .sort((a, b) => b.price * b.stock - a.price * a.stock)
-    .slice(0, 5)
 
   return (
     <div>
@@ -275,101 +255,6 @@ export default function FinanceOverview({ orders, products = [] }: { orders: Ord
             })}
           </tbody>
         </table>
-      </div>
-
-      {/* Inventory Value */}
-      <div className="mt-4">
-        <div className="flex items-center justify-between mb-4">
-          <div>
-            <h2 className="text-base font-semibold text-gray-900 dark:text-white">Inventory Value</h2>
-            <p className="text-xs text-gray-400 mt-0.5">
-              Worth of all products currently in stock
-              {productsWithCost < products.length && (
-                <span className="ml-1 text-amber-500 dark:text-amber-400">
-                  · Cost price set on {productsWithCost}/{products.length} products
-                </span>
-              )}
-            </p>
-          </div>
-        </div>
-
-        {/* Summary cards */}
-        <div className="grid grid-cols-3 gap-4 mb-4">
-          <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl p-5">
-            <p className="text-xs font-medium text-gray-400 uppercase tracking-wide mb-2">Sell Price Total</p>
-            <p className="text-2xl font-bold text-[#4A0F1C] dark:text-[#D4849A]">{ngn(totalSellValue)}</p>
-            <p className="text-xs text-gray-400 mt-1">{totalUnits.toLocaleString()} units in stock</p>
-          </div>
-          <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl p-5">
-            <p className="text-xs font-medium text-gray-400 uppercase tracking-wide mb-2">Cost Price Total</p>
-            {totalCostValue > 0 ? (
-              <>
-                <p className="text-2xl font-bold text-gray-900 dark:text-white">{ngn(totalCostValue)}</p>
-                <p className="text-xs text-gray-400 mt-1">Based on {productsWithCost} products with cost set</p>
-              </>
-            ) : (
-              <>
-                <p className="text-2xl font-bold text-gray-300 dark:text-gray-600">—</p>
-                <p className="text-xs text-gray-400 mt-1">Add cost prices to products to calculate</p>
-              </>
-            )}
-          </div>
-          <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl p-5">
-            <p className="text-xs font-medium text-gray-400 uppercase tracking-wide mb-2">Potential Gross Profit</p>
-            {potentialProfit != null ? (
-              <>
-                <p className={`text-2xl font-bold ${potentialProfit >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
-                  {potentialProfit >= 0 ? '+' : ''}{ngn(potentialProfit)}
-                </p>
-                <p className="text-xs text-gray-400 mt-1">
-                  {totalCostValue > 0 ? `${Math.round((potentialProfit / totalCostValue) * 100)}% margin on cost` : ''}
-                </p>
-              </>
-            ) : (
-              <>
-                <p className="text-2xl font-bold text-gray-300 dark:text-gray-600">—</p>
-                <p className="text-xs text-gray-400 mt-1">Set cost prices to see margin</p>
-              </>
-            )}
-          </div>
-        </div>
-
-        {/* Top products by inventory value */}
-        {topByValue.length > 0 && (
-          <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl overflow-hidden">
-            <div className="px-5 py-4 border-b border-gray-100 dark:border-gray-800">
-              <h3 className="text-sm font-semibold text-gray-900 dark:text-white">Top Products by Inventory Value</h3>
-            </div>
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="bg-gray-50 dark:bg-gray-900/80 border-b border-gray-100 dark:border-gray-800">
-                  <th className="px-5 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wide">Product</th>
-                  <th className="px-5 py-3 text-right text-xs font-medium text-gray-400 uppercase tracking-wide">Units</th>
-                  <th className="px-5 py-3 text-right text-xs font-medium text-gray-400 uppercase tracking-wide">Unit Price</th>
-                  <th className="px-5 py-3 text-right text-xs font-medium text-gray-400 uppercase tracking-wide">Cost Price</th>
-                  <th className="px-5 py-3 text-right text-xs font-medium text-gray-400 uppercase tracking-wide">Sell Value</th>
-                  <th className="px-5 py-3 text-right text-xs font-medium text-gray-400 uppercase tracking-wide">Cost Value</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
-                {topByValue.map(p => (
-                  <tr key={p.id} className="hover:bg-gray-50 dark:hover:bg-gray-800/40 transition-colors">
-                    <td className="px-5 py-3 font-medium text-gray-900 dark:text-white">{p.name}</td>
-                    <td className="px-5 py-3 text-right text-gray-600 dark:text-gray-400">{p.stock.toLocaleString()}</td>
-                    <td className="px-5 py-3 text-right text-gray-900 dark:text-white">{ngn(p.price)}</td>
-                    <td className="px-5 py-3 text-right text-gray-500 dark:text-gray-400">
-                      {p.cost_price != null ? ngn(p.cost_price) : <span className="text-gray-300 dark:text-gray-600">—</span>}
-                    </td>
-                    <td className="px-5 py-3 text-right font-semibold text-[#4A0F1C] dark:text-[#D4849A]">{ngn(p.price * p.stock)}</td>
-                    <td className="px-5 py-3 text-right text-gray-700 dark:text-gray-300">
-                      {p.cost_price != null ? ngn(p.cost_price * p.stock) : <span className="text-gray-300 dark:text-gray-600">—</span>}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
       </div>
     </div>
   )
