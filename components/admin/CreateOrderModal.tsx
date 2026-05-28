@@ -369,28 +369,18 @@ export default function CreateOrderModal({
                     <span className="text-gray-500 dark:text-gray-400">Subtotal</span>
                     <span className="font-medium text-gray-700 dark:text-gray-300">{fmt(subtotal)}</span>
                   </div>
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="text-gray-500 dark:text-gray-400">Shipping fee (₦)</span>
-                    <input
-                      type="number"
-                      min={0}
-                      placeholder="0"
-                      value={shippingFee}
-                      onChange={e => setShippingFee(e.target.value)}
-                      className="w-28 text-right text-sm border border-gray-200 dark:border-gray-700 rounded-lg px-2 py-1 bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none"
-                    />
-                  </div>
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="text-gray-500 dark:text-gray-400">Discount (₦)</span>
-                    <input
-                      type="number"
-                      min={0}
-                      placeholder="0"
-                      value={customDiscount}
-                      onChange={e => setCustomDiscount(e.target.value)}
-                      className="w-28 text-right text-sm border border-gray-200 dark:border-gray-700 rounded-lg px-2 py-1 bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none"
-                    />
-                  </div>
+                  {shippingFeeAmount > 0 && (
+                    <div className="flex justify-between text-sm">
+                      <span className="text-gray-500 dark:text-gray-400">Shipping</span>
+                      <span className="font-medium text-gray-700 dark:text-gray-300">+{fmt(shippingFeeAmount)}</span>
+                    </div>
+                  )}
+                  {discountAmount > 0 && (
+                    <div className="flex justify-between text-sm">
+                      <span className="text-gray-500 dark:text-gray-400">Discount</span>
+                      <span className="font-medium text-green-600 dark:text-green-400">−{fmt(discountAmount)}</span>
+                    </div>
+                  )}
                   <div className="flex items-center justify-between pt-2 border-t border-gray-100 dark:border-gray-800">
                     <span className="text-sm font-semibold text-gray-900 dark:text-white">Total</span>
                     <span className="text-base font-bold text-gray-900 dark:text-white">{fmt(total)}</span>
@@ -475,6 +465,20 @@ export default function CreateOrderModal({
                       {s}
                     </button>
                   ))}
+                </div>
+              </div>
+
+              {/* Shipping & Discount */}
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-1 block">Shipping fee (₦)</label>
+                  <input type="number" min={0} placeholder="0" value={shippingFee} onChange={e => setShippingFee(e.target.value)}
+                    className="w-full px-3 py-2.5 text-sm border border-gray-200 dark:border-gray-700 rounded-xl bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-900 dark:focus:ring-white" />
+                </div>
+                <div>
+                  <label className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-1 block">Discount (₦)</label>
+                  <input type="number" min={0} placeholder="0" value={customDiscount} onChange={e => setCustomDiscount(e.target.value)}
+                    className="w-full px-3 py-2.5 text-sm border border-gray-200 dark:border-gray-700 rounded-xl bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-900 dark:focus:ring-white" />
                 </div>
               </div>
 

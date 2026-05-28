@@ -305,16 +305,18 @@ export default function NewOrderForm({ products }: { products: Product[] }) {
                 <span className="text-gray-500 dark:text-gray-400">Subtotal</span>
                 <span className="text-gray-700 dark:text-gray-300 font-medium">{fmt(subtotal)}</span>
               </div>
-              <div className="flex items-center justify-between">
-                <span className="text-gray-500 dark:text-gray-400">Shipping fee (₦)</span>
-                <input type="number" min={0} placeholder="0" value={shipping} onChange={e => setShipping(e.target.value)}
-                  className="w-28 text-right text-sm border border-gray-200 dark:border-gray-700 rounded-lg px-2 py-1 bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none" />
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-gray-500 dark:text-gray-400">Discount (₦)</span>
-                <input type="number" min={0} placeholder="0" value={discount} onChange={e => setDiscount(e.target.value)}
-                  className="w-28 text-right text-sm border border-gray-200 dark:border-gray-700 rounded-lg px-2 py-1 bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none" />
-              </div>
+              {shippingAmt > 0 && (
+                <div className="flex justify-between">
+                  <span className="text-gray-500 dark:text-gray-400">Shipping</span>
+                  <span className="text-gray-700 dark:text-gray-300 font-medium">+{fmt(shippingAmt)}</span>
+                </div>
+              )}
+              {discountAmt > 0 && (
+                <div className="flex justify-between">
+                  <span className="text-gray-500 dark:text-gray-400">Discount</span>
+                  <span className="text-green-600 dark:text-green-400 font-medium">−{fmt(discountAmt)}</span>
+                </div>
+              )}
               <div className="flex justify-between pt-2 border-t border-gray-100 dark:border-gray-800 font-semibold">
                 <span className="text-gray-900 dark:text-white">Total</span>
                 <span className="text-gray-900 dark:text-white">{fmt(total)}</span>
@@ -389,6 +391,19 @@ export default function NewOrderForm({ products }: { products: Product[] }) {
                   {s}
                 </button>
               ))}
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-1 block">Shipping fee (₦) <span className="font-normal">(optional)</span></label>
+              <input type="number" min={0} placeholder="0" value={shipping} onChange={e => setShipping(e.target.value)}
+                className="w-full px-3 py-2.5 text-sm border border-gray-200 dark:border-gray-700 rounded-xl bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-900 dark:focus:ring-white" />
+            </div>
+            <div>
+              <label className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-1 block">Discount (₦) <span className="font-normal">(optional)</span></label>
+              <input type="number" min={0} placeholder="0" value={discount} onChange={e => setDiscount(e.target.value)}
+                className="w-full px-3 py-2.5 text-sm border border-gray-200 dark:border-gray-700 rounded-xl bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-900 dark:focus:ring-white" />
             </div>
           </div>
 
