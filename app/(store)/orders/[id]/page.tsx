@@ -207,8 +207,8 @@ export default async function OrderPage({ params }: { params: { id: string } }) 
         <Link href="/shop" className="px-5 py-2.5 bg-[#4A0F1C] text-white text-sm font-semibold rounded-xl hover:bg-[#3A0B15] transition-colors">
           Continue shopping
         </Link>
-        <Link href="/account" className="px-5 py-2.5 border border-gray-200 dark:border-gray-700 text-sm font-medium text-gray-700 dark:text-gray-300 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
-          View all orders
+        <Link href="/account/orders" className="px-5 py-2.5 border border-gray-200 dark:border-gray-700 text-sm font-medium text-gray-700 dark:text-gray-300 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
+          My orders
         </Link>
       </div>
     </div>
