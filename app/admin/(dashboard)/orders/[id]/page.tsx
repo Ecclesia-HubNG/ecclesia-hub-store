@@ -5,6 +5,7 @@ import { OrderStatusSelect } from '@/components/admin/OrderStatusSelect'
 import { OrderQuickActions } from '@/components/admin/OrderQuickActions'
 import { OrderTracking } from '@/components/admin/OrderTracking'
 import { DeleteOrderButton } from '@/components/admin/DeleteOrderButton'
+import { SendConfirmationEmailButton } from '@/components/admin/SendConfirmationEmailButton'
 
 const CHANNEL_META: Record<string, { label: string; color: string }> = {
   store:     { label: 'Store',     color: 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300' },
@@ -150,6 +151,14 @@ export default async function OrderDetailPage({ params }: { params: { id: string
 
       {/* Quick actions */}
       <OrderQuickActions id={order.id} status={order.status} />
+
+      {/* Email */}
+      {shipping?.email && (
+        <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl p-5 mb-5">
+          <h2 className="text-xs font-semibold uppercase tracking-wide text-gray-400 dark:text-gray-600 mb-4">Customer Email</h2>
+          <SendConfirmationEmailButton id={order.id} email={shipping.email} />
+        </div>
+      )}
 
       {/* Tracking & Notes */}
       <OrderTracking

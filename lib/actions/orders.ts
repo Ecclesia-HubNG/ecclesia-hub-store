@@ -91,6 +91,55 @@ export async function deleteOrder(id: string): Promise<{ error?: string }> {
   return {}
 }
 
+export async function sendOrderConfirmationEmail(id: string): Promise<{ error?: string }> {
+  const supabase = createAdminClient()
+  const { data: order, error: fetchErr } = await supabase
+    .from('orders')
+    .select('id, total, subtotal, shipping_fee, items, shipping_address')
+    .eq('id', id)
+    .single()
+
+  if (fetchErr || !order) return { error: 'Order not found.' }
+
+  const shipping = order.shipping_address as Record<string, string> | null
+  if (!shipping?.email) return { error: 'No email address on this order.' }
+
+  const items = (Array.isArray(order.items) ? order.items : []) as Array<{
+    name: string; price: number; quantity: number; thumbnail?: string | null
+    selectedVariants?: Array<{ value: string }> | null
+  }>
+
+  try {
+    await sendOrderConfirmation(shipping.email, {
+      orderNumber: order.id.slice(0, 8).toUpperCase(),
+      customerName: [shipping.firstName, shipping.lastName].filter(Boolean).join(' ') || shipping.name || 'Customer',
+      items: items.map(i => ({
+        name: i.name,
+        quantity: i.quantity,
+        price: i.price,
+        thumbnail: i.thumbnail ?? undefined,
+        variant: Array.isArray(i.selectedVariants) && i.selectedVariants.length
+          ? i.selectedVariants.map(sv => sv.value).join(', ')
+          : undefined,
+      })),
+      subtotal: Number(order.subtotal ?? order.total),
+      shipping: Number(order.shipping_fee ?? 0),
+      total: Number(order.total),
+      shippingAddress: {
+        firstName: shipping.firstName ?? '',
+        lastName: shipping.lastName ?? '',
+        phone: shipping.phone ?? '',
+        address: shipping.address ?? '',
+        city: shipping.city ?? '',
+        state: shipping.state ?? '',
+      },
+    })
+    return {}
+  } catch (err: any) {
+    return { error: err?.message ?? 'Failed to send email.' }
+  }
+}
+
 export async function restoreOrder(id: string): Promise<{ error?: string }> {
   const supabase = createAdminClient()
   const { error } = await supabase
