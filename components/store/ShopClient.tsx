@@ -260,9 +260,10 @@ export default function ShopClient({
   const priceCeil = useMemo(() => (products.length ? Math.ceil(Math.max(...products.map(p => p.price))) : 0), [products])
 
   const filtered = useMemo(() => {
+    const q = searchInput.toLowerCase()
     const result = products.filter(p => {
       if (categoryId && p.category_id !== categoryId) return false
-      if (search && !p.name.toLowerCase().includes(search.toLowerCase())) return false
+      if (q && !p.name.toLowerCase().includes(q)) return false
       if (minPrice && p.price < parseFloat(minPrice)) return false
       if (maxPrice && p.price > parseFloat(maxPrice)) return false
       if (inStockOnly && p.stock === 0) return false
@@ -273,12 +274,12 @@ export default function ShopClient({
     if (sortBy === 'price_desc') return [...result].sort((a, b) => b.price - a.price)
     if (sortBy === 'featured') return [...result].sort((a, b) => (b.is_featured ? 1 : 0) - (a.is_featured ? 1 : 0))
     return result
-  }, [products, categoryId, search, minPrice, maxPrice, inStockOnly, onSaleOnly, sortBy])
+  }, [products, categoryId, searchInput, minPrice, maxPrice, inStockOnly, onSaleOnly, sortBy])
 
   const totalPages = Math.ceil(filtered.length / ITEMS_PER_PAGE)
   const paginated = filtered.slice((page - 1) * ITEMS_PER_PAGE, page * ITEMS_PER_PAGE)
 
-  const hasFilters = !!(categoryId || search || minPrice || maxPrice || inStockOnly || onSaleOnly)
+  const hasFilters = !!(categoryId || searchInput || minPrice || maxPrice || inStockOnly || onSaleOnly)
   const activeFilterCount = [!!categoryId, !!minPrice, !!maxPrice, inStockOnly, onSaleOnly].filter(Boolean).length
   const activeCategory = categories.find(c => c.id === categoryId)
 
@@ -454,12 +455,12 @@ export default function ShopClient({
                     {(page - 1) * ITEMS_PER_PAGE + 1}–{Math.min(page * ITEMS_PER_PAGE, filtered.length)}
                   </span>{' '}
                   of <span className="font-semibold text-gray-900 dark:text-white">{filtered.length}</span> products
-                  {search && <span className="text-[#6B1A2A] dark:text-[#D4849A]"> for &ldquo;{search}&rdquo;</span>}
+                  {searchInput && <span className="text-[#6B1A2A] dark:text-[#D4849A]"> for &ldquo;{searchInput}&rdquo;</span>}
                 </>
               ) : (
                 <>
                   <span className="font-semibold text-gray-900 dark:text-white">0</span> products
-                  {search && <span className="text-[#6B1A2A] dark:text-[#D4849A]"> for &ldquo;{search}&rdquo;</span>}
+                  {searchInput && <span className="text-[#6B1A2A] dark:text-[#D4849A]"> for &ldquo;{searchInput}&rdquo;</span>}
                 </>
               )}
             </p>
