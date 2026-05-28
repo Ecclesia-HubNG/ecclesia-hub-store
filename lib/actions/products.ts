@@ -61,9 +61,13 @@ export async function createProduct(_: unknown, formData: FormData) {
 
 export async function updateProduct(id: string, _: unknown, formData: FormData) {
   const supabase = createAdminClient()
-  const parsed = parseForm(formData)
+  const { cost_price, ...parsed } = parseForm(formData)
   const { error } = await supabase.from('products').update(parsed).eq('id', id)
   if (error) return { error: error.message }
+  // cost_price is a newer column — apply separately so a missing column never blocks saves
+  if (cost_price !== undefined) {
+    await supabase.from('products').update({ cost_price }).eq('id', id)
+  }
   logAudit('product.update', 'product', id, { name: parsed.name }).catch(() => {})
   revalidatePath('/admin/products')
   revalidatePath(`/admin/products/${id}/edit`)
