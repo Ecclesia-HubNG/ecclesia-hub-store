@@ -104,9 +104,10 @@ export default async function ProductPage({ params }: { params: { slug: string }
           </div>
 
           {product.short_description && (
-            <p className="text-gray-500 dark:text-gray-400 text-sm leading-relaxed mb-6">
-              {product.short_description}
-            </p>
+            <div
+              className="text-gray-500 dark:text-gray-400 text-sm leading-relaxed mb-6 [&_p]:mb-1 [&_br]:block"
+              dangerouslySetInnerHTML={{ __html: product.short_description }}
+            />
           )}
 
           {/* Stock status — only shown when there are no variants (variants show per-option stock inline) */}
@@ -167,9 +168,10 @@ export default async function ProductPage({ params }: { params: { slug: string }
       {product.description && (
         <div className="max-w-2xl mb-20">
           <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">About this product</h2>
-          <div className="text-gray-500 dark:text-gray-400 text-sm leading-7 whitespace-pre-line">
-            {product.description}
-          </div>
+          <div
+            className="text-gray-500 dark:text-gray-400 text-sm leading-7 [&_p]:mb-3 [&_br]:block [&_ul]:list-disc [&_ul]:pl-5 [&_ul]:mb-3 [&_ol]:list-decimal [&_ol]:pl-5 [&_ol]:mb-3 [&_li]:mb-1 [&_strong]:font-semibold [&_strong]:text-gray-700 dark:[&_strong]:text-gray-200 [&_h1]:text-base [&_h1]:font-semibold [&_h2]:text-base [&_h2]:font-semibold [&_h3]:text-sm [&_h3]:font-semibold [&_a]:underline"
+            dangerouslySetInnerHTML={{ __html: product.description }}
+          />
         </div>
       )}
 
