@@ -100,16 +100,18 @@ function ChannelBadge({ channel }: { channel?: string | null }) {
 }
 
 const STATUS_COLORS: Record<string, { bg: string; text: string; dot: string }> = {
-  pending:    { bg: 'bg-amber-50 dark:bg-amber-950/30',  text: 'text-amber-700 dark:text-amber-400',  dot: 'bg-amber-400' },
-  paid:       { bg: 'bg-blue-50 dark:bg-blue-950/30',    text: 'text-blue-700 dark:text-blue-400',    dot: 'bg-blue-400' },
-  processing: { bg: 'bg-blue-50 dark:bg-blue-950/30',    text: 'text-blue-700 dark:text-blue-400',    dot: 'bg-blue-500' },
-  shipped:    { bg: 'bg-purple-50 dark:bg-purple-950/30',text: 'text-purple-700 dark:text-purple-400',dot: 'bg-purple-400' },
-  delivered:  { bg: 'bg-green-50 dark:bg-green-950/30',  text: 'text-green-700 dark:text-green-400',  dot: 'bg-green-500' },
-  cancelled:  { bg: 'bg-gray-100 dark:bg-gray-800',      text: 'text-gray-500 dark:text-gray-400',    dot: 'bg-gray-400' },
-  refunded:   { bg: 'bg-red-50 dark:bg-red-950/30',      text: 'text-red-700 dark:text-red-400',      dot: 'bg-red-400' },
+  pending:               { bg: 'bg-amber-50 dark:bg-amber-950/30',   text: 'text-amber-700 dark:text-amber-400',   dot: 'bg-amber-400' },
+  pending_verification:  { bg: 'bg-yellow-50 dark:bg-yellow-950/30', text: 'text-yellow-700 dark:text-yellow-400', dot: 'bg-yellow-400' },
+  pending_bank_transfer: { bg: 'bg-orange-50 dark:bg-orange-950/30', text: 'text-orange-700 dark:text-orange-400', dot: 'bg-orange-400' },
+  paid:                  { bg: 'bg-blue-50 dark:bg-blue-950/30',     text: 'text-blue-700 dark:text-blue-400',     dot: 'bg-blue-400' },
+  processing:            { bg: 'bg-blue-50 dark:bg-blue-950/30',     text: 'text-blue-700 dark:text-blue-400',     dot: 'bg-blue-500' },
+  shipped:               { bg: 'bg-purple-50 dark:bg-purple-950/30', text: 'text-purple-700 dark:text-purple-400', dot: 'bg-purple-400' },
+  delivered:             { bg: 'bg-green-50 dark:bg-green-950/30',   text: 'text-green-700 dark:text-green-400',   dot: 'bg-green-500' },
+  cancelled:             { bg: 'bg-gray-100 dark:bg-gray-800',       text: 'text-gray-500 dark:text-gray-400',     dot: 'bg-gray-400' },
+  refunded:              { bg: 'bg-red-50 dark:bg-red-950/30',       text: 'text-red-700 dark:text-red-400',       dot: 'bg-red-400' },
 }
 
-const ALL_STATUSES = ['pending', 'paid', 'processing', 'shipped', 'delivered', 'cancelled', 'refunded']
+const ALL_STATUSES = ['pending', 'pending_verification', 'pending_bank_transfer', 'paid', 'processing', 'shipped', 'delivered', 'cancelled', 'refunded']
 
 function StatusBadge({ status }: { status: string }) {
   const s = STATUS_COLORS[status] ?? STATUS_COLORS.pending
@@ -221,8 +223,9 @@ export default function OrdersManager({ orders: initial, products = [] }: { orde
         const email = o.customers?.email?.toLowerCase() ?? ''
         const ref = o.payment_reference?.toLowerCase() ?? ''
         const addr = o.shipping_address
-        const addrName = typeof addr?.name === 'string' ? addr.name.toLowerCase() : ''
-        if (!id.includes(q) && !name.includes(q) && !email.includes(q) && !ref.includes(q) && !addrName.includes(q)) return false
+        const addrName = [addr?.firstName, addr?.lastName].filter(Boolean).join(' ').toLowerCase()
+        const addrEmail = (addr?.email ?? '').toLowerCase()
+        if (!id.includes(q) && !name.includes(q) && !email.includes(q) && !ref.includes(q) && !addrName.includes(q) && !addrEmail.includes(q)) return false
       }
       if (dateFrom && new Date(o.created_at) < new Date(dateFrom)) return false
       if (dateTo && new Date(o.created_at) > new Date(dateTo + 'T23:59:59')) return false
@@ -270,7 +273,7 @@ export default function OrdersManager({ orders: initial, products = [] }: { orde
   const revenue = initial
     .filter(o => ['paid', 'processing', 'shipped', 'delivered'].includes(o.status))
     .reduce((s, o) => s + Number(o.total), 0)
-  const pending = initial.filter(o => o.status === 'pending').length
+  const pending = initial.filter(o => ['pending', 'pending_verification', 'pending_bank_transfer'].includes(o.status)).length
   const inProgress = initial.filter(o => ['paid', 'processing', 'shipped'].includes(o.status)).length
   const delivered = initial.filter(o => o.status === 'delivered').length
 

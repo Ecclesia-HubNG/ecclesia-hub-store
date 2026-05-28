@@ -1,6 +1,7 @@
 'use server'
 
 import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 import { revalidatePath } from 'next/cache'
 import { sendOrderShipped, sendOrderConfirmation } from '@/lib/email'
 
@@ -103,7 +104,7 @@ export async function createManualOrder(payload: {
   payment_reference: string
   admin_notes: string
 }): Promise<{ error?: string; id?: string }> {
-  const supabase = createClient()
+  const supabase = createAdminClient()
 
   const shipping_address = {
     name: payload.customer_name,

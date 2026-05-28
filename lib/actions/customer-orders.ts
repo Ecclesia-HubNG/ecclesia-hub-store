@@ -214,7 +214,7 @@ export async function createBankTransferOrder(sessionId: string): Promise<
     shipping: session.shipping_fee as number,
     total: session.total as number,
     shippingAddress: { firstName: shipping.firstName, lastName: shipping.lastName, phone: shipping.phone, address: shipping.address, city: shipping.city, state: shipping.state },
-  }).catch(() => {})
+  }).catch((err) => console.error('[bank-transfer] order confirmation email failed:', err?.message))
 
   return { orderId: order.id, orderNumber, bankDetails }
 }
