@@ -169,6 +169,8 @@ export async function createManualOrder(payload: {
   city: string
   state: string
   items: ManualOrderItem[]
+  subtotal: number
+  shipping_fee: number
   total: number
   status: string
   order_channel: string
@@ -178,6 +180,8 @@ export async function createManualOrder(payload: {
   const supabase = createAdminClient()
 
   const shipping_address = {
+    firstName: payload.customer_name.split(' ')[0] ?? payload.customer_name,
+    lastName: payload.customer_name.split(' ').slice(1).join(' ') || '',
     name: payload.customer_name,
     email: payload.customer_email,
     phone: payload.customer_phone,
@@ -191,6 +195,8 @@ export async function createManualOrder(payload: {
     .from('orders')
     .insert({
       status: payload.status,
+      subtotal: payload.subtotal,
+      shipping_fee: payload.shipping_fee,
       total: payload.total,
       items: payload.items,
       shipping_address,

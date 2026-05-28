@@ -137,6 +137,7 @@ export default function CreateOrderModal({
   const [payRef, setPayRef] = useState('')
   const [notes, setNotes] = useState('')
   const [customDiscount, setCustomDiscount] = useState('')
+  const [shippingFee, setShippingFee] = useState('')
 
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
@@ -149,7 +150,8 @@ export default function CreateOrderModal({
 
   const subtotal = items.reduce((s, i) => s + i.price * i.quantity, 0)
   const discountAmount = parseFloat(customDiscount) || 0
-  const total = Math.max(0, subtotal - discountAmount)
+  const shippingFeeAmount = parseFloat(shippingFee) || 0
+  const total = Math.max(0, subtotal - discountAmount + shippingFeeAmount)
 
   function addProduct(p: Product) {
     setItems(prev => {
@@ -207,6 +209,8 @@ export default function CreateOrderModal({
       city,
       state,
       items,
+      subtotal,
+      shipping_fee: shippingFeeAmount,
       total,
       status,
       order_channel: channel,
@@ -366,6 +370,17 @@ export default function CreateOrderModal({
                     <span className="font-medium text-gray-700 dark:text-gray-300">{fmt(subtotal)}</span>
                   </div>
                   <div className="flex items-center justify-between text-sm">
+                    <span className="text-gray-500 dark:text-gray-400">Shipping fee (₦)</span>
+                    <input
+                      type="number"
+                      min={0}
+                      placeholder="0"
+                      value={shippingFee}
+                      onChange={e => setShippingFee(e.target.value)}
+                      className="w-28 text-right text-sm border border-gray-200 dark:border-gray-700 rounded-lg px-2 py-1 bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none"
+                    />
+                  </div>
+                  <div className="flex items-center justify-between text-sm">
                     <span className="text-gray-500 dark:text-gray-400">Discount (₦)</span>
                     <input
                       type="number"
@@ -499,6 +514,22 @@ export default function CreateOrderModal({
                     {CHANNELS.find(c => c.value === channel)?.label ?? channel}
                   </span>
                 </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-500 dark:text-gray-400">Subtotal</span>
+                  <span className="text-gray-900 dark:text-white font-medium">{fmt(subtotal)}</span>
+                </div>
+                {shippingFeeAmount > 0 && (
+                  <div className="flex justify-between">
+                    <span className="text-gray-500 dark:text-gray-400">Shipping</span>
+                    <span className="text-gray-900 dark:text-white font-medium">{fmt(shippingFeeAmount)}</span>
+                  </div>
+                )}
+                {discountAmount > 0 && (
+                  <div className="flex justify-between">
+                    <span className="text-gray-500 dark:text-gray-400">Discount</span>
+                    <span className="text-green-600 dark:text-green-400 font-medium">−{fmt(discountAmount)}</span>
+                  </div>
+                )}
                 <div className="flex justify-between pt-2 border-t border-gray-200 dark:border-gray-700 font-semibold">
                   <span className="text-gray-900 dark:text-white">Total</span>
                   <span className="text-gray-900 dark:text-white">{fmt(total)}</span>

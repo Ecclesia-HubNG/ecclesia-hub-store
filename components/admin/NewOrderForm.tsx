@@ -135,6 +135,7 @@ export default function NewOrderForm({ products }: { products: Product[] }) {
   const [payRef, setPayRef] = useState('')
   const [notes, setNotes] = useState('')
   const [discount, setDiscount] = useState('')
+  const [shipping, setShipping] = useState('')
 
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
@@ -147,7 +148,8 @@ export default function NewOrderForm({ products }: { products: Product[] }) {
 
   const subtotal = items.reduce((s, i) => s + i.price * i.quantity, 0)
   const discountAmt = parseFloat(discount) || 0
-  const total = Math.max(0, subtotal - discountAmt)
+  const shippingAmt = parseFloat(shipping) || 0
+  const total = Math.max(0, subtotal - discountAmt + shippingAmt)
 
   function addProduct(p: Product) {
     setItems(prev => {
@@ -199,6 +201,8 @@ export default function NewOrderForm({ products }: { products: Product[] }) {
       city,
       state: orderState,
       items,
+      subtotal,
+      shipping_fee: shippingAmt,
       total,
       status,
       order_channel: channel,
@@ -300,6 +304,11 @@ export default function NewOrderForm({ products }: { products: Product[] }) {
               <div className="flex justify-between">
                 <span className="text-gray-500 dark:text-gray-400">Subtotal</span>
                 <span className="text-gray-700 dark:text-gray-300 font-medium">{fmt(subtotal)}</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-gray-500 dark:text-gray-400">Shipping fee (₦)</span>
+                <input type="number" min={0} placeholder="0" value={shipping} onChange={e => setShipping(e.target.value)}
+                  className="w-28 text-right text-sm border border-gray-200 dark:border-gray-700 rounded-lg px-2 py-1 bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none" />
               </div>
               <div className="flex items-center justify-between">
                 <span className="text-gray-500 dark:text-gray-400">Discount (₦)</span>
