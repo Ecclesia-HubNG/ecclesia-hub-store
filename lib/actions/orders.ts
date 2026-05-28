@@ -91,6 +91,19 @@ export async function deleteOrder(id: string): Promise<{ error?: string }> {
   return {}
 }
 
+export async function restoreOrder(id: string): Promise<{ error?: string }> {
+  const supabase = createAdminClient()
+  const { error } = await supabase
+    .from('orders')
+    .update({ deleted_at: null, deleted_by_role: null, deleted_by_email: null })
+    .eq('id', id)
+  if (error) return { error: error.message }
+  revalidatePath('/admin/orders')
+  revalidatePath('/admin/orders/deleted')
+  revalidatePath('/admin')
+  return {}
+}
+
 type ManualOrderItem = {
   product_id?: string
   name: string

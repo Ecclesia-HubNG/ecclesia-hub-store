@@ -149,6 +149,48 @@ export async function getOrder(id: string) {
   return order
 }
 
+export async function cancelMyOrder(id: string): Promise<{ error?: string }> {
+  const admin = createAdminClient()
+
+  const { data: order } = await admin
+    .from('orders')
+    .select('id, status, customer_id, shipping_address')
+    .eq('id', id)
+    .is('deleted_at', null)
+    .maybeSingle()
+
+  if (!order) return { error: 'Order not found.' }
+
+  const cancellable = ['pending', 'pending_verification', 'pending_bank_transfer']
+  if (!cancellable.includes(order.status)) {
+    return { error: 'Only unpaid orders can be cancelled.' }
+  }
+
+  // For authenticated orders verify ownership; guests can cancel by knowing the UUID
+  if (order.customer_id) {
+    const supabase = createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user || user.id !== order.customer_id) return { error: 'Not authorised.' }
+  }
+
+  const shipping = order.shipping_address as Record<string, string> | null
+  const supabase = createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  const deletedByEmail = user?.email ?? shipping?.email ?? 'guest'
+
+  const { error } = await admin
+    .from('orders')
+    .update({
+      deleted_at: new Date().toISOString(),
+      deleted_by_role: 'customer',
+      deleted_by_email: deletedByEmail,
+    })
+    .eq('id', id)
+
+  if (error) return { error: error.message }
+  return {}
+}
+
 export async function getMyOrders() {
   const supabase = createClient()
   const { data: { user } } = await supabase.auth.getUser()

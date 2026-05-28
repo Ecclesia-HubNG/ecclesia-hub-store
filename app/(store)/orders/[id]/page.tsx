@@ -3,6 +3,7 @@ export const dynamic = 'force-dynamic'
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import { getOrder } from '@/lib/actions/customer-orders'
+import { CancelOrderButton } from '@/components/CancelOrderButton'
 
 const STATUS_STEPS = ['pending', 'paid', 'processing', 'shipped', 'delivered'] as const
 type Status = typeof STATUS_STEPS[number] | 'cancelled' | 'refunded' | 'pending_verification' | 'pending_bank_transfer'
@@ -203,13 +204,18 @@ export default async function OrderPage({ params }: { params: { id: string } }) 
         </div>
       )}
 
-      <div className="flex gap-3">
-        <Link href="/shop" className="px-5 py-2.5 bg-[#4A0F1C] text-white text-sm font-semibold rounded-xl hover:bg-[#3A0B15] transition-colors">
-          Continue shopping
-        </Link>
-        <Link href="/account/orders" className="px-5 py-2.5 border border-gray-200 dark:border-gray-700 text-sm font-medium text-gray-700 dark:text-gray-300 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
-          My orders
-        </Link>
+      <div className="flex flex-col gap-3">
+        <div className="flex gap-3">
+          <Link href="/shop" className="px-5 py-2.5 bg-[#4A0F1C] text-white text-sm font-semibold rounded-xl hover:bg-[#3A0B15] transition-colors">
+            Continue shopping
+          </Link>
+          <Link href="/account/orders" className="px-5 py-2.5 border border-gray-200 dark:border-gray-700 text-sm font-medium text-gray-700 dark:text-gray-300 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
+            My orders
+          </Link>
+        </div>
+        {['pending', 'pending_verification', 'pending_bank_transfer'].includes(order.status) && (
+          <CancelOrderButton id={order.id} />
+        )}
       </div>
     </div>
   )
