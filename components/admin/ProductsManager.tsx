@@ -473,12 +473,9 @@ export function ProductsManager({
 
   // Pagination
   const PAGE_SIZE = 50
-  const [currentPage, setCurrentPage] = useState(() => {
-    if (typeof window === 'undefined') return 1
-    const saved = sessionStorage.getItem(PAGE_KEY)
-    return saved ? parseInt(saved, 10) || 1 : 1
-  })
+  const [currentPage, setCurrentPage] = useState(1)
   const isFirstRender = useRef(true)
+  const pendingScrollY = useRef<number | null>(null)
 
   // CSV import
   const [showImportPicker, setShowImportPicker] = useState(false)
@@ -628,18 +625,29 @@ export function ProductsManager({
     })
   }, [filtered, sortBy])
 
-  // Restore scroll position when landing back from the edit page
+  // On mount (client only): restore page + queue scroll for after the page re-renders
   useEffect(() => {
+    const savedPage   = sessionStorage.getItem(PAGE_KEY)
     const savedScroll = sessionStorage.getItem(SCROLL_KEY)
     sessionStorage.removeItem(PAGE_KEY)
-    if (savedScroll) {
-      const y = parseFloat(savedScroll)
-      sessionStorage.removeItem(SCROLL_KEY)
-      requestAnimationFrame(() => window.scrollTo({ top: y, behavior: 'instant' }))
+    sessionStorage.removeItem(SCROLL_KEY)
+    if (savedPage) {
+      const p = parseInt(savedPage, 10)
+      if (!isNaN(p) && p >= 1) setCurrentPage(p)
     }
+    if (savedScroll) pendingScrollY.current = parseFloat(savedScroll)
   }, [])
 
-  // Reset to page 1 whenever filters/sort change (skip the very first render so restored page survives)
+  // After the page list re-renders with the restored page, apply the deferred scroll
+  useEffect(() => {
+    if (pendingScrollY.current != null) {
+      const y = pendingScrollY.current
+      pendingScrollY.current = null
+      requestAnimationFrame(() => window.scrollTo({ top: y, behavior: 'instant' }))
+    }
+  }, [currentPage])
+
+  // Reset to page 1 whenever filters/sort change (skip the first render so restored page survives)
   useEffect(() => {
     if (isFirstRender.current) { isFirstRender.current = false; return }
     setCurrentPage(1)
