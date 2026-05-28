@@ -172,6 +172,8 @@ export async function createManualOrder(payload: {
   subtotal: number
   shipping_fee: number
   total: number
+  delivery_rate_id?: string
+  delivery_label?: string
   status: string
   order_channel: string
   payment_reference: string
@@ -200,6 +202,8 @@ export async function createManualOrder(payload: {
       total: payload.total,
       items: payload.items,
       shipping_address,
+      delivery_rate_id: payload.delivery_rate_id || null,
+      delivery_label: payload.delivery_label || null,
       payment_reference: payload.payment_reference || null,
       order_channel: payload.order_channel,
       is_manual: true,

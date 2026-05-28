@@ -116,7 +116,9 @@ function SectionCard({ title, children }: { title: string; children: React.React
   )
 }
 
-export default function NewOrderForm({ products }: { products: Product[] }) {
+type DeliveryRate = { id: string; label: string; price: number; estimated_days: string | null }
+
+export default function NewOrderForm({ products, deliveryRates = [] }: { products: Product[]; deliveryRates?: DeliveryRate[] }) {
   const router = useRouter()
 
   const [items, setItems] = useState<LineItem[]>([])
@@ -136,6 +138,7 @@ export default function NewOrderForm({ products }: { products: Product[] }) {
   const [notes, setNotes] = useState('')
   const [discount, setDiscount] = useState('')
   const [shipping, setShipping] = useState('')
+  const [selectedRateId, setSelectedRateId] = useState('')
 
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
@@ -150,6 +153,13 @@ export default function NewOrderForm({ products }: { products: Product[] }) {
   const discountAmt = parseFloat(discount) || 0
   const shippingAmt = parseFloat(shipping) || 0
   const total = Math.max(0, subtotal - discountAmt + shippingAmt)
+  const selectedRate = deliveryRates.find(r => r.id === selectedRateId) ?? null
+
+  function pickRate(id: string) {
+    setSelectedRateId(id)
+    const rate = deliveryRates.find(r => r.id === id)
+    if (rate) setShipping(String(rate.price))
+  }
 
   function addProduct(p: Product) {
     setItems(prev => {
@@ -204,6 +214,8 @@ export default function NewOrderForm({ products }: { products: Product[] }) {
       subtotal,
       shipping_fee: shippingAmt,
       total,
+      delivery_rate_id: selectedRate?.id,
+      delivery_label: selectedRate?.label,
       status,
       order_channel: channel,
       payment_reference: payRef,
@@ -394,10 +406,45 @@ export default function NewOrderForm({ products }: { products: Product[] }) {
             </div>
           </div>
 
+          {/* Delivery rate picker */}
+          <div>
+            <label className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-2 block">Delivery</label>
+            {deliveryRates.length === 0 ? (
+              <p className="text-xs text-gray-400 dark:text-gray-600">No delivery rates configured. Enter fee manually below.</p>
+            ) : (
+              <div className="space-y-1.5 max-h-48 overflow-y-auto pr-1">
+                {deliveryRates.map(rate => (
+                  <button
+                    key={rate.id}
+                    type="button"
+                    onClick={() => pickRate(rate.id)}
+                    className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl border text-sm transition-all text-left ${
+                      selectedRateId === rate.id
+                        ? 'border-gray-900 dark:border-white bg-gray-50 dark:bg-gray-800 ring-2 ring-gray-900 dark:ring-white'
+                        : 'border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600'
+                    }`}
+                  >
+                    <div>
+                      <p className="font-medium text-gray-900 dark:text-white">{rate.label}</p>
+                      {rate.estimated_days && (
+                        <p className="text-xs text-gray-400 mt-0.5">{rate.estimated_days}</p>
+                      )}
+                    </div>
+                    <span className="font-semibold text-gray-900 dark:text-white shrink-0 ml-4">
+                      {rate.price === 0 ? 'Free' : `₦${Number(rate.price).toLocaleString('en')}`}
+                    </span>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-1 block">Shipping fee (₦) <span className="font-normal">(optional)</span></label>
-              <input type="number" min={0} placeholder="0" value={shipping} onChange={e => setShipping(e.target.value)}
+              <label className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-1 block">
+                Shipping fee (₦) <span className="font-normal">{selectedRateId ? '(from selected rate)' : '(or enter manually)'}</span>
+              </label>
+              <input type="number" min={0} placeholder="0" value={shipping} onChange={e => { setShipping(e.target.value); setSelectedRateId('') }}
                 className="w-full px-3 py-2.5 text-sm border border-gray-200 dark:border-gray-700 rounded-xl bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-900 dark:focus:ring-white" />
             </div>
             <div>
