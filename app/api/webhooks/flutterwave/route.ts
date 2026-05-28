@@ -25,7 +25,6 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 })
   }
 
-  // Only handle successful charges
   if (payload.event !== 'charge.completed') {
     return NextResponse.json({ received: true })
   }
@@ -48,7 +47,7 @@ export async function POST(req: NextRequest) {
   // Re-verify with Flutterwave API (never trust the webhook payload alone)
   const verifyRes = await fetch(
     `https://api.flutterwave.com/v3/transactions/${tx.id}/verify`,
-    { headers: { Authorization: `Bearer ${process.env.FLUTTERWAVE_SECRET_KEY}` }, cache: 'no-store' }
+    { headers: { Authorization: `Bearer ${process.env.FLUTTERWAVE_SECRET_KEY}` }, cache: 'no-store' },
   )
 
   if (!verifyRes.ok) {
@@ -61,23 +60,27 @@ export async function POST(req: NextRequest) {
   }
 
   const verifiedAmount: number = verified.data.amount
-
   const supabase = createAdminClient()
 
   const { data: order } = await supabase
     .from('orders')
-    .select('id, status, total, shipping_address, items')
+    .select('id, status, total, subtotal, shipping_fee, shipping_address, items')
     .eq('payment_reference', tx.tx_ref)
-    .single()
+    .maybeSingle()
 
-  if (!order || order.status !== 'pending') {
+  // Already paid (verify page beat the webhook) — nothing to do
+  if (!order || order.status === 'paid') {
     return NextResponse.json({ received: true })
   }
 
-  // Amount guard (Flutterwave amounts are in Naira)
-  const expectedNaira = order.total as number
-  if (Math.abs(verifiedAmount - expectedNaira) > 1) {
-    console.error(`FLW webhook amount mismatch for order ${order.id}: expected ${expectedNaira}, got ${verifiedAmount}`)
+  // Only process orders we created (pending_verification) or legacy pending orders
+  if (order.status !== 'pending_verification' && order.status !== 'pending') {
+    return NextResponse.json({ received: true })
+  }
+
+  // Amount guard
+  if (Math.abs(verifiedAmount - (order.total as number)) > 1) {
+    console.error(`FLW webhook amount mismatch for order ${order.id}: expected ${order.total}, got ${verifiedAmount}`)
     return NextResponse.json({ error: 'Amount mismatch' }, { status: 400 })
   }
 
@@ -96,11 +99,56 @@ export async function POST(req: NextRequest) {
       },
     })
     .eq('id', order.id)
-    .eq('status', 'pending')
+    .in('status', ['pending_verification', 'pending'])
 
   if (updateErr) {
     console.error('FLW webhook order update failed:', updateErr.message)
     return NextResponse.json({ error: updateErr.message }, { status: 500 })
+  }
+
+  // Clean up checkout session
+  await supabase.from('checkout_sessions').delete().eq('tx_ref', tx.tx_ref)
+
+  // Decrement variant stock
+  type SessionItem = {
+    productId: string
+    selectedVariants: Array<{ groupName: string; value: string }> | null
+    quantity: number
+  }
+  const cartItems = (order.items as SessionItem[]) ?? []
+  const variantItems = cartItems.filter(i => Array.isArray(i.selectedVariants) && i.selectedVariants.length > 0)
+  if (variantItems.length > 0) {
+    const productIds = Array.from(new Set(variantItems.map(i => i.productId)))
+    const { data: products } = await supabase.from('products').select('id, variants').in('id', productIds)
+
+    for (const item of variantItems) {
+      const product = products?.find(p => p.id === item.productId)
+      if (!product) continue
+
+      type VOption = { value: string; stock?: number | null }
+      type VGroup = { name: string; options: VOption[] }
+      const productVariants: VGroup[] = Array.isArray(product.variants)
+        ? (product.variants as VGroup[]).map(v => ({ ...v, options: [...v.options] }))
+        : []
+      let changed = false
+
+      for (const sv of item.selectedVariants ?? []) {
+        const gIdx = productVariants.findIndex(v => v.name === sv.groupName)
+        if (gIdx === -1) continue
+        const group: VGroup = { ...productVariants[gIdx], options: [...productVariants[gIdx].options] }
+        const oIdx = group.options.findIndex(o => o.value === sv.value)
+        if (oIdx === -1) continue
+        const opt = { ...group.options[oIdx] }
+        if (opt.stock != null) {
+          opt.stock = Math.max(0, opt.stock - item.quantity)
+          group.options[oIdx] = opt
+          productVariants[gIdx] = group
+          changed = true
+        }
+      }
+
+      if (changed) await supabase.from('products').update({ variants: productVariants }).eq('id', product.id)
+    }
   }
 
   logAudit('order.paid', 'order', order.id, {
@@ -109,6 +157,7 @@ export async function POST(req: NextRequest) {
     reference: tx.tx_ref,
     amount: verifiedAmount,
     payment_type: tx.payment_type,
+    source: 'webhook',
   }, { email: 'flutterwave-webhook' }).catch(() => {})
 
   const shipping = order.shipping_address as Record<string, string>
@@ -123,12 +172,10 @@ export async function POST(req: NextRequest) {
       thumbnail: (i.thumbnail as string) ?? undefined,
       variant: Array.isArray(i.selectedVariants) && (i.selectedVariants as Array<{ value: string }>).length
         ? (i.selectedVariants as Array<{ value: string }>).map(sv => sv.value).join(', ')
-        : i.selectedVariant
-        ? Object.values(i.selectedVariant as Record<string, string>).join(' / ')
         : undefined,
     })),
-    subtotal: order.total as number,
-    shipping: 0,
+    subtotal: (order.subtotal ?? order.total) as number,
+    shipping: (order.shipping_fee ?? 0) as number,
     total: order.total as number,
     shippingAddress: {
       firstName: shipping.firstName,
@@ -138,7 +185,7 @@ export async function POST(req: NextRequest) {
       city: shipping.city,
       state: shipping.state,
     },
-  }).catch(() => {})
+  }).catch((err) => console.error('[flutterwave-webhook] email failed:', err?.message))
 
   return NextResponse.json({ received: true })
 }
