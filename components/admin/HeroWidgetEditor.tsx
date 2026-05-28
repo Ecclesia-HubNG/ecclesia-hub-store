@@ -287,13 +287,16 @@ export default function HeroWidgetEditor({ initialConfig, products, mediaAssets 
 
                   {/* Heading */}
                   <div>
-                    <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-1.5">Heading <span className="normal-case font-normal">(optional)</span></label>
-                    <input
-                      type="text"
+                    <div className="flex items-center justify-between mb-1.5">
+                      <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">Heading <span className="normal-case font-normal">(optional)</span></label>
+                      <span className="text-[10px] text-gray-400 dark:text-gray-600">Press Enter for a line break</span>
+                    </div>
+                    <textarea
+                      rows={3}
                       value={slide.heading ?? ''}
                       onChange={e => updateSlide(slide.id, { heading: e.target.value || null })}
-                      placeholder="Skin that speaks before you even do."
-                      className={inputCls}
+                      placeholder={'Bibles, Books\n& Christian Resources'}
+                      className={`${inputCls} resize-none leading-relaxed`}
                     />
                   </div>
 
