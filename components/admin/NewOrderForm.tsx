@@ -2,7 +2,7 @@
 
 import { useState, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
-import { createManualOrder } from '@/lib/actions/orders'
+import { createManualOrder, sendOrderConfirmationEmail } from '@/lib/actions/orders'
 
 type Product = {
   id: string
@@ -140,6 +140,7 @@ export default function NewOrderForm({ products, deliveryRates = [] }: { product
   const [shipping, setShipping] = useState('')
   const [selectedRateId, setSelectedRateId] = useState('')
 
+  const [sendEmail, setSendEmail] = useState(false)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
 
@@ -223,6 +224,7 @@ export default function NewOrderForm({ products, deliveryRates = [] }: { product
     })
     setSaving(false)
     if (result.error) { setError(result.error); return }
+    if (sendEmail && result.id) await sendOrderConfirmationEmail(result.id)
     router.push(result.id ? `/admin/orders/${result.id}` : '/admin/orders')
   }
 
@@ -472,15 +474,26 @@ export default function NewOrderForm({ products, deliveryRates = [] }: { product
         <p className="text-sm text-red-500 bg-red-50 dark:bg-red-950/30 px-4 py-3 rounded-xl">{error}</p>
       )}
 
-      <div className="flex items-center justify-end gap-3 pb-8">
-        <button type="button" onClick={() => router.push('/admin/orders')}
-          className="px-4 py-2.5 text-sm font-medium text-gray-600 dark:text-gray-400 border border-gray-200 dark:border-gray-700 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
-          Cancel
-        </button>
-        <button type="button" onClick={handleSubmit} disabled={saving}
-          className="px-6 py-2.5 text-sm font-semibold bg-gray-900 dark:bg-white text-white dark:text-gray-900 rounded-xl hover:bg-gray-800 dark:hover:bg-gray-100 transition-colors disabled:opacity-50">
-          {saving ? 'Creating order…' : 'Create order'}
-        </button>
+      <div className="flex items-center justify-between pb-8">
+        <label className="flex items-center gap-2.5 cursor-pointer select-none">
+          <input
+            type="checkbox"
+            checked={sendEmail}
+            onChange={e => setSendEmail(e.target.checked)}
+            className="w-4 h-4 rounded border-gray-300 dark:border-gray-600 text-gray-900 focus:ring-gray-900 dark:focus:ring-white"
+          />
+          <span className="text-sm text-gray-600 dark:text-gray-400">Send confirmation email to customer</span>
+        </label>
+        <div className="flex items-center gap-3">
+          <button type="button" onClick={() => router.push('/admin/orders')}
+            className="px-4 py-2.5 text-sm font-medium text-gray-600 dark:text-gray-400 border border-gray-200 dark:border-gray-700 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
+            Cancel
+          </button>
+          <button type="button" onClick={handleSubmit} disabled={saving}
+            className="px-6 py-2.5 text-sm font-semibold bg-gray-900 dark:bg-white text-white dark:text-gray-900 rounded-xl hover:bg-gray-800 dark:hover:bg-gray-100 transition-colors disabled:opacity-50">
+            {saving ? 'Creating…' : 'Create order'}
+          </button>
+        </div>
       </div>
     </div>
   )

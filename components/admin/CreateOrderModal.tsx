@@ -2,7 +2,7 @@
 
 import { useState, useMemo, useRef, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { createManualOrder } from '@/lib/actions/orders'
+import { createManualOrder, sendOrderConfirmationEmail } from '@/lib/actions/orders'
 
 type Product = {
   id: string
@@ -139,6 +139,7 @@ export default function CreateOrderModal({
   const [customDiscount, setCustomDiscount] = useState('')
   const [shippingFee, setShippingFee] = useState('')
 
+  const [sendEmail, setSendEmail] = useState(false)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
 
@@ -222,6 +223,7 @@ export default function CreateOrderModal({
       setError(result.error)
       return
     }
+    if (sendEmail && result.id) await sendOrderConfirmationEmail(result.id)
     onClose()
     if (result.id) router.push(`/admin/orders/${result.id}`)
   }
@@ -549,6 +551,15 @@ export default function CreateOrderModal({
 
         {/* Footer */}
         <div className="px-6 py-4 border-t border-gray-100 dark:border-gray-800 shrink-0 flex items-center justify-between gap-3">
+          <label className="flex items-center gap-2 cursor-pointer select-none">
+            <input
+              type="checkbox"
+              checked={sendEmail}
+              onChange={e => setSendEmail(e.target.checked)}
+              className="w-4 h-4 rounded border-gray-300 dark:border-gray-600"
+            />
+            <span className="text-xs text-gray-500 dark:text-gray-400">Send confirmation email</span>
+          </label>
           <button type="button" onClick={onClose} className="px-4 py-2 text-sm font-medium text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors">
             Cancel
           </button>
