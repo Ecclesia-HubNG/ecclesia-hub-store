@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useMemo, useTransition } from 'react'
+import { useState, useMemo, useTransition, useRef } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { updateOrderStatus, bulkUpdateOrderStatus } from '@/lib/actions/orders'
@@ -169,14 +169,25 @@ function InlineStatusSelect({ id, status }: { id: string; status: string }) {
   const [, startTransition] = useTransition()
   const [current, setCurrent] = useState(status)
   const [open, setOpen] = useState(false)
+  const [rect, setRect] = useState<{ top: number; left: number } | null>(null)
+  const btnRef = useRef<HTMLButtonElement>(null)
   const s = STATUS_COLORS[current] ?? STATUS_COLORS.pending
 
+  function toggle() {
+    if (!open && btnRef.current) {
+      const r = btnRef.current.getBoundingClientRect()
+      setRect({ top: r.bottom + 4, left: r.left })
+    }
+    setOpen(p => !p)
+  }
+
   return (
-    <div className="relative">
-      {open && <div className="fixed inset-0 z-10" onClick={() => setOpen(false)} />}
+    <div>
+      {open && <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />}
       <button
+        ref={btnRef}
         type="button"
-        onClick={() => setOpen(p => !p)}
+        onClick={toggle}
         className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium cursor-pointer transition-opacity hover:opacity-80 ${s.bg} ${s.text}`}
       >
         <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${s.dot}`} />
@@ -185,8 +196,11 @@ function InlineStatusSelect({ id, status }: { id: string; status: string }) {
           <path strokeLinecap="round" strokeLinejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
         </svg>
       </button>
-      {open && (
-        <div className="absolute left-0 top-full mt-1 z-20 w-48 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl shadow-lg py-1 overflow-hidden">
+      {open && rect && (
+        <div
+          className="fixed z-50 w-48 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl shadow-lg py-1 overflow-hidden"
+          style={{ top: rect.top, left: rect.left }}
+        >
           {ALL_STATUSES.map(s => (
             <button
               key={s}
