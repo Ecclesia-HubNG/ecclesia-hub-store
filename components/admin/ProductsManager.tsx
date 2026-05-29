@@ -410,8 +410,6 @@ function exportToCSV(products: Product[]) {
 const inputCls = 'w-full px-3 py-2 text-sm bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-gray-900 dark:focus:ring-white placeholder-gray-400'
 const labelCls = 'block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1.5'
 
-const SCROLL_KEY = 'admin-products-scroll'
-const PAGE_KEY = 'admin-products-page'
 
 export function ProductsManager({
   products,
@@ -477,7 +475,6 @@ export function ProductsManager({
   const PAGE_SIZE = 50
   const [currentPage, setCurrentPage] = useState(initialPage)
   const isFirstRender = useRef(true)
-  const pendingScrollY = useRef<number | null>(null)
 
   function goToPage(p: number) {
     setCurrentPage(p)
@@ -632,27 +629,6 @@ export function ProductsManager({
     })
   }, [filtered, sortBy])
 
-  // On mount (client only): restore page + queue scroll for after the page re-renders
-  useEffect(() => {
-    const savedPage   = sessionStorage.getItem(PAGE_KEY)
-    const savedScroll = sessionStorage.getItem(SCROLL_KEY)
-    sessionStorage.removeItem(PAGE_KEY)
-    sessionStorage.removeItem(SCROLL_KEY)
-    if (savedPage) {
-      const p = parseInt(savedPage, 10)
-      if (!isNaN(p) && p >= 1) setCurrentPage(p)
-    }
-    if (savedScroll) pendingScrollY.current = parseFloat(savedScroll)
-  }, [])
-
-  // After the page list re-renders with the restored page, apply the deferred scroll
-  useEffect(() => {
-    if (pendingScrollY.current != null) {
-      const y = pendingScrollY.current
-      pendingScrollY.current = null
-      requestAnimationFrame(() => window.scrollTo({ top: y, behavior: 'instant' }))
-    }
-  }, [currentPage])
 
   // Reset to page 1 whenever filters/sort change (skip the first render so restored page survives)
   useEffect(() => {
