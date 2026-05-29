@@ -3,16 +3,33 @@
 import { useTransition } from 'react'
 import { updateOrderStatus } from '@/lib/actions/orders'
 
-const STATUSES = ['pending', 'paid', 'processing', 'shipped', 'delivered', 'cancelled', 'refunded']
+const STATUSES = [
+  'pending', 'pending_verification', 'pending_bank_transfer',
+  'paid', 'processing', 'shipped', 'delivered', 'cancelled', 'refunded',
+]
+
+const STATUS_LABELS: Record<string, string> = {
+  pending:               'Pending',
+  pending_verification:  'Pending Verification',
+  pending_bank_transfer: 'Awaiting Transfer',
+  paid:                  'Paid',
+  processing:            'Processing',
+  shipped:               'Shipped',
+  delivered:             'Delivered',
+  cancelled:             'Cancelled',
+  refunded:              'Refunded',
+}
 
 const STATUS_STYLES: Record<string, string> = {
-  pending:    'bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-400',
-  paid:       'bg-blue-50 text-blue-700 dark:bg-blue-950/40 dark:text-blue-400',
-  processing: 'bg-blue-50 text-blue-700 dark:bg-blue-950/40 dark:text-blue-400',
-  shipped:    'bg-purple-50 text-purple-700 dark:bg-purple-950/40 dark:text-purple-400',
-  delivered:  'bg-green-50 text-green-700 dark:bg-green-950/40 dark:text-green-400',
-  cancelled:  'bg-gray-100 text-gray-500 dark:bg-white/10 dark:text-gray-400',
-  refunded:   'bg-red-50 text-red-700 dark:bg-red-950/40 dark:text-red-400',
+  pending:               'bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-400',
+  pending_verification:  'bg-yellow-50 text-yellow-700 dark:bg-yellow-950/40 dark:text-yellow-400',
+  pending_bank_transfer: 'bg-orange-50 text-orange-700 dark:bg-orange-950/40 dark:text-orange-400',
+  paid:                  'bg-blue-50 text-blue-700 dark:bg-blue-950/40 dark:text-blue-400',
+  processing:            'bg-blue-50 text-blue-700 dark:bg-blue-950/40 dark:text-blue-400',
+  shipped:               'bg-purple-50 text-purple-700 dark:bg-purple-950/40 dark:text-purple-400',
+  delivered:             'bg-green-50 text-green-700 dark:bg-green-950/40 dark:text-green-400',
+  cancelled:             'bg-gray-100 text-gray-500 dark:bg-white/10 dark:text-gray-400',
+  refunded:              'bg-red-50 text-red-700 dark:bg-red-950/40 dark:text-red-400',
 }
 
 export function OrderStatusSelect({ id, status }: { id: string; status: string }) {
@@ -31,11 +48,11 @@ export function OrderStatusSelect({ id, status }: { id: string; status: string }
       value={status}
       onChange={handleChange}
       disabled={pending}
-      className={`text-xs font-medium px-2.5 py-1 rounded-full border-0 cursor-pointer capitalize focus:outline-none focus:ring-2 focus:ring-[#6B1A2A] disabled:opacity-50 ${STATUS_STYLES[status] ?? 'bg-gray-100 text-gray-600'}`}
+      className={`text-xs font-medium px-2.5 py-1 rounded-full border-0 cursor-pointer focus:outline-none focus:ring-2 focus:ring-[#6B1A2A] disabled:opacity-50 ${STATUS_STYLES[status] ?? 'bg-gray-100 text-gray-600'}`}
     >
       {STATUSES.map(s => (
-        <option key={s} value={s} className="bg-white dark:bg-[#1a1a1a] text-gray-900 dark:text-white capitalize">
-          {s}
+        <option key={s} value={s} className="bg-white dark:bg-[#1a1a1a] text-gray-900 dark:text-white">
+          {STATUS_LABELS[s] ?? s}
         </option>
       ))}
     </select>

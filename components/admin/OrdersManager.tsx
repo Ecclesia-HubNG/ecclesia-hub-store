@@ -113,12 +113,28 @@ const STATUS_COLORS: Record<string, { bg: string; text: string; dot: string }> =
 
 const ALL_STATUSES = ['pending', 'pending_verification', 'pending_bank_transfer', 'paid', 'processing', 'shipped', 'delivered', 'cancelled', 'refunded']
 
+const STATUS_LABEL: Record<string, string> = {
+  pending:               'Pending',
+  pending_verification:  'Pending Verification',
+  pending_bank_transfer: 'Awaiting Transfer',
+  paid:                  'Paid',
+  processing:            'Processing',
+  shipped:               'Shipped',
+  delivered:             'Delivered',
+  cancelled:             'Cancelled',
+  refunded:              'Refunded',
+}
+
+function statusLabel(s: string) {
+  return STATUS_LABEL[s] ?? s.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())
+}
+
 function StatusBadge({ status }: { status: string }) {
   const s = STATUS_COLORS[status] ?? STATUS_COLORS.pending
   return (
-    <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium capitalize ${s.bg} ${s.text}`}>
+    <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium ${s.bg} ${s.text}`}>
       <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${s.dot}`} />
-      {status}
+      {statusLabel(status)}
     </span>
   )
 }
@@ -161,16 +177,16 @@ function InlineStatusSelect({ id, status }: { id: string; status: string }) {
       <button
         type="button"
         onClick={() => setOpen(p => !p)}
-        className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium capitalize cursor-pointer transition-opacity hover:opacity-80 ${s.bg} ${s.text}`}
+        className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium cursor-pointer transition-opacity hover:opacity-80 ${s.bg} ${s.text}`}
       >
         <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${s.dot}`} />
-        {current}
+        {statusLabel(current)}
         <svg className="w-2.5 h-2.5 ml-0.5 opacity-60" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
           <path strokeLinecap="round" strokeLinejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
         </svg>
       </button>
       {open && (
-        <div className="absolute left-0 top-full mt-1 z-20 w-36 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl shadow-lg py-1 overflow-hidden">
+        <div className="absolute left-0 top-full mt-1 z-20 w-48 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl shadow-lg py-1 overflow-hidden">
           {ALL_STATUSES.map(s => (
             <button
               key={s}
@@ -183,10 +199,10 @@ function InlineStatusSelect({ id, status }: { id: string; status: string }) {
                 fd.set('status', s)
                 startTransition(() => updateOrderStatus(fd))
               }}
-              className={`flex items-center gap-2 w-full px-3 py-2 text-xs capitalize transition-colors ${current === s ? 'text-gray-900 dark:text-white font-medium bg-gray-50 dark:bg-gray-800' : 'text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800'}`}
+              className={`flex items-center gap-2 w-full px-3 py-2 text-xs transition-colors ${current === s ? 'text-gray-900 dark:text-white font-medium bg-gray-50 dark:bg-gray-800' : 'text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800'}`}
             >
               <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${STATUS_COLORS[s]?.dot ?? 'bg-gray-400'}`} />
-              {s}
+              {statusLabel(s)}
             </button>
           ))}
         </div>
