@@ -417,10 +417,12 @@ export function ProductsManager({
   products,
   categories,
   brands,
+  initialPage = 1,
 }: {
   products: Product[]
   categories: Category[]
   brands: Brand[]
+  initialPage?: number
 }) {
   const router = useRouter()
 
@@ -473,9 +475,14 @@ export function ProductsManager({
 
   // Pagination
   const PAGE_SIZE = 50
-  const [currentPage, setCurrentPage] = useState(1)
+  const [currentPage, setCurrentPage] = useState(initialPage)
   const isFirstRender = useRef(true)
   const pendingScrollY = useRef<number | null>(null)
+
+  function goToPage(p: number) {
+    setCurrentPage(p)
+    router.replace(`/admin/products?page=${p}`, { scroll: false })
+  }
 
   // CSV import
   const [showImportPicker, setShowImportPicker] = useState(false)
@@ -1064,12 +1071,8 @@ export function ProductsManager({
                   </td>
                   <td className="px-4 py-3">
                     <Link
-                      href={`/admin/products/${product.id}/edit`}
+                      href={`/admin/products/${product.id}/edit?from_page=${currentPage}`}
                       className="flex items-center gap-3 group/row"
-                      onClick={() => {
-                        sessionStorage.setItem(SCROLL_KEY, String(window.scrollY))
-                        sessionStorage.setItem(PAGE_KEY, String(currentPage))
-                      }}
                     >
                       {product.thumbnail ? (
                         <img src={product.thumbnail} alt="" className="w-9 h-9 rounded-lg object-cover bg-gray-100 dark:bg-gray-800 shrink-0" />
@@ -1155,7 +1158,7 @@ export function ProductsManager({
               <div className="flex items-center gap-1">
                 <button
                   type="button"
-                  onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                  onClick={() => goToPage(Math.max(1, currentPage - 1))}
                   disabled={currentPage === 1}
                   className="px-3 py-1.5 text-xs font-medium rounded-lg border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
                 >
@@ -1175,7 +1178,7 @@ export function ProductsManager({
                       <button
                         key={item}
                         type="button"
-                        onClick={() => setCurrentPage(item as number)}
+                        onClick={() => goToPage(item as number)}
                         className={`w-8 h-8 text-xs font-medium rounded-lg transition-colors ${
                           item === currentPage
                             ? 'bg-gray-900 dark:bg-white text-white dark:text-gray-900'
@@ -1188,7 +1191,7 @@ export function ProductsManager({
                   )}
                 <button
                   type="button"
-                  onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                  onClick={() => goToPage(Math.min(totalPages, currentPage + 1))}
                   disabled={currentPage === totalPages}
                   className="px-3 py-1.5 text-xs font-medium rounded-lg border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
                 >

@@ -3,7 +3,8 @@ export const dynamic = 'force-dynamic'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { ProductsManager } from '@/components/admin/ProductsManager'
 
-export default async function AdminProductsPage() {
+export default async function AdminProductsPage({ searchParams }: { searchParams: { page?: string } }) {
+  const initialPage = Math.max(1, parseInt(searchParams.page ?? '1', 10) || 1)
   const supabase = createAdminClient()
 
   const [{ data: products }, { data: categories }, { data: brands }] = await Promise.all([
@@ -21,6 +22,7 @@ export default async function AdminProductsPage() {
         products={(products ?? []) as any}
         categories={categories ?? []}
         brands={brands ?? []}
+        initialPage={initialPage}
       />
     </div>
   )

@@ -4,7 +4,8 @@ import { notFound } from 'next/navigation'
 import { updateProduct } from '@/lib/actions/products'
 import ProductForm from '@/components/admin/ProductForm'
 
-export default async function EditProductPage({ params }: { params: { id: string } }) {
+export default async function EditProductPage({ params, searchParams }: { params: { id: string }; searchParams: { from_page?: string } }) {
+  const backHref = searchParams.from_page ? `/admin/products?page=${searchParams.from_page}` : '/admin/products'
   const supabase = createAdminClient()
 
   const [{ data: product }, { data: categories }, { data: brands }, { data: allProducts }] = await Promise.all([
@@ -23,7 +24,7 @@ export default async function EditProductPage({ params }: { params: { id: string
       {/* Header */}
       <div className="flex items-start justify-between mb-6">
         <div>
-          <Link href="/admin/products" className="text-sm text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors">
+          <Link href={backHref} className="text-sm text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors">
             ← Products
           </Link>
           <h1 className="text-xl font-semibold text-gray-900 dark:text-white mt-2">{product.name}</h1>
