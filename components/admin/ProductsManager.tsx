@@ -1587,7 +1587,7 @@ export function ProductsManager({
             </div>
             {editingProduct && (
               <Link
-                href={`/admin/products/${editingProduct.id}/edit`}
+                href={`/admin/products/${editingProduct.id}/edit?from_page=${currentPage}`}
                 className="text-xs text-center text-gray-400 dark:text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 transition-colors"
               >
                 Open full editor →
@@ -1606,7 +1606,7 @@ export function ProductsManager({
             style={{ top: actionMenuPos.top, right: actionMenuPos.right }}
           >
             <Link
-              href={`/admin/products/${openActionId}/edit`}
+              href={`/admin/products/${openActionId}/edit?from_page=${currentPage}`}
               onClick={() => { setOpenActionId(null); setActionMenuPos(null) }}
               className="flex items-center gap-2.5 px-3 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
             >
