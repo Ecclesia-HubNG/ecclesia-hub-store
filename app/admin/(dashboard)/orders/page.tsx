@@ -7,7 +7,7 @@ export default async function AdminOrdersPage() {
   const supabase = createAdminClient()
 
   const [{ data: orders }, { data: products }] = await Promise.all([
-    supabase.from('orders').select('id, created_at, updated_at, total, status, customer_id, items, shipping_address, payment_reference, order_channel, is_manual, deleted_at').is('deleted_at', null).order('created_at', { ascending: false }),
+    supabase.from('orders').select('id, created_at, total, status, customer_id, items, shipping_address, payment_reference, order_channel, is_manual, deleted_at').is('deleted_at', null).order('created_at', { ascending: false }),
     supabase.from('products').select('id, name, price, thumbnail, stock').eq('is_active', true).order('name'),
   ])
 
