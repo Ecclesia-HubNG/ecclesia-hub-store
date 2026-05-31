@@ -47,7 +47,7 @@ export default function CheckoutPage() {
     getActiveDeliveryOptions().then(opts => setDeliveryOptions(opts as DeliveryType[]))
   }, [])
 
-  useEffect(() => { if (items.length === 0) router.replace('/cart') }, [items.length, router])
+  useEffect(() => { if (items.length === 0 && !bankConfirm) router.replace('/cart') }, [items.length, router, bankConfirm])
 
   // Derived delivery state
   const selectedType = useMemo(() => deliveryOptions.find(t => t.id === selectedTypeId) ?? null, [deliveryOptions, selectedTypeId])
