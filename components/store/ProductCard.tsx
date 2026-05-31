@@ -139,7 +139,7 @@ export default function ProductCard({ product, showCategory = true }: { product:
             className={`flex-1 h-10 rounded-xl text-xs font-bold transition-all ${
               outOfStock
                 ? 'bg-gray-100 dark:bg-gray-800 text-gray-400 cursor-not-allowed'
-                : 'bg-gray-900 dark:bg-white text-white dark:text-gray-900 hover:bg-[#4A0F1C] dark:hover:bg-gray-100'
+                : 'bg-[#4A0F1C] text-white hover:bg-[#3A0B15]'
             }`}
           >
             {outOfStock ? 'Sold out' : 'Buy Now'}
@@ -154,7 +154,7 @@ export default function ProductCard({ product, showCategory = true }: { product:
                 ? 'bg-green-600 text-white'
                 : outOfStock
                 ? 'bg-gray-100 dark:bg-gray-800 text-gray-400 cursor-not-allowed'
-                : 'bg-gray-900 dark:bg-white text-white dark:text-gray-900 hover:bg-[#4A0F1C] dark:hover:bg-gray-100'
+                : 'bg-[#4A0F1C] text-white hover:bg-[#3A0B15]'
             }`}
           >
             {added

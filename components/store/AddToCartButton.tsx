@@ -39,7 +39,7 @@ export default function AddToCartButton({ product, className = '' }: Props) {
       className={`w-full h-8 rounded-xl text-[11px] font-bold flex items-center justify-center gap-1.5 transition-all ${
         added
           ? 'bg-green-600 text-white'
-          : 'bg-gray-900 dark:bg-white text-white dark:text-gray-900 hover:bg-[#4A0F1C] dark:hover:bg-gray-100'
+          : 'bg-[#4A0F1C] text-white hover:bg-[#3A0B15]'
       } ${className}`}
     >
       {added ? (

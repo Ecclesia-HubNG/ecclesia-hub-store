@@ -28,6 +28,7 @@ type Product = {
   sale_starts_at: string | null
   sale_ends_at: string | null
   category_id: string | null
+  category_ids?: string[] | null
   brand_id: string | null
   brand: string | null
   thumbnail: string | null
@@ -207,16 +208,14 @@ export default function ProductForm({
   const [tags, setTags] = useState<string[]>(Array.isArray(product?.tags) ? product.tags : [])
   const [tagInput, setTagInput] = useState('')
 
-  // Category — two-level (parent → subcategory)
+  // Category — multi-select
   const [localCategories, setLocalCategories] = useState<Category[]>(categories)
-  // Derive initial parent/sub from product.category_id
-  const _initCat = categories.find(c => c.id === (product?.category_id ?? ''))
-  const [selectedParentId, setSelectedParentId] = useState(
-    _initCat?.parent_id ? _initCat.parent_id : (product?.category_id ?? '')
-  )
-  const [selectedSubId, setSelectedSubId] = useState(
-    _initCat?.parent_id ? (product?.category_id ?? '') : ''
-  )
+  const _initCategoryIds = product?.category_ids?.length
+    ? product.category_ids
+    : product?.category_id
+    ? [product.category_id]
+    : []
+  const [selectedCategoryIds, setSelectedCategoryIds] = useState<string[]>(_initCategoryIds)
   const [showNewCategory, setShowNewCategory] = useState(false)
   const [newCategoryName, setNewCategoryName] = useState('')
   const [addingCategory, setAddingCategory] = useState(false)
@@ -355,11 +354,16 @@ export default function ProductForm({
       setCategoryError(result.error)
     } else {
       setLocalCategories(prev => [...prev, result].sort((a, b) => a.name.localeCompare(b.name)))
-      setSelectedParentId(result.id)
-      setSelectedSubId('')
+      setSelectedCategoryIds(prev => [...prev, result.id])
       setNewCategoryName(''); setShowNewCategory(false)
     }
     setAddingCategory(false)
+  }
+
+  function toggleCategory(id: string) {
+    setSelectedCategoryIds(prev =>
+      prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]
+    )
   }
 
   // ── Inline brand ─────────────────────────────────────────
@@ -721,40 +725,50 @@ export default function ProductForm({
           <Card title="Organisation">
             <div className="space-y-3">
               <div>
-                {/* Hidden input carries the effective category_id */}
-                <input type="hidden" name="category_id" value={selectedSubId || selectedParentId} />
+                {/* Hidden inputs carry all selected category_ids */}
+                {selectedCategoryIds.map(id => (
+                  <input key={id} type="hidden" name="category_ids" value={id} />
+                ))}
 
-                <FieldLabel>Category</FieldLabel>
-                <SelectWrap>
-                  <select
-                    value={selectedParentId}
-                    onChange={e => { setSelectedParentId(e.target.value); setSelectedSubId('') }}
-                    className={selectCls}
-                  >
-                    <option value="">No category</option>
-                    {localCategories.filter(c => !c.parent_id).map(c => (
-                      <option key={c.id} value={c.id}>{c.name}</option>
-                    ))}
-                  </select>
-                </SelectWrap>
+                <FieldLabel>
+                  Categories
+                  {selectedCategoryIds.length > 0 && (
+                    <span className="ml-1.5 text-xs font-normal text-gray-400">({selectedCategoryIds.length} selected)</span>
+                  )}
+                </FieldLabel>
 
-                {/* Subcategory — shown when selected parent has children */}
-                {selectedParentId && localCategories.filter(c => c.parent_id === selectedParentId).length > 0 && (
-                  <div className="mt-2">
-                    <FieldLabel optional>Subcategory</FieldLabel>
-                    <SelectWrap>
-                      <select
-                        value={selectedSubId}
-                        onChange={e => setSelectedSubId(e.target.value)}
-                        className={selectCls}
-                      >
-                        <option value="">None</option>
-                        {localCategories.filter(c => c.parent_id === selectedParentId).map(c => (
-                          <option key={c.id} value={c.id}>{c.name}</option>
-                        ))}
-                      </select>
-                    </SelectWrap>
+                {localCategories.length > 0 ? (
+                  <div className="max-h-48 overflow-y-auto border border-gray-200 dark:border-gray-700 rounded-xl p-2 space-y-0.5">
+                    {localCategories.filter(c => !c.parent_id).map(parent => {
+                      const subs = localCategories.filter(c => c.parent_id === parent.id)
+                      return (
+                        <div key={parent.id}>
+                          <label className="flex items-center gap-2.5 px-2 py-1.5 rounded-lg hover:bg-gray-50 dark:hover:bg-white/5 cursor-pointer">
+                            <input
+                              type="checkbox"
+                              checked={selectedCategoryIds.includes(parent.id)}
+                              onChange={() => toggleCategory(parent.id)}
+                              className="w-3.5 h-3.5 rounded border-gray-300 accent-[#4A0F1C] cursor-pointer"
+                            />
+                            <span className="text-sm font-medium text-gray-800 dark:text-gray-200">{parent.name}</span>
+                          </label>
+                          {subs.map(sub => (
+                            <label key={sub.id} className="flex items-center gap-2.5 pl-7 pr-2 py-1.5 rounded-lg hover:bg-gray-50 dark:hover:bg-white/5 cursor-pointer">
+                              <input
+                                type="checkbox"
+                                checked={selectedCategoryIds.includes(sub.id)}
+                                onChange={() => toggleCategory(sub.id)}
+                                className="w-3.5 h-3.5 rounded border-gray-300 accent-[#4A0F1C] cursor-pointer"
+                              />
+                              <span className="text-sm text-gray-600 dark:text-gray-400">{sub.name}</span>
+                            </label>
+                          ))}
+                        </div>
+                      )
+                    })}
                   </div>
+                ) : (
+                  <p className="text-xs text-gray-400 py-2">No categories yet — add one below.</p>
                 )}
 
                 {showNewCategory ? (

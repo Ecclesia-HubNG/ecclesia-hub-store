@@ -38,7 +38,7 @@ export default function OrderConfirmation({
           <Section style={{ backgroundColor: brand, borderRadius: '12px 12px 0 0', padding: '32px 40px', textAlign: 'center' }}>
             <Heading style={{ color: '#fff', fontSize: 24, margin: 0, fontWeight: 700 }}>Ecclesia Hub</Heading>
             <Text style={{ color: 'rgba(255,255,255,0.7)', margin: '8px 0 0', fontSize: 13 }}>
-              Faith resources delivered to your door
+              Premium skincare delivered to your door
             </Text>
           </Section>
 

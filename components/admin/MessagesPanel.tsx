@@ -27,7 +27,8 @@ export function MessagesPanel() {
   const [open, setOpen] = useState(false)
   const [unreadCount, setUnreadCount] = useState(0)
   const [convs, setConvs] = useState<ConvRow[]>([])
-  const [loading, setLoading] = useState(true)
+  const [loading, setLoading] = useState(false)
+  const [loaded, setLoaded] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -38,19 +39,47 @@ export function MessagesPanel() {
     return () => document.removeEventListener('mousedown', handler)
   }, [])
 
-  const load = useCallback(async () => {
+  const fetchUnreadCount = useCallback(async () => {
     const supabase = createClient()
-    const [{ data: messages }, { data: profiles }] = await Promise.all([
-      supabase
-        .from('inbox_messages')
-        .select('id, user_id, body, sender, read_at, created_at')
-        .eq('sender', 'customer')
-        .order('created_at', { ascending: false })
-        .limit(60),
-      supabase.from('profiles').select('id, full_name'),
-    ])
+    const { count } = await supabase
+      .from('inbox_messages')
+      .select('id', { count: 'exact', head: true })
+      .eq('sender', 'customer')
+      .is('read_at', null)
+    setUnreadCount(count ?? 0)
+  }, [])
+
+  useEffect(() => {
+    fetchUnreadCount()
+    const supabase = createClient()
+    const channel = supabase
+      .channel('messages-panel')
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'inbox_messages' }, (payload) => {
+        if ((payload.new as any).sender === 'customer') fetchUnreadCount()
+      })
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'inbox_messages' }, () => {
+        fetchUnreadCount()
+      })
+      .subscribe()
+    return () => { supabase.removeChannel(channel) }
+  }, [fetchUnreadCount])
+
+  const load = useCallback(async () => {
+    setLoading(true)
+    const supabase = createClient()
+    const { data: messages } = await supabase
+      .from('inbox_messages')
+      .select('id, user_id, body, sender, read_at, created_at')
+      .eq('sender', 'customer')
+      .order('created_at', { ascending: false })
+      .limit(60)
 
     if (!messages) { setLoading(false); return }
+
+    const userIds = Array.from(new Set(messages.map(m => m.user_id)))
+    const { data: profiles } = userIds.length
+      ? await supabase.from('profiles').select('id, full_name').in('id', userIds)
+      : { data: [] }
 
     const nameMap = Object.fromEntries((profiles ?? []).map(p => [p.id, p.full_name]))
 
@@ -70,30 +99,15 @@ export function MessagesPanel() {
         time: msg.created_at,
       }))
 
-    setUnreadCount(messages.filter(m => !m.read_at).length)
     setConvs(convList)
     setLoading(false)
+    setLoaded(true)
   }, [])
-
-  useEffect(() => {
-    load()
-    const supabase = createClient()
-    const channel = supabase
-      .channel('messages-panel')
-      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'inbox_messages' }, (payload) => {
-        if ((payload.new as any).sender === 'customer') load()
-      })
-      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'inbox_messages' }, () => {
-        load()
-      })
-      .subscribe()
-    return () => { supabase.removeChannel(channel) }
-  }, [load])
 
   return (
     <div ref={ref} className="relative">
       <button
-        onClick={() => setOpen(o => !o)}
+        onClick={() => { const next = !open; setOpen(next); if (next && !loaded) load() }}
         className="relative w-9 h-9 flex items-center justify-center rounded-xl text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-white/10 transition-colors"
       >
         <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">

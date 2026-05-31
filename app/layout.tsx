@@ -14,8 +14,19 @@ const geistMono = localFont({
 })
 
 export const metadata: Metadata = {
-  title: 'Ecclesia Hub',
-  description: 'Faith. Word. Life.',
+  title: 'Ecclesia Hub — Premium Skincare',
+  description: 'Premium skincare delivered to your door.',
+  openGraph: {
+    title: 'Ecclesia Hub — Premium Skincare',
+    description: 'Premium skincare delivered to your door.',
+    siteName: 'Ecclesia Hub',
+    type: 'website',
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'Ecclesia Hub — Premium Skincare',
+    description: 'Premium skincare delivered to your door.',
+  },
 }
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
