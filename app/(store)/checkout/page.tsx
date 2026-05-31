@@ -57,6 +57,15 @@ export default function CheckoutPage() {
   const selectedRate = useMemo(() => ratesForZone.find(r => r.id === selectedRateId) ?? null, [ratesForZone, selectedRateId])
   const shippingFee = selectedRate?.price ?? null
   const orderTotal = subtotal + (shippingFee ?? 0)
+
+  function calcProcessingFee(amount: number) {
+    return Math.min(Math.round(amount * 0.014), 2000)
+  }
+  const processingFee = paymentMethod === 'flutterwave' && shippingFee !== null
+    ? calcProcessingFee(orderTotal)
+    : 0
+  const grandTotal = orderTotal + processingFee
+
   const deliveryLabel = selectedRate && selectedType && selectedZone
     ? `${selectedType.name} · ${selectedZone.name} · ${selectedRate.name}${selectedRate.estimated_days ? ' · ' + selectedRate.estimated_days : ''}`
     : ''
@@ -104,7 +113,7 @@ export default function CheckoutPage() {
         shipping,
         subtotal,
         shippingFee ?? 0,
-        orderTotal,
+        grandTotal,
         selectedRate.id,
         deliveryLabel,
       )
@@ -118,7 +127,7 @@ export default function CheckoutPage() {
       const sid = sessionResult.sessionId
 
       if (paymentMethod === 'flutterwave') {
-        const payResult = await initFlutterwave(sid, form.email, orderTotal, customerName, form.phone)
+        const payResult = await initFlutterwave(sid, form.email, grandTotal, customerName, form.phone)
         if ('error' in payResult) { setError(payResult.error ?? 'Could not initialize payment.'); return }
         window.location.href = payResult.paymentLink
 
@@ -405,9 +414,18 @@ export default function CheckoutPage() {
                     <span className="italic text-gray-400 text-xs">Select delivery above</span>
                   )}
                 </div>
+                {processingFee > 0 && (
+                  <div className="flex justify-between text-gray-600 dark:text-gray-400">
+                    <span className="flex items-center gap-1">
+                      Payment processing fee
+                      <span className="text-[10px] text-gray-400">(1.4%)</span>
+                    </span>
+                    <span className="font-medium text-gray-900 dark:text-white">₦{processingFee.toLocaleString('en')}</span>
+                  </div>
+                )}
                 <div className="flex justify-between font-semibold text-gray-900 dark:text-white pt-1 border-t border-gray-200 dark:border-gray-700">
                   <span>Total</span>
-                  <span className="text-[#4A0F1C] dark:text-[#E8C4CB] text-base">₦{orderTotal.toLocaleString('en')}</span>
+                  <span className="text-[#4A0F1C] dark:text-[#E8C4CB] text-base">₦{grandTotal.toLocaleString('en')}</span>
                 </div>
               </div>
 
@@ -417,7 +435,7 @@ export default function CheckoutPage() {
                 <div className="space-y-2">
                   {([
                     { id: 'bank_transfer' as PaymentMethod, label: 'Bank Transfer', desc: 'Transfer directly to our UBA account' },
-                    { id: 'flutterwave' as PaymentMethod, label: 'Flutterwave', desc: 'Card, bank, mobile money' },
+                    { id: 'flutterwave' as PaymentMethod, label: 'Flutterwave', desc: 'Card, bank, mobile money · 1.4% processing fee applies' },
                   ] as const).map(m => (
                     <button
                       key={m.id}
