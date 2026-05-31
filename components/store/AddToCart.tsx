@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { useCart } from '@/lib/cart-context'
 
 type Option = { value: string; price?: number | null; stock?: number | null }
@@ -38,6 +39,7 @@ export default function AddToCart({
 }) {
   const variants = Array.isArray(variantsProp) ? variantsProp : []
   const { addItem } = useCart()
+  const router = useRouter()
   // qtys: key → qty. A key being present means that option is checked.
   const [qtys, setQtys] = useState<Record<string, number>>({})
   const [globalQty, setGlobalQty] = useState(1)
@@ -88,7 +90,6 @@ export default function AddToCart({
   function handleAdd() {
     if (hasVariants) {
       if (checkedOptions.length === 0) return
-      // Each checked option → its own cart line item
       for (const opt of checkedOptions) {
         addItem({
           productId,
@@ -105,6 +106,12 @@ export default function AddToCart({
     }
     setAdded(true)
     setTimeout(() => setAdded(false), 2000)
+  }
+
+  function handleBuyNow() {
+    if (isOutOfStock || noneSelected) return
+    handleAdd()
+    router.push('/checkout')
   }
 
   const Minus = (
@@ -206,48 +213,47 @@ export default function AddToCart({
       )}
 
       {/* Bottom row */}
-      <div className="flex gap-3 mb-5">
-        {/* Global qty stepper — only for products without variants */}
-        {!hasVariants && (
-          <div className="flex items-center border border-gray-200 dark:border-gray-700 rounded-xl overflow-hidden shrink-0">
-            <button
-              type="button"
-              onClick={() => setGlobalQty(q => Math.max(1, q - 1))}
-              className="w-10 h-12 flex items-center justify-center text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
-            >
-              <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M5 12h14" />
-              </svg>
-            </button>
-            <span className="w-10 text-center text-sm font-semibold text-gray-900 dark:text-white tabular-nums">{globalQty}</span>
-            <button
-              type="button"
-              onClick={() => setGlobalQty(q => Math.min(stock, q + 1))}
-              disabled={globalQty >= stock}
-              className="w-10 h-12 flex items-center justify-center text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800 disabled:opacity-40 transition-colors"
-            >
-              <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
-              </svg>
-            </button>
-          </div>
-        )}
+      <div className="flex flex-col gap-2.5 mb-5">
+        <div className="flex gap-2.5">
+          {!hasVariants && (
+            <div className="flex items-center border border-gray-200 dark:border-gray-700 rounded-xl overflow-hidden shrink-0">
+              <button type="button" onClick={() => setGlobalQty(q => Math.max(1, q - 1))} className="w-10 h-12 flex items-center justify-center text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
+                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M5 12h14" /></svg>
+              </button>
+              <span className="w-10 text-center text-sm font-semibold text-gray-900 dark:text-white tabular-nums">{globalQty}</span>
+              <button type="button" onClick={() => setGlobalQty(q => Math.min(stock, q + 1))} disabled={globalQty >= stock} className="w-10 h-12 flex items-center justify-center text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800 disabled:opacity-40 transition-colors">
+                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" /></svg>
+              </button>
+            </div>
+          )}
+          <button
+            type="button"
+            disabled={isOutOfStock || noneSelected}
+            onClick={handleAdd}
+            className={`flex-1 h-12 rounded-xl text-sm font-semibold transition-all ${
+              added
+                ? 'bg-green-600 text-white'
+                : isOutOfStock || noneSelected
+                ? 'bg-gray-100 dark:bg-gray-800 text-gray-400 cursor-not-allowed'
+                : 'bg-[#4A0F1C]/10 dark:bg-[#4A0F1C]/30 text-[#4A0F1C] dark:text-[#E8C4CB] hover:bg-[#4A0F1C]/20 dark:hover:bg-[#4A0F1C]/40 border border-[#4A0F1C]/20'
+            }`}
+          >
+            {isOutOfStock ? 'Out of stock' : added ? '✓ Added' : noneSelected ? 'Select a variant' : 'Add to cart'}
+          </button>
+        </div>
 
+        {/* Buy Now */}
         <button
           type="button"
           disabled={isOutOfStock || noneSelected}
-          onClick={handleAdd}
-          className={`flex-1 h-12 rounded-xl text-sm font-semibold transition-all ${
-            added
-              ? 'bg-green-600 text-white'
-              : isOutOfStock
-              ? 'bg-gray-100 dark:bg-gray-800 text-gray-400 cursor-not-allowed'
-              : noneSelected
+          onClick={handleBuyNow}
+          className={`w-full h-12 rounded-xl text-sm font-semibold transition-all ${
+            isOutOfStock || noneSelected
               ? 'bg-gray-100 dark:bg-gray-800 text-gray-400 cursor-not-allowed'
               : 'bg-[#4A0F1C] text-white hover:bg-[#3A0B15]'
           }`}
         >
-          {isOutOfStock ? 'Out of stock' : added ? '✓ Added to cart' : noneSelected ? 'Select a variant' : 'Add to cart'}
+          {isOutOfStock ? 'Out of stock' : 'Buy Now'}
         </button>
       </div>
     </div>

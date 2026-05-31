@@ -14,6 +14,14 @@ export type CartItem = {
   selectedVariants?: SelectedVariant[]
 }
 
+export type AppliedCoupon = {
+  code: string
+  description: string | null
+  discount_type: 'percentage' | 'fixed'
+  discount_value: number
+  discountAmount: number
+}
+
 type CartContextType = {
   items: CartItem[]
   addItem: (item: Omit<CartItem, 'quantity'> & { quantity?: number }) => void
@@ -22,6 +30,9 @@ type CartContextType = {
   clearCart: () => void
   total: number
   count: number
+  coupon: AppliedCoupon | null
+  applyCoupon: (c: AppliedCoupon) => void
+  removeCoupon: () => void
 }
 
 export function itemKey(productId: string, variants?: SelectedVariant[]) {
@@ -31,7 +42,6 @@ export function itemKey(productId: string, variants?: SelectedVariant[]) {
 }
 
 function migrateItem(raw: Record<string, unknown>): CartItem {
-  // Migrate old selectedVariant (single) to selectedVariants (array)
   if (raw.selectedVariant && !raw.selectedVariants) {
     const sv = raw.selectedVariant as { groupName: string; value: string }
     return {
@@ -47,12 +57,15 @@ const CartContext = createContext<CartContextType | null>(null)
 
 export function CartProvider({ children }: { children: React.ReactNode }) {
   const [items, setItems] = useState<CartItem[]>([])
+  const [coupon, setCoupon] = useState<AppliedCoupon | null>(null)
   const [ready, setReady] = useState(false)
 
   useEffect(() => {
     try {
       const saved = localStorage.getItem('ecclesia-cart')
       if (saved) setItems((JSON.parse(saved) as Record<string, unknown>[]).map(migrateItem))
+      const savedCoupon = localStorage.getItem('ecclesia-coupon')
+      if (savedCoupon) setCoupon(JSON.parse(savedCoupon))
     } catch {}
     setReady(true)
   }, [])
@@ -61,6 +74,12 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     if (!ready) return
     localStorage.setItem('ecclesia-cart', JSON.stringify(items))
   }, [items, ready])
+
+  useEffect(() => {
+    if (!ready) return
+    if (coupon) localStorage.setItem('ecclesia-coupon', JSON.stringify(coupon))
+    else localStorage.removeItem('ecclesia-coupon')
+  }, [coupon, ready])
 
   const addItem = useCallback((item: Omit<CartItem, 'quantity'> & { quantity?: number }) => {
     const key = itemKey(item.productId, item.selectedVariants)
@@ -91,13 +110,19 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     )
   }, [removeItem])
 
-  const clearCart = useCallback(() => setItems([]), [])
+  const clearCart = useCallback(() => {
+    setItems([])
+    setCoupon(null)
+  }, [])
+
+  const applyCoupon = useCallback((c: AppliedCoupon) => setCoupon(c), [])
+  const removeCoupon = useCallback(() => setCoupon(null), [])
 
   const total = items.reduce((sum, i) => sum + i.price * i.quantity, 0)
   const count = items.reduce((sum, i) => sum + i.quantity, 0)
 
   return (
-    <CartContext.Provider value={{ items, addItem, removeItem, updateQuantity, clearCart, total, count }}>
+    <CartContext.Provider value={{ items, addItem, removeItem, updateQuantity, clearCart, total, count, coupon, applyCoupon, removeCoupon }}>
       {children}
     </CartContext.Provider>
   )

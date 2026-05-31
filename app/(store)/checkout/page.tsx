@@ -25,7 +25,7 @@ type BankConfirm = {
 const inputCls = 'w-full px-3.5 py-2.5 text-sm bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-600 focus:outline-none focus:ring-2 focus:ring-[#4A0F1C]/20 focus:border-[#4A0F1C]/40 transition-colors'
 
 export default function CheckoutPage() {
-  const { items, total: subtotal, count, clearCart } = useCart()
+  const { items, total: subtotal, count, clearCart, coupon } = useCart()
   const router = useRouter()
   const [pending, startTransition] = useTransition()
   const [error, setError] = useState<string | null>(null)
@@ -56,7 +56,8 @@ export default function CheckoutPage() {
   const ratesForZone = useMemo(() => selectedZone?.rates ?? [], [selectedZone])
   const selectedRate = useMemo(() => ratesForZone.find(r => r.id === selectedRateId) ?? null, [ratesForZone, selectedRateId])
   const shippingFee = selectedRate?.price ?? null
-  const orderTotal = subtotal + (shippingFee ?? 0)
+  const discountAmount = coupon?.discountAmount ?? 0
+  const orderTotal = Math.max(0, subtotal - discountAmount) + (shippingFee ?? 0)
 
   function calcProcessingFee(amount: number) {
     return Math.min(Math.round(amount * 0.014), 2000)
@@ -116,6 +117,8 @@ export default function CheckoutPage() {
         grandTotal,
         selectedRate.id,
         deliveryLabel,
+        coupon?.code ?? null,
+        discountAmount,
       )
 
       if ('error' in sessionResult) {
@@ -404,6 +407,15 @@ export default function CheckoutPage() {
                   <span>Subtotal ({count} item{count !== 1 ? 's' : ''})</span>
                   <span className="font-medium text-gray-900 dark:text-white">₦{subtotal.toLocaleString('en')}</span>
                 </div>
+                {coupon && discountAmount > 0 && (
+                  <div className="flex justify-between text-green-600 dark:text-green-400">
+                    <span className="flex items-center gap-1">
+                      <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="m4.5 12.75 6 6 9-13.5" /></svg>
+                      {coupon.code}
+                    </span>
+                    <span className="font-medium">−₦{discountAmount.toLocaleString('en')}</span>
+                  </div>
+                )}
                 <div className="flex justify-between text-gray-600 dark:text-gray-400">
                   <span>Shipping</span>
                   {shippingFee !== null ? (

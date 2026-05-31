@@ -55,6 +55,8 @@ export async function createCheckoutSession(
   total: number,
   deliveryRateId: string,
   deliveryLabel: string,
+  couponCode: string | null = null,
+  discountAmount: number = 0,
 ): Promise<{ sessionId: string } | { error: string }> {
   const stockError = await validateStock(items)
   if (stockError) return { error: stockError }
@@ -84,6 +86,8 @@ export async function createCheckoutSession(
       total,
       delivery_rate_id: deliveryRateId || null,
       delivery_label: deliveryLabel || null,
+      coupon_code: couponCode || null,
+      discount_amount: discountAmount,
       customer_id: user?.id ?? null,
     })
     .select('id')
@@ -242,6 +246,8 @@ export async function createBankTransferOrder(sessionId: string): Promise<
       shipping_address: shipping,
       delivery_rate_id: session.delivery_rate_id ?? null,
       delivery_label: session.delivery_label ?? null,
+      coupon_code: (session as Record<string, unknown>).coupon_code as string ?? null,
+      discount_amount: Number((session as Record<string, unknown>).discount_amount ?? 0),
       order_channel: 'store',
       payment_metadata: { provider: 'bank_transfer' },
     })

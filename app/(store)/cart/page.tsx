@@ -1,10 +1,32 @@
 'use client'
 
+import { useState, useTransition } from 'react'
 import Link from 'next/link'
 import { useCart, itemKey, type SelectedVariant } from '@/lib/cart-context'
+import { validateCoupon } from '@/lib/actions/coupons'
 
 export default function CartPage() {
-  const { items, removeItem, updateQuantity, total, count } = useCart()
+  const { items, removeItem, updateQuantity, total, count, coupon, applyCoupon, removeCoupon } = useCart()
+  const [couponInput, setCouponInput] = useState('')
+  const [couponError, setCouponError] = useState('')
+  const [isPending, startTransition] = useTransition()
+
+  const discountAmount = coupon?.discountAmount ?? 0
+  const discountedTotal = Math.max(0, total - discountAmount)
+
+  function handleApplyCoupon() {
+    if (!couponInput.trim()) return
+    setCouponError('')
+    startTransition(async () => {
+      const result = await validateCoupon(couponInput.trim(), total)
+      if ('error' in result) {
+        setCouponError(result.error)
+      } else {
+        applyCoupon(result)
+        setCouponInput('')
+      }
+    })
+  }
 
   if (items.length === 0) {
     return (
@@ -14,10 +36,7 @@ export default function CartPage() {
         </svg>
         <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">Your cart is empty</h2>
         <p className="text-sm text-gray-500 dark:text-gray-400 mb-6">Add some products to get started</p>
-        <Link
-          href="/shop"
-          className="inline-flex items-center gap-2 px-6 py-3 bg-[#4A0F1C] text-white text-sm font-semibold rounded-full hover:bg-[#3A0B15] transition-colors"
-        >
+        <Link href="/shop" className="inline-flex items-center gap-2 px-6 py-3 bg-[#4A0F1C] text-white text-sm font-semibold rounded-full hover:bg-[#3A0B15] transition-colors">
           Browse shop
         </Link>
       </div>
@@ -37,9 +56,8 @@ export default function CartPage() {
             const key = itemKey(item.productId, item.selectedVariants)
             return (
               <div key={key} className="flex gap-4 p-4 bg-gray-50 dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800">
-                {/* Thumbnail */}
                 <Link href={`/product/${item.slug}`} className="shrink-0">
-                  <div className="w-20 h-20 rounded-xl bg-gray-50 dark:bg-gray-800 overflow-hidden border border-gray-100 dark:border-gray-700">
+                  <div className="w-20 h-20 rounded-xl bg-white dark:bg-gray-800 overflow-hidden border border-gray-100 dark:border-gray-700">
                     {item.thumbnail ? (
                       <img src={item.thumbnail} alt={item.name} className="w-full h-full object-contain p-2" />
                     ) : (
@@ -52,7 +70,6 @@ export default function CartPage() {
                   </div>
                 </Link>
 
-                {/* Info */}
                 <div className="flex-1 min-w-0">
                   <Link href={`/product/${item.slug}`} className="text-sm font-medium text-gray-900 dark:text-white hover:text-[#4A0F1C] dark:hover:text-[#E8C4CB] transition-colors line-clamp-2">
                     {item.name}
@@ -62,7 +79,7 @@ export default function CartPage() {
                       {item.selectedVariants.map((sv: SelectedVariant) => (
                         <p key={`${sv.groupName}:${sv.value}`} className="text-xs text-gray-500 dark:text-gray-400">
                           {sv.groupName}: <span className="font-medium">{sv.value}</span>
-                          {sv.price > 0 && <span className="text-gray-400 dark:text-gray-600"> (+₦{sv.price.toLocaleString('en')})</span>}
+                          {sv.price > 0 && <span className="text-gray-400"> (+₦{sv.price.toLocaleString('en')})</span>}
                         </p>
                       ))}
                     </div>
@@ -72,39 +89,20 @@ export default function CartPage() {
                   </p>
                 </div>
 
-                {/* Qty + remove */}
                 <div className="flex flex-col items-end gap-3 shrink-0">
-                  <button
-                    type="button"
-                    onClick={() => removeItem(key)}
-                    className="text-gray-400 hover:text-red-500 transition-colors"
-                  >
+                  <button type="button" onClick={() => removeItem(key)} className="text-gray-400 hover:text-red-500 transition-colors">
                     <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                       <path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" />
                     </svg>
                   </button>
 
                   <div className="flex items-center gap-2 border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden">
-                    <button
-                      type="button"
-                      onClick={() => updateQuantity(key, item.quantity - 1)}
-                      className="w-8 h-8 flex items-center justify-center text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
-                    >
-                      <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M5 12h14" />
-                      </svg>
+                    <button type="button" onClick={() => updateQuantity(key, item.quantity - 1)} className="w-8 h-8 flex items-center justify-center text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
+                      <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M5 12h14" /></svg>
                     </button>
-                    <span className="w-8 text-center text-sm font-semibold text-gray-900 dark:text-white tabular-nums">
-                      {item.quantity}
-                    </span>
-                    <button
-                      type="button"
-                      onClick={() => updateQuantity(key, item.quantity + 1)}
-                      className="w-8 h-8 flex items-center justify-center text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
-                    >
-                      <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
-                      </svg>
+                    <span className="w-8 text-center text-sm font-semibold text-gray-900 dark:text-white tabular-nums">{item.quantity}</span>
+                    <button type="button" onClick={() => updateQuantity(key, item.quantity + 1)} className="w-8 h-8 flex items-center justify-center text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
+                      <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" /></svg>
                     </button>
                   </div>
 
@@ -118,37 +116,85 @@ export default function CartPage() {
         </div>
 
         {/* Order summary */}
-        <div className="w-full lg:w-80 shrink-0 bg-gray-50 dark:bg-gray-900 rounded-2xl p-6 border border-gray-100 dark:border-gray-800 sticky top-24">
-          <h2 className="text-base font-semibold text-gray-900 dark:text-white mb-5">Order summary</h2>
+        <div className="w-full lg:w-80 shrink-0 space-y-3 sticky top-24">
+          <div className="bg-gray-50 dark:bg-gray-900 rounded-2xl p-6 border border-gray-100 dark:border-gray-800">
+            <h2 className="text-base font-semibold text-gray-900 dark:text-white mb-5">Order summary</h2>
 
-          <div className="space-y-3 text-sm mb-5">
-            <div className="flex justify-between text-gray-600 dark:text-gray-400">
-              <span>Subtotal ({count} item{count !== 1 ? 's' : ''})</span>
-              <span className="font-medium text-gray-900 dark:text-white">₦{total.toLocaleString('en')}</span>
+            <div className="space-y-3 text-sm mb-4">
+              <div className="flex justify-between text-gray-600 dark:text-gray-400">
+                <span>Subtotal ({count} item{count !== 1 ? 's' : ''})</span>
+                <span className="font-medium text-gray-900 dark:text-white">₦{total.toLocaleString('en')}</span>
+              </div>
+              {coupon && (
+                <div className="flex justify-between text-green-600 dark:text-green-400">
+                  <span className="flex items-center gap-1">
+                    <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="m4.5 12.75 6 6 9-13.5" /></svg>
+                    {coupon.code}
+                    {coupon.discount_type === 'percentage' && ` (${coupon.discount_value}% off)`}
+                  </span>
+                  <span className="font-medium">−₦{discountAmount.toLocaleString('en')}</span>
+                </div>
+              )}
+              <div className="flex justify-between text-gray-600 dark:text-gray-400">
+                <span>Shipping</span>
+                <span className="italic text-gray-400 text-xs">Calculated at checkout</span>
+              </div>
             </div>
-            <div className="flex justify-between text-gray-600 dark:text-gray-400">
-              <span>Shipping</span>
-              <span className="text-gray-500 dark:text-gray-500 italic">Calculated at checkout</span>
+
+            <div className="border-t border-gray-200 dark:border-gray-700 pt-4 mb-5 flex justify-between">
+              <span className="font-semibold text-gray-900 dark:text-white">Total</span>
+              <div className="text-right">
+                {coupon && <p className="text-xs text-gray-400 line-through">₦{total.toLocaleString('en')}</p>}
+                <span className="font-bold text-lg text-[#4A0F1C] dark:text-[#E8C4CB]">₦{discountedTotal.toLocaleString('en')}</span>
+              </div>
             </div>
+
+            <Link href="/checkout" className="block w-full py-3 bg-[#4A0F1C] text-white text-sm font-semibold rounded-xl text-center hover:bg-[#3A0B15] transition-colors">
+              Proceed to checkout
+            </Link>
+            <Link href="/shop" className="block w-full py-2.5 text-sm font-medium text-gray-600 dark:text-gray-400 text-center hover:text-gray-900 dark:hover:text-white transition-colors mt-2">
+              Continue shopping
+            </Link>
           </div>
 
-          <div className="border-t border-gray-200 dark:border-gray-700 pt-4 mb-5 flex justify-between">
-            <span className="font-semibold text-gray-900 dark:text-white">Total</span>
-            <span className="font-bold text-lg text-[#4A0F1C] dark:text-[#E8C4CB]">₦{total.toLocaleString('en')}</span>
+          {/* Coupon */}
+          <div className="bg-gray-50 dark:bg-gray-900 rounded-2xl p-4 border border-gray-100 dark:border-gray-800">
+            {coupon ? (
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-xs font-semibold text-green-600 dark:text-green-400">Coupon applied</p>
+                  <p className="text-sm font-bold text-gray-900 dark:text-white">{coupon.code}</p>
+                  {coupon.description && <p className="text-xs text-gray-400 mt-0.5">{coupon.description}</p>}
+                </div>
+                <button type="button" onClick={removeCoupon} className="text-xs text-gray-400 hover:text-red-500 transition-colors underline">
+                  Remove
+                </button>
+              </div>
+            ) : (
+              <div>
+                <p className="text-xs font-semibold text-gray-700 dark:text-gray-300 mb-2">Have a coupon?</p>
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={couponInput}
+                    onChange={e => { setCouponInput(e.target.value.toUpperCase()); setCouponError('') }}
+                    onKeyDown={e => e.key === 'Enter' && handleApplyCoupon()}
+                    placeholder="Enter code"
+                    className="flex-1 px-3 py-2 text-sm bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#4A0F1C]/20 focus:border-[#4A0F1C]/40 transition-colors"
+                  />
+                  <button
+                    type="button"
+                    onClick={handleApplyCoupon}
+                    disabled={isPending || !couponInput.trim()}
+                    className="px-3 py-2 bg-[#4A0F1C] text-white text-xs font-semibold rounded-xl hover:bg-[#3A0B15] disabled:opacity-50 transition-colors shrink-0"
+                  >
+                    {isPending ? '…' : 'Apply'}
+                  </button>
+                </div>
+                {couponError && <p className="text-xs text-red-500 mt-1.5">{couponError}</p>}
+              </div>
+            )}
           </div>
-
-          <Link
-            href="/checkout"
-            className="block w-full py-3 bg-[#4A0F1C] text-white text-sm font-semibold rounded-xl text-center hover:bg-[#3A0B15] transition-colors"
-          >
-            Proceed to checkout
-          </Link>
-          <Link
-            href="/shop"
-            className="block w-full py-2.5 text-sm font-medium text-gray-600 dark:text-gray-400 text-center hover:text-gray-900 dark:hover:text-white transition-colors mt-2"
-          >
-            Continue shopping
-          </Link>
         </div>
       </div>
     </div>

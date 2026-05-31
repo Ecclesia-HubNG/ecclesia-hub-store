@@ -3,6 +3,7 @@ import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import ImageGallery from '@/components/store/ImageGallery'
 import AddToCart from '@/components/store/AddToCart'
+import WishlistButton from '@/components/store/WishlistButton'
 
 function fmt(n: number) {
   return `₦${n.toLocaleString('en', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
@@ -82,9 +83,12 @@ export default async function ProductPage({ params }: { params: { slug: string }
             </p>
           )}
 
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-white leading-tight mb-1">
-            {product.name}
-          </h1>
+          <div className="flex items-start justify-between gap-3 mb-1">
+            <h1 className="text-3xl font-bold text-gray-900 dark:text-white leading-tight">
+              {product.name}
+            </h1>
+            <WishlistButton productId={product.id} className="shrink-0 mt-1" />
+          </div>
 
           {product.brand && (
             <p className="text-sm text-gray-400 dark:text-gray-500 mb-4">by {product.brand}</p>
@@ -133,6 +137,24 @@ export default async function ProductPage({ params }: { params: { slug: string }
             variants={variants}
             stock={product.stock}
           />
+
+          {/* Trust badges */}
+          <div className="grid grid-cols-2 gap-2 mt-6 pt-6 border-t border-gray-100 dark:border-gray-800">
+            {[
+              { icon: '🔒', label: 'Secure checkout', sub: 'SSL encrypted payment' },
+              { icon: '✓', label: 'Authentic products', sub: '100% genuine, verified' },
+              { icon: '🚚', label: 'Fast delivery', sub: 'Nationwide shipping' },
+              { icon: '↩', label: 'Easy returns', sub: 'Hassle-free process' },
+            ].map(b => (
+              <div key={b.label} className="flex items-center gap-2.5 p-3 rounded-xl bg-gray-50 dark:bg-white/5">
+                <span className="text-lg leading-none">{b.icon}</span>
+                <div>
+                  <p className="text-xs font-semibold text-gray-800 dark:text-gray-200">{b.label}</p>
+                  <p className="text-[10px] text-gray-400 dark:text-gray-500">{b.sub}</p>
+                </div>
+              </div>
+            ))}
+          </div>
 
           {/* Attributes */}
           {attributes.length > 0 && (
