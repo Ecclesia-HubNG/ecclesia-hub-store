@@ -26,11 +26,14 @@ const securityHeaders = [
       "img-src 'self' data: blob: https:",
       "font-src 'self'",
       // Supabase API + realtime
-      `connect-src 'self' https://${supabaseHost} wss://${supabaseHost}`,
-      "frame-src 'none'",
+      `connect-src 'self' https://${supabaseHost} wss://${supabaseHost} https://api.flutterwave.com https://checkout.flutterwave.com`,
+      // Flutterwave checkout uses iframes for 3DS and bank auth flows
+      "frame-src 'self' https://checkout.flutterwave.com https://*.flutterwave.com",
+      // Remove X-Frame-Options conflict — frame-src handles it
       "object-src 'none'",
       "base-uri 'self'",
-      "form-action 'self'",
+      // Allow Flutterwave's hosted checkout to post back
+      "form-action 'self' https://checkout.flutterwave.com https://*.flutterwave.com",
     ].join('; '),
   },
 ]
