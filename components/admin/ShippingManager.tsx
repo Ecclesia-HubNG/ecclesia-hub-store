@@ -1,12 +1,11 @@
 'use client'
 
-import { useState, useTransition, useMemo, useRef, useEffect } from 'react'
+import { useState, useTransition } from 'react'
 import {
-  createShippingZone,
-  updateShippingZone,
-  deleteShippingZone,
-  toggleShippingZone,
-  type ShippingZone,
+  createState, updateState, deleteState,
+  createBranch, updateBranch, deleteBranch,
+  createLocation, updateLocation, deleteLocation,
+  type ShippingState, type ShippingBranch, type ShippingLocation,
 } from '@/lib/actions/shipping'
 
 function fmt(n: number) { return '₦' + Number(n).toLocaleString('en') }
@@ -21,118 +20,80 @@ const NG_STATES = [
 
 const fieldCls = 'w-full px-3 py-2 text-sm bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#4A0F1C]/20 focus:border-[#4A0F1C]/40 transition-colors'
 
-// ── State picker dropdown ─────────────────────────────────────────────────────
-function StatePicker({
-  existing,
-  deliveryZoneNames,
-  onSelect,
-  onClose,
-}: {
-  existing: string[]
-  deliveryZoneNames: string[]
-  onSelect: (s: string) => void
-  onClose: () => void
-}) {
-  const [search, setSearch] = useState('')
-  const ref = useRef<HTMLDivElement>(null)
+// ── Icons ─────────────────────────────────────────────────────────────────────
 
-  useEffect(() => {
-    function handle(e: MouseEvent) {
-      if (ref.current && !ref.current.contains(e.target as Node)) onClose()
-    }
-    document.addEventListener('mousedown', handle)
-    return () => document.removeEventListener('mousedown', handle)
-  }, [onClose])
-
-  const deliverySet = new Set(deliveryZoneNames.map(n => n.toLowerCase()))
-  const alreadySet = new Set(existing.map(s => s.toLowerCase()))
-  const filtered = NG_STATES.filter(s =>
-    s.toLowerCase().includes(search.toLowerCase()) && !alreadySet.has(s.toLowerCase())
-  )
-
-  // sort: delivery types first, then alphabetical
-  filtered.sort((a, b) => {
-    const aIn = deliverySet.has(a.toLowerCase())
-    const bIn = deliverySet.has(b.toLowerCase())
-    if (aIn && !bIn) return -1
-    if (!aIn && bIn) return 1
-    return a.localeCompare(b)
-  })
-
+function IconPlus() {
   return (
-    <div ref={ref} className="absolute top-full right-0 mt-2 w-72 z-50 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl shadow-2xl overflow-hidden">
-      <div className="p-2 border-b border-gray-100 dark:border-gray-800">
-        <input
-          autoFocus
-          value={search}
-          onChange={e => setSearch(e.target.value)}
-          placeholder="Search states…"
-          className={fieldCls}
-        />
-      </div>
-      {deliveryZoneNames.length > 0 && !search && (
-        <p className="px-3 pt-2 pb-1 text-[10px] font-semibold uppercase tracking-wider text-[#4A0F1C] dark:text-[#E8C4CB]">
-          From your delivery types
-        </p>
-      )}
-      <div className="max-h-64 overflow-y-auto">
-        {filtered.length === 0 && (
-          <p className="px-4 py-6 text-xs text-gray-400 text-center">No states left to add</p>
-        )}
-        {filtered.map(state => {
-          const inDelivery = deliverySet.has(state.toLowerCase())
-          return (
-            <button
-              key={state}
-              type="button"
-              onClick={() => { onSelect(state); onClose() }}
-              className="w-full flex items-center justify-between px-4 py-2.5 text-sm text-left hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
-            >
-              <span className={inDelivery ? 'font-semibold text-gray-900 dark:text-white' : 'text-gray-700 dark:text-gray-300'}>{state}</span>
-              {inDelivery && (
-                <span className="text-[10px] font-semibold px-1.5 py-0.5 bg-[#4A0F1C]/10 dark:bg-[#4A0F1C]/30 text-[#4A0F1C] dark:text-[#E8C4CB] rounded">
-                  Delivery type
-                </span>
-              )}
-            </button>
-          )
-        })}
-      </div>
-    </div>
+    <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+    </svg>
+  )
+}
+function IconChevron({ open }: { open: boolean }) {
+  return (
+    <svg className={`w-4 h-4 text-gray-400 transition-transform shrink-0 ${open ? 'rotate-90' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5" />
+    </svg>
+  )
+}
+function IconEdit() {
+  return (
+    <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Z" />
+    </svg>
+  )
+}
+function IconTrash() {
+  return (
+    <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0" />
+    </svg>
+  )
+}
+function IconCheck({ active }: { active: boolean }) {
+  return active ? (
+    <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="m4.5 12.75 6 6 9-13.5" />
+    </svg>
+  ) : (
+    <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M18.364 18.364A9 9 0 0 0 5.636 5.636m12.728 12.728A9 9 0 0 1 5.636 5.636m12.728 12.728L5.636 5.636" />
+    </svg>
   )
 }
 
-// ── Inline form: add or edit a single area ────────────────────────────────────
-function AreaForm({
+// ── Inline name+price form (for locations) ────────────────────────────────────
+
+function LocationForm({
   initial,
   onSave,
   onCancel,
   pending,
 }: {
-  initial?: { area: string; price: number }
-  onSave: (area: string, price: number) => void
+  initial?: { name: string; price: number }
+  onSave: (name: string, price: number) => void
   onCancel: () => void
   pending: boolean
 }) {
-  const [areaName, setAreaName] = useState(initial?.area ?? '')
+  const [name, setName] = useState(initial?.name ?? '')
   const [price, setPrice] = useState(initial ? String(initial.price) : '')
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     const p = parseFloat(price)
-    if (!areaName.trim() || isNaN(p) || p < 0) return
-    onSave(areaName.trim(), p)
+    if (!name.trim() || isNaN(p) || p < 0) return
+    onSave(name.trim(), p)
   }
 
   return (
     <form onSubmit={handleSubmit} className="flex flex-wrap items-end gap-3 px-4 py-3 bg-gray-50 dark:bg-gray-800/60 rounded-xl border border-dashed border-gray-200 dark:border-gray-700">
       <div className="flex-1 min-w-[160px]">
-        <label className="block text-[10px] font-semibold uppercase tracking-wide text-gray-400 mb-1">Area / City</label>
+        <label className="block text-[10px] font-semibold uppercase tracking-wide text-gray-400 mb-1">Location name</label>
         <input
           autoFocus
-          value={areaName}
-          onChange={e => setAreaName(e.target.value)}
-          placeholder="e.g. Ikeja, Agege, Lekki Phase 1"
+          value={name}
+          onChange={e => setName(e.target.value)}
+          placeholder="e.g. Surulere, Yaba, Lekki Phase 1"
           required
           className={fieldCls}
         />
@@ -152,9 +113,9 @@ function AreaForm({
         </div>
       </div>
       <div className="flex gap-2">
-        <button type="submit" disabled={pending || !areaName.trim() || !price}
+        <button type="submit" disabled={pending || !name.trim() || !price}
           className="px-4 py-2 bg-[#4A0F1C] text-white text-sm font-semibold rounded-lg disabled:opacity-50 hover:bg-[#3A0B15] transition-colors">
-          {pending ? 'Saving…' : initial ? 'Update' : 'Add area'}
+          {pending ? 'Saving…' : initial ? 'Update' : 'Add location'}
         </button>
         <button type="button" onClick={onCancel} className="px-4 py-2 text-sm text-gray-500 hover:text-gray-700 dark:hover:text-gray-300">Cancel</button>
       </div>
@@ -162,162 +123,244 @@ function AreaForm({
   )
 }
 
-// ── State section: header + list of areas ─────────────────────────────────────
-function StateSection({
-  stateName,
-  areas,
-  deliveryZoneNames,
-  onAreaAdded,
-  onAreaUpdated,
-  onAreaDeleted,
+// ── Inline name form (for branches) ──────────────────────────────────────────
+
+function NameForm({
+  label,
+  placeholder,
+  initial,
+  onSave,
+  onCancel,
+  pending,
 }: {
-  stateName: string
-  areas: ShippingZone[]
-  deliveryZoneNames: string[]
-  onAreaAdded: (z: ShippingZone) => void
-  onAreaUpdated: (z: ShippingZone) => void
-  onAreaDeleted: (id: string) => void
+  label: string
+  placeholder: string
+  initial?: string
+  onSave: (name: string) => void
+  onCancel: () => void
+  pending: boolean
 }) {
-  const [open, setOpen] = useState(true)
-  const [addingArea, setAddingArea] = useState(areas.length === 0)
-  const [editingId, setEditingId] = useState<string | null>(null)
+  const [name, setName] = useState(initial ?? '')
+
+  function handleSubmit(e: React.FormEvent) {
+    e.preventDefault()
+    if (!name.trim()) return
+    onSave(name.trim())
+  }
+
+  return (
+    <form onSubmit={handleSubmit} className="flex items-end gap-3 px-4 py-3 bg-gray-50 dark:bg-gray-800/60 rounded-xl border border-dashed border-gray-200 dark:border-gray-700">
+      <div className="flex-1">
+        <label className="block text-[10px] font-semibold uppercase tracking-wide text-gray-400 mb-1">{label}</label>
+        <input
+          autoFocus
+          value={name}
+          onChange={e => setName(e.target.value)}
+          placeholder={placeholder}
+          required
+          className={fieldCls}
+        />
+      </div>
+      <div className="flex gap-2 pb-0.5">
+        <button type="submit" disabled={pending || !name.trim()}
+          className="px-4 py-2 bg-[#4A0F1C] text-white text-sm font-semibold rounded-lg disabled:opacity-50 hover:bg-[#3A0B15] transition-colors">
+          {pending ? 'Saving…' : initial ? 'Update' : 'Add'}
+        </button>
+        <button type="button" onClick={onCancel} className="px-4 py-2 text-sm text-gray-500 hover:text-gray-700 dark:hover:text-gray-300">Cancel</button>
+      </div>
+    </form>
+  )
+}
+
+// ── Branch section ────────────────────────────────────────────────────────────
+
+function BranchSection({
+  branch,
+  onBranchUpdated,
+  onBranchDeleted,
+}: {
+  branch: ShippingBranch
+  onBranchUpdated: (b: ShippingBranch) => void
+  onBranchDeleted: (id: string) => void
+}) {
+  const [open, setOpen] = useState(branch.locations.length === 0)
+  const [editing, setEditing] = useState(false)
+  const [addingLoc, setAddingLoc] = useState(branch.locations.length === 0)
+  const [editingLocId, setEditingLocId] = useState<string | null>(null)
   const [pending, startTransition] = useTransition()
 
-  const inDelivery = deliveryZoneNames.some(n => n.toLowerCase() === stateName.toLowerCase())
-
-  function handleAdd(area: string, price: number) {
+  function handleRenameBranch(name: string) {
     startTransition(async () => {
-      const res = await createShippingZone({ name: area, state: stateName, area, price, country: 'Nigeria' })
+      const res = await updateBranch(branch.id, { name })
       if ('error' in res) return
-      onAreaAdded({
-        id: crypto.randomUUID(),
-        name: area, state: stateName, area, price,
-        country: 'Nigeria', is_active: true,
-        created_at: new Date().toISOString(),
+      onBranchUpdated({ ...branch, name })
+      setEditing(false)
+    })
+  }
+
+  function handleToggleBranch() {
+    startTransition(async () => {
+      await updateBranch(branch.id, { is_active: !branch.is_active })
+      onBranchUpdated({ ...branch, is_active: !branch.is_active })
+    })
+  }
+
+  function handleDeleteBranch() {
+    if (!confirm(`Delete branch "${branch.name}" and all its locations?`)) return
+    startTransition(async () => {
+      await deleteBranch(branch.id)
+      onBranchDeleted(branch.id)
+    })
+  }
+
+  function handleAddLocation(name: string, price: number) {
+    startTransition(async () => {
+      const res = await createLocation(branch.id, name, price)
+      if ('error' in res) return
+      onBranchUpdated({
+        ...branch,
+        locations: [...branch.locations, { ...res, locations: [] } as unknown as ShippingLocation],
       })
-      setAddingArea(false)
+      setAddingLoc(false)
     })
   }
 
-  function handleUpdate(zone: ShippingZone, area: string, price: number) {
+  function handleUpdateLocation(loc: ShippingLocation, name: string, price: number) {
     startTransition(async () => {
-      const res = await updateShippingZone(zone.id, { name: area, state: stateName, area, price, is_active: zone.is_active, country: 'Nigeria' })
-      if ('error' in res) return
-      onAreaUpdated({ ...zone, name: area, area, price })
-      setEditingId(null)
+      const res = await updateLocation(loc.id, { name, price })
+      if (res.error) return
+      onBranchUpdated({
+        ...branch,
+        locations: branch.locations.map(l => l.id === loc.id ? { ...l, name, price } : l),
+      })
+      setEditingLocId(null)
     })
   }
 
-  function handleDelete(id: string) {
-    if (!confirm('Delete this area?')) return
+  function handleToggleLocation(loc: ShippingLocation) {
     startTransition(async () => {
-      await deleteShippingZone(id)
-      onAreaDeleted(id)
+      await updateLocation(loc.id, { is_active: !loc.is_active })
+      onBranchUpdated({
+        ...branch,
+        locations: branch.locations.map(l => l.id === loc.id ? { ...l, is_active: !l.is_active } : l),
+      })
     })
   }
 
-  function handleToggle(zone: ShippingZone) {
+  function handleDeleteLocation(locId: string) {
+    if (!confirm('Delete this location?')) return
     startTransition(async () => {
-      await toggleShippingZone(zone.id, !zone.is_active)
-      onAreaUpdated({ ...zone, is_active: !zone.is_active })
+      await deleteLocation(locId)
+      onBranchUpdated({ ...branch, locations: branch.locations.filter(l => l.id !== locId) })
     })
   }
 
   return (
-    <div className="rounded-2xl border border-gray-200 dark:border-gray-700 overflow-hidden">
-      {/* State header */}
-      <div
-        className="flex items-center gap-3 px-5 py-4 bg-white dark:bg-gray-900 cursor-pointer select-none"
-        onClick={() => setOpen(p => !p)}
-      >
-        <svg className={`w-4 h-4 text-gray-400 transition-transform shrink-0 ${open ? 'rotate-90' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-          <path strokeLinecap="round" strokeLinejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5" />
-        </svg>
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2 flex-wrap">
-            <p className="text-sm font-semibold text-gray-900 dark:text-white">{stateName}</p>
-            {inDelivery && (
-              <span className="px-1.5 py-0.5 text-[10px] font-semibold bg-[#4A0F1C]/10 dark:bg-[#4A0F1C]/30 text-[#4A0F1C] dark:text-[#E8C4CB] rounded">
-                Delivery type
-              </span>
-            )}
-          </div>
-          <p className="text-xs text-gray-400 mt-0.5">
-            {areas.length} area{areas.length !== 1 ? 's' : ''}
-          </p>
+    <div className={`rounded-xl border overflow-hidden ${branch.is_active ? 'border-gray-200 dark:border-gray-700' : 'border-dashed border-gray-200 dark:border-gray-700 opacity-60'}`}>
+      {/* Branch header */}
+      {editing ? (
+        <div className="px-4 py-3 bg-gray-50 dark:bg-gray-800/50">
+          <NameForm
+            label="Branch name"
+            placeholder="e.g. Lagos Mainland, Lagos Island"
+            initial={branch.name}
+            onSave={handleRenameBranch}
+            onCancel={() => setEditing(false)}
+            pending={pending}
+          />
         </div>
-        <button
-          type="button"
-          onClick={e => { e.stopPropagation(); setAddingArea(true); setOpen(true) }}
-          className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-[#4A0F1C] dark:text-[#E8C4CB] bg-[#4A0F1C]/5 dark:bg-[#4A0F1C]/20 hover:bg-[#4A0F1C]/10 dark:hover:bg-[#4A0F1C]/30 rounded-lg transition-colors"
+      ) : (
+        <div
+          className="flex items-center gap-3 px-4 py-3 bg-gray-50 dark:bg-gray-800/50 cursor-pointer select-none"
+          onClick={() => setOpen(p => !p)}
         >
-          <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" /></svg>
-          Add area
-        </button>
-      </div>
+          <IconChevron open={open} />
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2">
+              <p className="text-sm font-semibold text-gray-900 dark:text-white">{branch.name}</p>
+              {!branch.is_active && (
+                <span className="px-1.5 py-0.5 text-[10px] font-semibold bg-gray-100 dark:bg-gray-800 text-gray-400 rounded">disabled</span>
+              )}
+            </div>
+            <p className="text-xs text-gray-400 mt-0.5">{branch.locations.length} location{branch.locations.length !== 1 ? 's' : ''}</p>
+          </div>
+          <div className="flex items-center gap-1 shrink-0" onClick={e => e.stopPropagation()}>
+            <button type="button" onClick={() => { setAddingLoc(true); setOpen(true) }}
+              className="flex items-center gap-1 px-2.5 py-1 text-xs font-semibold text-[#4A0F1C] dark:text-[#E8C4CB] bg-[#4A0F1C]/5 dark:bg-[#4A0F1C]/20 hover:bg-[#4A0F1C]/10 dark:hover:bg-[#4A0F1C]/30 rounded-lg transition-colors">
+              <IconPlus /> Add location
+            </button>
+            <button type="button" onClick={() => setEditing(true)} disabled={pending}
+              className="w-7 h-7 flex items-center justify-center rounded-lg text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors">
+              <IconEdit />
+            </button>
+            <button type="button" onClick={handleToggleBranch} disabled={pending}
+              className={`w-7 h-7 flex items-center justify-center rounded-lg transition-colors ${branch.is_active ? 'text-emerald-500 hover:bg-emerald-50 dark:hover:bg-emerald-950/30' : 'text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700'}`}>
+              <IconCheck active={branch.is_active} />
+            </button>
+            <button type="button" onClick={handleDeleteBranch} disabled={pending}
+              className="w-7 h-7 flex items-center justify-center rounded-lg text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors disabled:opacity-50">
+              <IconTrash />
+            </button>
+          </div>
+        </div>
+      )}
 
-      {/* Areas */}
+      {/* Locations */}
       {open && (
-        <div className="px-4 pb-4 pt-2 space-y-2 bg-gray-50/50 dark:bg-gray-800/20 border-t border-gray-100 dark:border-gray-800">
-          {areas.length === 0 && !addingArea && (
-            <p className="px-2 py-3 text-xs text-gray-400 text-center">No areas yet — click "Add area" above to get started.</p>
+        <div className="px-3 pb-3 pt-2 space-y-2 bg-white dark:bg-gray-900 border-t border-gray-100 dark:border-gray-800">
+          {branch.locations.length === 0 && !addingLoc && (
+            <p className="px-2 py-3 text-xs text-gray-400 text-center">No locations yet — click "Add location" above.</p>
           )}
 
-          {areas.map(zone =>
-            editingId === zone.id ? (
-              <AreaForm
-                key={zone.id}
-                initial={{ area: zone.area || zone.name, price: zone.price }}
-                onSave={(a, p) => handleUpdate(zone, a, p)}
-                onCancel={() => setEditingId(null)}
+          {branch.locations.map(loc =>
+            editingLocId === loc.id ? (
+              <LocationForm
+                key={loc.id}
+                initial={{ name: loc.name, price: loc.price }}
+                onSave={(n, p) => handleUpdateLocation(loc, n, p)}
+                onCancel={() => setEditingLocId(null)}
                 pending={pending}
               />
             ) : (
-              <div key={zone.id} className={`flex items-center gap-3 px-4 py-2.5 rounded-xl border ${zone.is_active ? 'bg-white dark:bg-gray-800 border-gray-100 dark:border-gray-700' : 'bg-gray-50 dark:bg-gray-800/40 border-dashed border-gray-200 dark:border-gray-700 opacity-60'}`}>
+              <div
+                key={loc.id}
+                className={`flex items-center gap-3 px-4 py-2.5 rounded-xl border ${loc.is_active ? 'bg-white dark:bg-gray-800 border-gray-100 dark:border-gray-700' : 'bg-gray-50 dark:bg-gray-800/40 border-dashed border-gray-200 dark:border-gray-700 opacity-60'}`}
+              >
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-gray-900 dark:text-white">
-                    {zone.area || zone.name}
-                  </p>
-                  {!zone.is_active && (
-                    <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide mt-0.5">Disabled</p>
-                  )}
+                  <p className="text-sm text-gray-900 dark:text-white">{loc.name}</p>
+                  {!loc.is_active && <p className="text-[10px] font-semibold uppercase tracking-wide text-gray-400 mt-0.5">Disabled</p>}
                 </div>
-                <span className="text-sm font-bold text-gray-900 dark:text-white shrink-0">{fmt(zone.price)}</span>
+                <span className="text-sm font-bold text-gray-900 dark:text-white shrink-0">{fmt(loc.price)}</span>
                 <div className="flex items-center gap-1 shrink-0">
-                  <button type="button" onClick={() => handleToggle(zone)} disabled={pending} title={zone.is_active ? 'Disable' : 'Enable'}
-                    className={`w-7 h-7 flex items-center justify-center rounded-lg transition-colors ${zone.is_active ? 'text-emerald-500 hover:bg-emerald-50 dark:hover:bg-emerald-950/30' : 'text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700'}`}>
-                    <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                      {zone.is_active
-                        ? <path strokeLinecap="round" strokeLinejoin="round" d="m4.5 12.75 6 6 9-13.5" />
-                        : <path strokeLinecap="round" strokeLinejoin="round" d="M18.364 18.364A9 9 0 0 0 5.636 5.636m12.728 12.728A9 9 0 0 1 5.636 5.636m12.728 12.728L5.636 5.636" />}
-                    </svg>
+                  <button type="button" onClick={() => handleToggleLocation(loc)} disabled={pending}
+                    className={`w-7 h-7 flex items-center justify-center rounded-lg transition-colors ${loc.is_active ? 'text-emerald-500 hover:bg-emerald-50 dark:hover:bg-emerald-950/30' : 'text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700'}`}>
+                    <IconCheck active={loc.is_active} />
                   </button>
-                  <button type="button" onClick={() => setEditingId(zone.id)}
+                  <button type="button" onClick={() => setEditingLocId(loc.id)}
                     className="w-7 h-7 flex items-center justify-center rounded-lg text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
-                    <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Z" /></svg>
+                    <IconEdit />
                   </button>
-                  <button type="button" onClick={() => handleDelete(zone.id)} disabled={pending}
+                  <button type="button" onClick={() => handleDeleteLocation(loc.id)} disabled={pending}
                     className="w-7 h-7 flex items-center justify-center rounded-lg text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors disabled:opacity-50">
-                    <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0" /></svg>
+                    <IconTrash />
                   </button>
                 </div>
               </div>
             )
           )}
 
-          {addingArea && (
-            <AreaForm
-              onSave={handleAdd}
-              onCancel={() => setAddingArea(false)}
+          {addingLoc && (
+            <LocationForm
+              onSave={handleAddLocation}
+              onCancel={() => setAddingLoc(false)}
               pending={pending}
             />
           )}
 
-          {!addingArea && areas.length > 0 && (
-            <button type="button" onClick={() => setAddingArea(true)}
+          {!addingLoc && branch.locations.length > 0 && (
+            <button type="button" onClick={() => setAddingLoc(true)}
               className="flex items-center gap-2 w-full px-4 py-2 rounded-xl border border-dashed border-gray-200 dark:border-gray-700 text-sm text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:border-gray-300 dark:hover:border-gray-600 transition-colors">
-              <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" /></svg>
-              Add another area
+              <IconPlus /> Add another location
             </button>
           )}
         </div>
@@ -326,39 +369,193 @@ function StateSection({
   )
 }
 
-// ── Main ──────────────────────────────────────────────────────────────────────
-export function ShippingManager({
-  zones: initial,
-  deliveryZoneNames,
+// ── State section ─────────────────────────────────────────────────────────────
+
+function StateSection({
+  state,
+  onStateUpdated,
+  onStateDeleted,
 }: {
-  zones: ShippingZone[]
-  deliveryZoneNames: string[]
+  state: ShippingState
+  onStateUpdated: (s: ShippingState) => void
+  onStateDeleted: (id: string) => void
 }) {
-  const [zones, setZones] = useState(initial)
+  const [open, setOpen] = useState(true)
+  const [addingBranch, setAddingBranch] = useState(state.branches.length === 0)
+  const [pending, startTransition] = useTransition()
+
+  function handleToggleState() {
+    startTransition(async () => {
+      await updateState(state.id, { is_active: !state.is_active })
+      onStateUpdated({ ...state, is_active: !state.is_active })
+    })
+  }
+
+  function handleDeleteState() {
+    if (!confirm(`Delete state "${state.name}" and all its branches and locations?`)) return
+    startTransition(async () => {
+      await deleteState(state.id)
+      onStateDeleted(state.id)
+    })
+  }
+
+  function handleAddBranch(name: string) {
+    startTransition(async () => {
+      const res = await createBranch(state.id, name)
+      if ('error' in res) return
+      onStateUpdated({
+        ...state,
+        branches: [...state.branches, { ...res, locations: [] }],
+      })
+      setAddingBranch(false)
+    })
+  }
+
+  const totalLocations = state.branches.reduce((sum, b) => sum + b.locations.length, 0)
+
+  return (
+    <div className={`rounded-2xl border overflow-hidden ${state.is_active ? 'border-gray-200 dark:border-gray-700' : 'border-dashed border-gray-200 dark:border-gray-700 opacity-70'}`}>
+      {/* State header */}
+      <div
+        className="flex items-center gap-3 px-5 py-4 bg-white dark:bg-gray-900 cursor-pointer select-none"
+        onClick={() => setOpen(p => !p)}
+      >
+        <IconChevron open={open} />
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2">
+            <p className="text-base font-bold text-gray-900 dark:text-white">{state.name}</p>
+            {!state.is_active && (
+              <span className="px-1.5 py-0.5 text-[10px] font-semibold bg-gray-100 dark:bg-gray-800 text-gray-400 rounded">disabled</span>
+            )}
+          </div>
+          <p className="text-xs text-gray-400 mt-0.5">
+            {state.branches.length} branch{state.branches.length !== 1 ? 'es' : ''} · {totalLocations} location{totalLocations !== 1 ? 's' : ''}
+          </p>
+        </div>
+        <div className="flex items-center gap-1.5 shrink-0" onClick={e => e.stopPropagation()}>
+          <button
+            type="button"
+            onClick={() => { setAddingBranch(true); setOpen(true) }}
+            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-[#4A0F1C] dark:text-[#E8C4CB] bg-[#4A0F1C]/5 dark:bg-[#4A0F1C]/20 hover:bg-[#4A0F1C]/10 dark:hover:bg-[#4A0F1C]/30 rounded-lg transition-colors"
+          >
+            <IconPlus /> Add branch
+          </button>
+          <button type="button" onClick={handleToggleState} disabled={pending}
+            className={`w-8 h-8 flex items-center justify-center rounded-lg transition-colors ${state.is_active ? 'text-emerald-500 hover:bg-emerald-50 dark:hover:bg-emerald-950/30' : 'text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800'}`}>
+            <IconCheck active={state.is_active} />
+          </button>
+          <button type="button" onClick={handleDeleteState} disabled={pending}
+            className="w-8 h-8 flex items-center justify-center rounded-lg text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors disabled:opacity-50">
+            <IconTrash />
+          </button>
+        </div>
+      </div>
+
+      {/* Branches */}
+      {open && (
+        <div className="px-4 pb-4 pt-2 space-y-3 bg-gray-50/50 dark:bg-gray-800/20 border-t border-gray-100 dark:border-gray-800">
+          {state.branches.length === 0 && !addingBranch && (
+            <p className="px-2 py-3 text-xs text-gray-400 text-center">No branches yet — click "Add branch" above.</p>
+          )}
+
+          {state.branches.map(branch => (
+            <BranchSection
+              key={branch.id}
+              branch={branch}
+              onBranchUpdated={updated =>
+                onStateUpdated({ ...state, branches: state.branches.map(b => b.id === updated.id ? updated : b) })
+              }
+              onBranchDeleted={id =>
+                onStateUpdated({ ...state, branches: state.branches.filter(b => b.id !== id) })
+              }
+            />
+          ))}
+
+          {addingBranch && (
+            <NameForm
+              label="Branch name"
+              placeholder="e.g. Lagos Mainland, Lagos Island"
+              onSave={handleAddBranch}
+              onCancel={() => setAddingBranch(false)}
+              pending={pending}
+            />
+          )}
+
+          {!addingBranch && state.branches.length > 0 && (
+            <button type="button" onClick={() => setAddingBranch(true)}
+              className="flex items-center gap-2 w-full px-4 py-2.5 rounded-xl border border-dashed border-gray-200 dark:border-gray-700 text-sm text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:border-gray-300 dark:hover:border-gray-600 transition-colors">
+              <IconPlus /> Add another branch
+            </button>
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ── State picker dropdown ─────────────────────────────────────────────────────
+
+function StatePicker({
+  existing,
+  onSelect,
+  onClose,
+}: {
+  existing: string[]
+  onSelect: (name: string) => void
+  onClose: () => void
+}) {
+  const [search, setSearch] = useState('')
+  const alreadySet = new Set(existing.map(s => s.toLowerCase()))
+  const filtered = NG_STATES.filter(
+    s => s.toLowerCase().includes(search.toLowerCase()) && !alreadySet.has(s.toLowerCase())
+  )
+
+  return (
+    <div className="absolute top-full right-0 mt-2 w-72 z-50 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl shadow-2xl overflow-hidden">
+      <div className="p-2 border-b border-gray-100 dark:border-gray-800">
+        <input
+          autoFocus
+          value={search}
+          onChange={e => setSearch(e.target.value)}
+          placeholder="Search states…"
+          className={fieldCls}
+          onKeyDown={e => e.key === 'Escape' && onClose()}
+        />
+      </div>
+      <div className="max-h-64 overflow-y-auto">
+        {filtered.length === 0 && (
+          <p className="px-4 py-6 text-xs text-gray-400 text-center">No states left to add</p>
+        )}
+        {filtered.map(state => (
+          <button
+            key={state}
+            type="button"
+            onClick={() => { onSelect(state); onClose() }}
+            className="w-full flex items-center px-4 py-2.5 text-sm text-left hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors text-gray-700 dark:text-gray-300"
+          >
+            {state}
+          </button>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+// ── Main ──────────────────────────────────────────────────────────────────────
+
+export function ShippingManager({ states: initial }: { states: ShippingState[] }) {
+  const [states, setStates] = useState(initial)
   const [showPicker, setShowPicker] = useState(false)
+  const [pending, startTransition] = useTransition()
 
-  // Client-side state names (include empty new states not yet in DB)
-  const [stateOrder, setStateOrder] = useState<string[]>(() => {
-    const seen: string[] = []
-    for (const z of initial) { if (!seen.includes(z.state)) seen.push(z.state) }
-    return seen.sort()
-  })
+  const existingNames = states.map(s => s.name)
 
-  const grouped = useMemo(() => {
-    const map = new Map<string, ShippingZone[]>()
-    for (const s of stateOrder) map.set(s, [])
-    for (const z of zones) {
-      const key = z.state || 'Unknown'
-      if (!map.has(key)) map.set(key, [])
-      map.get(key)!.push(z)
-    }
-    return map
-  }, [zones, stateOrder])
-
-  function addState(state: string) {
-    if (!stateOrder.includes(state)) {
-      setStateOrder(prev => [...prev, state].sort())
-    }
+  function handleSelectState(name: string) {
+    startTransition(async () => {
+      const res = await createState(name)
+      if ('error' in res) return
+      setStates(prev => [...prev, { ...res, branches: [] }].sort((a, b) => a.name.localeCompare(b.name)))
+    })
   }
 
   return (
@@ -366,27 +563,24 @@ export function ShippingManager({
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-xl font-bold text-gray-900 dark:text-white">Shipping Zones</h1>
+          <h1 className="text-xl font-bold text-gray-900 dark:text-white">Shipping</h1>
           <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">
-            Add states, then define areas and their shipping prices within each state.
+            Add states → branches (e.g. Lagos Mainland) → locations with prices.
           </p>
         </div>
         <div className="relative">
           <button
             type="button"
             onClick={() => setShowPicker(p => !p)}
-            className="flex items-center gap-2 px-4 py-2.5 bg-[#4A0F1C] text-white text-sm font-semibold rounded-xl hover:bg-[#3A0B15] transition-colors"
+            disabled={pending}
+            className="flex items-center gap-2 px-4 py-2.5 bg-[#4A0F1C] text-white text-sm font-semibold rounded-xl hover:bg-[#3A0B15] disabled:opacity-60 transition-colors"
           >
-            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
-            </svg>
-            Add State
+            <IconPlus /> Add State
           </button>
           {showPicker && (
             <StatePicker
-              existing={stateOrder}
-              deliveryZoneNames={deliveryZoneNames}
-              onSelect={addState}
+              existing={existingNames}
+              onSelect={handleSelectState}
               onClose={() => setShowPicker(false)}
             />
           )}
@@ -394,7 +588,7 @@ export function ShippingManager({
       </div>
 
       {/* State sections */}
-      {grouped.size === 0 ? (
+      {states.length === 0 ? (
         <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 p-12 text-center">
           <div className="w-12 h-12 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center mx-auto mb-3">
             <svg className="w-6 h-6 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
@@ -403,31 +597,28 @@ export function ShippingManager({
             </svg>
           </div>
           <p className="text-sm font-medium text-gray-900 dark:text-white mb-1">No states added yet</p>
-          <p className="text-xs text-gray-400">Click "Add State" to define where you ship to and set prices for each area.</p>
+          <p className="text-xs text-gray-400">Click "Add State" to start configuring shipping.</p>
         </div>
       ) : (
         <div className="space-y-4">
-          {Array.from(grouped.entries()).map(([state, areas]) => (
+          {states.map(state => (
             <StateSection
-              key={state}
-              stateName={state}
-              areas={areas}
-              deliveryZoneNames={deliveryZoneNames}
-              onAreaAdded={z => setZones(prev => [...prev, z])}
-              onAreaUpdated={z => setZones(prev => prev.map(x => x.id === z.id ? z : x))}
-              onAreaDeleted={id => setZones(prev => prev.filter(x => x.id !== id))}
+              key={state.id}
+              state={state}
+              onStateUpdated={updated => setStates(prev => prev.map(s => s.id === updated.id ? updated : s))}
+              onStateDeleted={id => setStates(prev => prev.filter(s => s.id !== id))}
             />
           ))}
         </div>
       )}
 
-      {/* Hint */}
+      {/* How it works */}
       <div className="bg-blue-50 dark:bg-blue-900/10 border border-blue-100 dark:border-blue-900/30 rounded-xl px-5 py-4">
         <p className="text-xs font-semibold text-blue-800 dark:text-blue-300 mb-1">How this works</p>
         <ul className="text-xs text-blue-700 dark:text-blue-400 space-y-1 list-disc list-inside">
-          <li>Each state groups all delivery areas within it. Add the state first, then add areas with prices.</li>
-          <li>States marked <strong>Delivery type</strong> are already configured in your Delivery Types — keep names consistent.</li>
-          <li>Only active areas appear at checkout. Disable any you don't currently service.</li>
+          <li>Customers select their <strong>state</strong> → then their <strong>branch</strong> → then their <strong>location</strong> with the delivery price.</li>
+          <li>Disabling a state, branch, or location hides it from checkout without deleting it.</li>
+          <li>Deleting a state removes all its branches and locations.</li>
         </ul>
       </div>
     </div>

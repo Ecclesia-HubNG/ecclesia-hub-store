@@ -53,7 +53,7 @@ export async function createCheckoutSession(
   subtotal: number,
   shippingFee: number,
   total: number,
-  deliveryRateId: string,
+  deliveryRateId: string | null,
   deliveryLabel: string,
   couponCode: string | null = null,
   discountAmount: number = 0,

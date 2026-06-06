@@ -1,105 +1,190 @@
 'use server'
 
-import { createAdminClient } from '@/lib/supabase/admin'
 import { createClient } from '@/lib/supabase/server'
-import { revalidatePath } from 'next/cache'
+import { createAdminClient } from '@/lib/supabase/admin'
 
-export type ShippingZone = {
+export type ShippingLocation = {
   id: string
+  branch_id: string
   name: string
-  country: string
-  state: string
-  area: string | null
   price: number
   is_active: boolean
   created_at: string
 }
 
-// Public: fetch all active zones (for checkout)
-export async function getShippingZones(): Promise<ShippingZone[]> {
+export type ShippingBranch = {
+  id: string
+  state_id: string
+  name: string
+  is_active: boolean
+  created_at: string
+  locations: ShippingLocation[]
+}
+
+export type ShippingState = {
+  id: string
+  name: string
+  is_active: boolean
+  created_at: string
+  branches: ShippingBranch[]
+}
+
+// ── Public: used at checkout ──────────────────────────────────────────────────
+// Returns only active states that have at least one active branch with locations.
+
+export async function getActiveShippingTree(): Promise<ShippingState[]> {
   const supabase = createClient()
   const { data } = await supabase
-    .from('shipping_zones')
-    .select('*')
+    .from('shipping_states')
+    .select(`
+      id, name, is_active, created_at,
+      shipping_branches (
+        id, state_id, name, is_active, created_at,
+        shipping_locations ( id, branch_id, name, price, is_active, created_at )
+      )
+    `)
     .eq('is_active', true)
     .order('name')
-  return (data ?? []) as ShippingZone[]
+
+  if (!data) return []
+
+  type RawState = ShippingState & {
+    shipping_branches: Array<ShippingBranch & { shipping_locations: ShippingLocation[] }>
+  }
+
+  return (data as unknown as RawState[])
+    .map(s => ({
+      ...s,
+      branches: (s.shipping_branches ?? [])
+        .filter(b => b.is_active)
+        .map(b => ({
+          ...b,
+          locations: (b.shipping_locations ?? []).filter(l => l.is_active),
+        }))
+        .filter(b => b.locations.length > 0),
+    }))
+    .filter(s => s.branches.length > 0)
 }
 
-// Admin: get all zones
-export async function adminGetShippingZones(): Promise<ShippingZone[]> {
-  const supabase = createAdminClient()
-  const { data } = await supabase
-    .from('shipping_zones')
-    .select('*')
+// ── Admin: full tree including inactive ───────────────────────────────────────
+
+export async function adminGetShippingTree(): Promise<ShippingState[]> {
+  const admin = createAdminClient()
+  const { data } = await admin
+    .from('shipping_states')
+    .select(`
+      id, name, is_active, created_at,
+      shipping_branches (
+        id, state_id, name, is_active, created_at,
+        shipping_locations ( id, branch_id, name, price, is_active, created_at )
+      )
+    `)
     .order('name')
-  return (data ?? []) as ShippingZone[]
+
+  if (!data) return []
+
+  type RawState = ShippingState & {
+    shipping_branches: Array<ShippingBranch & { shipping_locations: ShippingLocation[] }>
+  }
+
+  return (data as unknown as RawState[]).map(s => ({
+    ...s,
+    branches: (s.shipping_branches ?? []).map(b => ({
+      ...b,
+      locations: b.shipping_locations ?? [],
+    })),
+  }))
 }
 
-// Admin: create zone
-export async function createShippingZone(data: {
-  name: string
-  country: string
-  state: string
-  area: string | null
-  price: number
-}) {
-  if (!data.name.trim()) return { error: 'Name is required' }
-  if (!data.state.trim()) return { error: 'State is required' }
-  if (data.price < 0) return { error: 'Price cannot be negative' }
-  const supabase = createAdminClient()
-  const { error } = await supabase.from('shipping_zones').insert({
-    name: data.name.trim(),
-    country: data.country.trim() || 'Nigeria',
-    state: data.state.trim(),
-    area: data.area?.trim() || null,
-    price: data.price,
-  })
+// ── States ────────────────────────────────────────────────────────────────────
+
+export async function createState(
+  name: string,
+): Promise<{ id: string; name: string; is_active: boolean; created_at: string } | { error: string }> {
+  const admin = createAdminClient()
+  const { data, error } = await admin
+    .from('shipping_states')
+    .insert({ name: name.trim() })
+    .select('id, name, is_active, created_at')
+    .single()
   if (error) return { error: error.message }
-  revalidatePath('/admin/shipping')
-  return { success: true as const }
+  return data
 }
 
-// Admin: update zone
-export async function updateShippingZone(id: string, data: {
-  name: string
-  country: string
-  state: string
-  area: string | null
-  price: number
-  is_active: boolean
-}) {
-  if (!data.name.trim()) return { error: 'Name is required' }
-  if (!data.state.trim()) return { error: 'State is required' }
-  if (data.price < 0) return { error: 'Price cannot be negative' }
-  const supabase = createAdminClient()
-  const { error } = await supabase.from('shipping_zones').update({
-    name: data.name.trim(),
-    country: data.country.trim() || 'Nigeria',
-    state: data.state.trim(),
-    area: data.area?.trim() || null,
-    price: data.price,
-    is_active: data.is_active,
-  }).eq('id', id)
-  if (error) return { error: error.message }
-  revalidatePath('/admin/shipping')
-  return { success: true as const }
+export async function updateState(
+  id: string,
+  updates: Partial<{ name: string; is_active: boolean }>,
+): Promise<{ error?: string }> {
+  const admin = createAdminClient()
+  const { error } = await admin.from('shipping_states').update(updates).eq('id', id)
+  return error ? { error: error.message } : {}
 }
 
-// Admin: delete zone
-export async function deleteShippingZone(id: string) {
-  const supabase = createAdminClient()
-  const { error } = await supabase.from('shipping_zones').delete().eq('id', id)
-  if (error) return { error: error.message }
-  revalidatePath('/admin/shipping')
-  return { success: true as const }
+export async function deleteState(id: string): Promise<{ error?: string }> {
+  const admin = createAdminClient()
+  const { error } = await admin.from('shipping_states').delete().eq('id', id)
+  return error ? { error: error.message } : {}
 }
 
-// Admin: toggle active
-export async function toggleShippingZone(id: string, is_active: boolean) {
-  const supabase = createAdminClient()
-  const { error } = await supabase.from('shipping_zones').update({ is_active }).eq('id', id)
+// ── Branches ──────────────────────────────────────────────────────────────────
+
+export async function createBranch(
+  stateId: string,
+  name: string,
+): Promise<{ id: string; state_id: string; name: string; is_active: boolean; created_at: string } | { error: string }> {
+  const admin = createAdminClient()
+  const { data, error } = await admin
+    .from('shipping_branches')
+    .insert({ state_id: stateId, name: name.trim() })
+    .select('id, state_id, name, is_active, created_at')
+    .single()
   if (error) return { error: error.message }
-  revalidatePath('/admin/shipping')
-  return { success: true as const }
+  return data
+}
+
+export async function updateBranch(
+  id: string,
+  updates: Partial<{ name: string; is_active: boolean }>,
+): Promise<{ error?: string }> {
+  const admin = createAdminClient()
+  const { error } = await admin.from('shipping_branches').update(updates).eq('id', id)
+  return error ? { error: error.message } : {}
+}
+
+export async function deleteBranch(id: string): Promise<{ error?: string }> {
+  const admin = createAdminClient()
+  const { error } = await admin.from('shipping_branches').delete().eq('id', id)
+  return error ? { error: error.message } : {}
+}
+
+// ── Locations ─────────────────────────────────────────────────────────────────
+
+export async function createLocation(
+  branchId: string,
+  name: string,
+  price: number,
+): Promise<{ id: string; branch_id: string; name: string; price: number; is_active: boolean; created_at: string } | { error: string }> {
+  const admin = createAdminClient()
+  const { data, error } = await admin
+    .from('shipping_locations')
+    .insert({ branch_id: branchId, name: name.trim(), price })
+    .select('id, branch_id, name, price, is_active, created_at')
+    .single()
+  if (error) return { error: error.message }
+  return data
+}
+
+export async function updateLocation(
+  id: string,
+  updates: Partial<{ name: string; price: number; is_active: boolean }>,
+): Promise<{ error?: string }> {
+  const admin = createAdminClient()
+  const { error } = await admin.from('shipping_locations').update(updates).eq('id', id)
+  return error ? { error: error.message } : {}
+}
+
+export async function deleteLocation(id: string): Promise<{ error?: string }> {
+  const admin = createAdminClient()
+  const { error } = await admin.from('shipping_locations').delete().eq('id', id)
+  return error ? { error: error.message } : {}
 }

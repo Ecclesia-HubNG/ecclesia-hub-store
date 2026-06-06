@@ -7,11 +7,7 @@ import { useRouter } from 'next/navigation'
 import { useCart } from '@/lib/cart-context'
 import { createCheckoutSession, createBankTransferOrder } from '@/lib/actions/customer-orders'
 import { initializePayment as initFlutterwave } from '@/lib/actions/flutterwave'
-import { getActiveDeliveryOptions } from '@/lib/actions/delivery'
-
-type DeliveryRate = { id: string; zone_id: string; name: string; areas: string[]; price: number; estimated_days: string | null }
-type DeliveryZone = { id: string; type_id: string; name: string; description: string | null; rates: DeliveryRate[] }
-type DeliveryType = { id: string; name: string; description: string | null; zones: DeliveryZone[] }
+import { getActiveShippingTree, type ShippingState, type ShippingBranch, type ShippingLocation } from '@/lib/actions/shipping'
 
 type PaymentMethod = 'flutterwave' | 'bank_transfer'
 
@@ -32,11 +28,11 @@ export default function CheckoutPage() {
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('bank_transfer')
   const [bankConfirm, setBankConfirm] = useState<BankConfirm | null>(null)
 
-  // Delivery options
-  const [deliveryOptions, setDeliveryOptions] = useState<DeliveryType[]>([])
-  const [selectedTypeId, setSelectedTypeId] = useState('')
-  const [selectedZoneId, setSelectedZoneId] = useState('')
-  const [selectedRateId, setSelectedRateId] = useState('')
+  // Shipping tree
+  const [shippingStates, setShippingStates] = useState<ShippingState[]>([])
+  const [selectedStateId, setSelectedStateId] = useState('')
+  const [selectedBranchId, setSelectedBranchId] = useState('')
+  const [selectedLocationId, setSelectedLocationId] = useState('')
 
   const [form, setForm] = useState({
     firstName: '', lastName: '', email: '', phone: '', address: '', city: '', state: '',
@@ -44,18 +40,18 @@ export default function CheckoutPage() {
   const update = (k: keyof typeof form, v: string) => setForm(p => ({ ...p, [k]: v }))
 
   useEffect(() => {
-    getActiveDeliveryOptions().then(opts => setDeliveryOptions(opts as DeliveryType[]))
+    getActiveShippingTree().then(s => setShippingStates(s))
   }, [])
 
   useEffect(() => { if (items.length === 0 && !bankConfirm) router.replace('/cart') }, [items.length, router, bankConfirm])
 
-  // Derived delivery state
-  const selectedType = useMemo(() => deliveryOptions.find(t => t.id === selectedTypeId) ?? null, [deliveryOptions, selectedTypeId])
-  const zonesForType = useMemo(() => selectedType?.zones ?? [], [selectedType])
-  const selectedZone = useMemo(() => zonesForType.find(z => z.id === selectedZoneId) ?? null, [zonesForType, selectedZoneId])
-  const ratesForZone = useMemo(() => selectedZone?.rates ?? [], [selectedZone])
-  const selectedRate = useMemo(() => ratesForZone.find(r => r.id === selectedRateId) ?? null, [ratesForZone, selectedRateId])
-  const shippingFee = selectedRate?.price ?? null
+  // Derived shipping state
+  const selectedState = useMemo(() => shippingStates.find(s => s.id === selectedStateId) ?? null, [shippingStates, selectedStateId])
+  const branchesForState = useMemo(() => selectedState?.branches ?? [], [selectedState])
+  const selectedBranch = useMemo(() => branchesForState.find(b => b.id === selectedBranchId) ?? null, [branchesForState, selectedBranchId])
+  const locationsForBranch = useMemo(() => selectedBranch?.locations ?? [], [selectedBranch])
+  const selectedLocation = useMemo(() => locationsForBranch.find(l => l.id === selectedLocationId) ?? null, [locationsForBranch, selectedLocationId])
+  const shippingFee = selectedLocation?.price ?? null
   const discountAmount = coupon?.discountAmount ?? 0
   const orderTotal = Math.max(0, subtotal - discountAmount) + (shippingFee ?? 0)
 
@@ -67,32 +63,27 @@ export default function CheckoutPage() {
     : 0
   const grandTotal = orderTotal + processingFee
 
-  const deliveryLabel = selectedRate && selectedType && selectedZone
-    ? `${selectedType.name} · ${selectedZone.name} · ${selectedRate.name}${selectedRate.estimated_days ? ' · ' + selectedRate.estimated_days : ''}`
+  const deliveryLabel = selectedState && selectedBranch && selectedLocation
+    ? `${selectedState.name} · ${selectedBranch.name} · ${selectedLocation.name}`
     : ''
 
-  // Auto-select zone when type changes
+  // Reset branch + location when state changes
   useEffect(() => {
-    const zones = deliveryOptions.find(t => t.id === selectedTypeId)?.zones ?? []
-    if (zones.length === 1) { setSelectedZoneId(zones[0].id); return }
-    setSelectedZoneId('')
-    setSelectedRateId('')
-  }, [selectedTypeId, deliveryOptions])
+    setSelectedBranchId('')
+    setSelectedLocationId('')
+    update('state', selectedState?.name ?? '')
+  }, [selectedStateId])
 
-  // Auto-select rate when zone changes
+  // Reset location when branch changes
   useEffect(() => {
-    const type = deliveryOptions.find(t => t.id === selectedTypeId)
-    const zone = type?.zones.find(z => z.id === selectedZoneId)
-    const rates = zone?.rates ?? []
-    if (rates.length === 1) { setSelectedRateId(rates[0].id); return }
-    setSelectedRateId('')
-  }, [selectedZoneId, deliveryOptions, selectedTypeId])
+    setSelectedLocationId('')
+  }, [selectedBranchId])
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
     setError(null)
 
-    if (!selectedRate) { setError('Please select your delivery option.'); return }
+    if (!selectedLocation) { setError('Please select your delivery location.'); return }
     if (!form.firstName || !form.lastName || !form.email || !form.phone || !form.address || !form.city || !form.state) {
       setError('Please fill in all fields.')
       return
@@ -115,7 +106,7 @@ export default function CheckoutPage() {
         subtotal,
         shippingFee ?? 0,
         grandTotal,
-        selectedRate.id,
+        null,           // delivery_rate_id — unused in new shipping system
         deliveryLabel,
         coupon?.code ?? null,
         discountAmount,
@@ -204,141 +195,9 @@ export default function CheckoutPage() {
           {/* Left column */}
           <div className="flex-1 min-w-0 space-y-5">
 
-            {/* ── 1. Delivery method ── */}
+            {/* ── 1. Billing details ── */}
             <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl p-6">
-              <h2 className="text-base font-semibold text-gray-900 dark:text-white mb-1">Delivery method</h2>
-              <p className="text-xs text-gray-400 dark:text-gray-500 mb-5">Select how you'd like to receive your order.</p>
-
-              {deliveryOptions.length === 0 ? (
-                <p className="text-xs text-amber-600 dark:text-amber-400">No delivery options available yet. Please contact us to arrange delivery.</p>
-              ) : (
-                <div className="space-y-5">
-
-                  {/* Type selector */}
-                  <div className="flex flex-wrap gap-3">
-                    {deliveryOptions.map(type => (
-                      <button
-                        key={type.id}
-                        type="button"
-                        onClick={() => setSelectedTypeId(type.id)}
-                        className={`flex-1 min-w-[140px] text-left px-4 py-3.5 rounded-xl border-2 transition-all ${
-                          selectedTypeId === type.id
-                            ? 'border-[#4A0F1C] dark:border-[#E8C4CB] bg-[#4A0F1C]/5 dark:bg-[#4A0F1C]/20'
-                            : 'border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600'
-                        }`}
-                      >
-                        <div className="flex items-start gap-2.5">
-                          <span className={`mt-0.5 w-4 h-4 rounded-full border-2 flex items-center justify-center shrink-0 ${
-                            selectedTypeId === type.id ? 'border-[#4A0F1C] dark:border-[#E8C4CB]' : 'border-gray-300 dark:border-gray-600'
-                          }`}>
-                            {selectedTypeId === type.id && <span className="w-2 h-2 rounded-full bg-[#4A0F1C] dark:bg-[#E8C4CB]" />}
-                          </span>
-                          <div>
-                            <p className="text-sm font-medium text-gray-900 dark:text-white">{type.name}</p>
-                            {type.description && <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{type.description}</p>}
-                          </div>
-                        </div>
-                      </button>
-                    ))}
-                  </div>
-
-                  {/* Zone selector — only if type has 2+ zones */}
-                  {selectedType && zonesForType.length > 1 && (
-                    <div>
-                      <p className="text-xs font-medium text-gray-600 dark:text-gray-400 mb-2.5">Select your destination</p>
-                      <div className="flex flex-wrap gap-2">
-                        {zonesForType.map(zone => (
-                          <button
-                            key={zone.id}
-                            type="button"
-                            onClick={() => setSelectedZoneId(zone.id)}
-                            className={`px-3.5 py-1.5 rounded-lg text-sm font-medium border transition-all ${
-                              selectedZoneId === zone.id
-                                ? 'bg-[#4A0F1C] dark:bg-[#4A0F1C] text-white border-[#4A0F1C] dark:border-[#4A0F1C]'
-                                : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600'
-                            }`}
-                          >
-                            {zone.name}
-                          </button>
-                        ))}
-                      </div>
-                      {zonesForType.length === 0 && (
-                        <p className="text-xs text-gray-400">No zones available for this delivery type.</p>
-                      )}
-                    </div>
-                  )}
-
-                  {/* Rate selector — shown when zone is selected and has 2+ rates */}
-                  {selectedZone && ratesForZone.length > 1 && (
-                    <div>
-                      <p className="text-xs font-medium text-gray-600 dark:text-gray-400 mb-2.5">Select delivery option</p>
-                      <div className="space-y-2">
-                        {ratesForZone.map(rate => (
-                          <button
-                            key={rate.id}
-                            type="button"
-                            onClick={() => setSelectedRateId(rate.id)}
-                            className={`w-full text-left px-4 py-3 rounded-xl border transition-all ${
-                              selectedRateId === rate.id
-                                ? 'border-[#4A0F1C] dark:border-[#E8C4CB] bg-[#4A0F1C]/5 dark:bg-[#4A0F1C]/20'
-                                : 'border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600'
-                            }`}
-                          >
-                            <div className="flex items-start justify-between gap-3">
-                              <div className="flex items-start gap-2.5 min-w-0">
-                                <span className={`mt-0.5 w-4 h-4 rounded-full border-2 flex items-center justify-center shrink-0 ${
-                                  selectedRateId === rate.id ? 'border-[#4A0F1C] dark:border-[#E8C4CB]' : 'border-gray-300 dark:border-gray-600'
-                                }`}>
-                                  {selectedRateId === rate.id && <span className="w-2 h-2 rounded-full bg-[#4A0F1C] dark:bg-[#E8C4CB]" />}
-                                </span>
-                                <div className="min-w-0">
-                                  <p className="text-sm font-medium text-gray-900 dark:text-white">{rate.name}</p>
-                                  {rate.areas.length > 0 && (
-                                    <div className="flex flex-wrap gap-1 mt-1">
-                                      {rate.areas.map(area => (
-                                        <span key={area} className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 border border-blue-100 dark:border-blue-800">
-                                          {area}
-                                        </span>
-                                      ))}
-                                    </div>
-                                  )}
-                                  {rate.estimated_days && (
-                                    <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">{rate.estimated_days}</p>
-                                  )}
-                                </div>
-                              </div>
-                              <span className="text-sm font-bold text-gray-900 dark:text-white shrink-0">
-                                {rate.price === 0 ? 'Free' : `₦${rate.price.toLocaleString('en')}`}
-                              </span>
-                            </div>
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Fee callout — shown once a rate is selected */}
-                  {selectedRate && (
-                    <div className="flex items-center gap-3 px-4 py-3 bg-[#4A0F1C]/5 dark:bg-[#4A0F1C]/20 border border-[#4A0F1C]/15 dark:border-[#4A0F1C]/30 rounded-xl">
-                      <svg className="w-4 h-4 text-[#4A0F1C] dark:text-[#E8C4CB] shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 18.75a1.5 1.5 0 0 1-3 0m3 0a1.5 1.5 0 0 0-3 0m3 0h6m-9 0H3.375a1.125 1.125 0 0 1-1.125-1.125V14.25m17.25 4.5a1.5 1.5 0 0 1-3 0m3 0a1.5 1.5 0 0 0-3 0m3 0h1.125c.621 0 1.129-.504 1.09-1.124a17.902 17.902 0 0 0-3.213-9.193 2.056 2.056 0 0 0-1.58-.86H14.25M16.5 18.75h-2.25m0-11.177v-.958c0-.568-.422-1.048-.987-1.106a48.554 48.554 0 0 0-10.026 0 1.106 1.106 0 0 0-.987 1.106v7.635m12-6.677v6.677m0 4.5v-4.5m0 0h-12" />
-                      </svg>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium text-[#4A0F1C] dark:text-[#E8C4CB] truncate">{deliveryLabel}</p>
-                      </div>
-                      <span className="text-sm font-bold text-[#4A0F1C] dark:text-[#E8C4CB] shrink-0">
-                        {shippingFee === 0 ? 'Free' : `₦${(shippingFee ?? 0).toLocaleString('en')}`}
-                      </span>
-                    </div>
-                  )}
-
-                </div>
-              )}
-            </div>
-
-            {/* ── 2. Personal details ── */}
-            <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl p-6">
-              <h2 className="text-base font-semibold text-gray-900 dark:text-white mb-5">Your details</h2>
+              <h2 className="text-base font-semibold text-gray-900 dark:text-white mb-5">Billing details</h2>
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
@@ -358,18 +217,94 @@ export default function CheckoutPage() {
                   <input type="tel" placeholder="+234 800 000 0000" value={form.phone} onChange={e => update('phone', e.target.value)} className={inputCls} required />
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1.5">State</label>
-                  <input type="text" placeholder="e.g. Lagos, Kaduna, Kano" value={form.state} onChange={e => update('state', e.target.value)} className={inputCls} required />
-                </div>
-                <div>
                   <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1.5">City / LGA</label>
-                  <input type="text" placeholder="e.g. Kafanchan, Ikeja, Wuse" value={form.city} onChange={e => update('city', e.target.value)} className={inputCls} required />
+                  <input type="text" placeholder="e.g. Ikeja, Wuse, Kafanchan" value={form.city} onChange={e => update('city', e.target.value)} className={inputCls} required />
                 </div>
                 <div className="col-span-2">
                   <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1.5">Street address</label>
                   <input type="text" placeholder="12 Faith Avenue" value={form.address} onChange={e => update('address', e.target.value)} className={inputCls} required />
                 </div>
               </div>
+            </div>
+
+            {/* ── 2. Shipping ── */}
+            <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl p-6">
+              <h2 className="text-base font-semibold text-gray-900 dark:text-white mb-1">Shipping</h2>
+              <p className="text-xs text-gray-400 dark:text-gray-500 mb-5">Select your state, area, and delivery location.</p>
+
+              {shippingStates.length === 0 ? (
+                <p className="text-xs text-amber-600 dark:text-amber-400">No delivery options available yet. Please contact us to arrange delivery.</p>
+              ) : (
+                <div className="space-y-4">
+
+                  {/* State */}
+                  <div>
+                    <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1.5">State</label>
+                    <select
+                      value={selectedStateId}
+                      onChange={e => setSelectedStateId(e.target.value)}
+                      className={inputCls}
+                    >
+                      <option value="">Select your state</option>
+                      {shippingStates.map(s => (
+                        <option key={s.id} value={s.id}>{s.name}</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {/* Branch */}
+                  {selectedStateId && branchesForState.length > 0 && (
+                    <div>
+                      <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1.5">Area</label>
+                      <select
+                        value={selectedBranchId}
+                        onChange={e => setSelectedBranchId(e.target.value)}
+                        className={inputCls}
+                      >
+                        <option value="">Select your area</option>
+                        {branchesForState.map(b => (
+                          <option key={b.id} value={b.id}>{b.name}</option>
+                        ))}
+                      </select>
+                    </div>
+                  )}
+
+                  {/* Location */}
+                  {selectedBranchId && locationsForBranch.length > 0 && (
+                    <div>
+                      <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1.5">Location</label>
+                      <select
+                        value={selectedLocationId}
+                        onChange={e => setSelectedLocationId(e.target.value)}
+                        className={inputCls}
+                      >
+                        <option value="">Select your location</option>
+                        {locationsForBranch.map(l => (
+                          <option key={l.id} value={l.id}>
+                            {l.name} — {l.price === 0 ? 'Free' : `₦${l.price.toLocaleString('en')}`}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  )}
+
+                  {/* Fee callout */}
+                  {selectedLocation && (
+                    <div className="flex items-center gap-3 px-4 py-3 bg-[#4A0F1C]/5 dark:bg-[#4A0F1C]/20 border border-[#4A0F1C]/15 dark:border-[#4A0F1C]/30 rounded-xl">
+                      <svg className="w-4 h-4 text-[#4A0F1C] dark:text-[#E8C4CB] shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 18.75a1.5 1.5 0 0 1-3 0m3 0a1.5 1.5 0 0 0-3 0m3 0h6m-9 0H3.375a1.125 1.125 0 0 1-1.125-1.125V14.25m17.25 4.5a1.5 1.5 0 0 1-3 0m3 0a1.5 1.5 0 0 0-3 0m3 0h1.125c.621 0 1.129-.504 1.09-1.124a17.902 17.902 0 0 0-3.213-9.193 2.056 2.056 0 0 0-1.58-.86H14.25M16.5 18.75h-2.25m0-11.177v-.958c0-.568-.422-1.048-.987-1.106a48.554 48.554 0 0 0-10.026 0 1.106 1.106 0 0 0-.987 1.106v7.635m12-6.677v6.677m0 4.5v-4.5m0 0h-12" />
+                      </svg>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium text-[#4A0F1C] dark:text-[#E8C4CB] truncate">{deliveryLabel}</p>
+                      </div>
+                      <span className="text-sm font-bold text-[#4A0F1C] dark:text-[#E8C4CB] shrink-0">
+                        {shippingFee === 0 ? 'Free' : `₦${(shippingFee ?? 0).toLocaleString('en')}`}
+                      </span>
+                    </div>
+                  )}
+
+                </div>
+              )}
             </div>
           </div>
 
@@ -479,13 +414,13 @@ export default function CheckoutPage() {
 
               <button
                 type="submit"
-                disabled={pending || !selectedRate}
+                disabled={pending || !selectedLocation}
                 className="w-full py-3 bg-[#4A0F1C] text-white text-sm font-semibold rounded-xl hover:bg-[#3A0B15] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
               >
                 {pending
                   ? paymentMethod === 'bank_transfer' ? 'Placing order…' : 'Redirecting to payment…'
-                  : !selectedRate
-                  ? 'Select delivery option'
+                  : !selectedLocation
+                  ? 'Select delivery location'
                   : paymentMethod === 'bank_transfer'
                   ? 'Place Order — Bank Transfer'
                   : 'Pay with Flutterwave'}
