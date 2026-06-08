@@ -7,6 +7,8 @@ import { useCart } from '@/lib/cart-context'
 import { useWishlist } from '@/lib/wishlist-context'
 import { createClient } from '@/lib/supabase/client'
 import ThemeToggle from '@/components/store/ThemeToggle'
+import type { MegaMenuConfig } from '@/lib/actions/menus'
+import { DEFAULT_MEGA_MENU } from '@/lib/actions/menus'
 
 // ── Search overlay ─────────────────────────────────────────────────────────────
 type SearchProduct = { id: string; name: string; slug: string; price: number; thumbnail: string | null; categories: { name: string } | null }
@@ -135,46 +137,6 @@ function SearchOverlay({ onClose }: { onClose: () => void }) {
   )
 }
 
-// ── Mega menu data ─────────────────────────────────────────────────────────────
-const SHOP_COLUMNS = [
-  {
-    heading: 'Shop All',
-    links: [
-      { label: 'All Products', href: '/shop' },
-      { label: 'New Arrivals', href: '/new-arrivals' },
-      { label: 'Bestsellers', href: '/shop' },
-      { label: 'Gift Sets', href: '/shop' },
-      { label: 'Sale', href: '/promotions' },
-    ],
-  },
-  {
-    heading: 'Categories',
-    links: [
-      { label: 'Body Care', href: '/category/body-lotion-1778779566716' },
-      { label: 'Fragrance', href: '/category/perfume-oil' },
-      { label: 'Skincare', href: '/shop' },
-      { label: 'Home & Wellness', href: '/shop' },
-      { label: 'Gifts & Accessories', href: '/shop' },
-    ],
-  },
-  {
-    heading: 'Collections',
-    links: [
-      { label: 'The Sanctuary Collection', href: '/shop' },
-      { label: 'Daily Ritual', href: '/shop' },
-      { label: 'Gift Ideas', href: '/shop' },
-      { label: 'Bestsellers', href: '/shop' },
-      { label: 'New Arrivals', href: '/shop' },
-    ],
-  },
-]
-
-const PLAIN_NAV = [
-  { label: 'Bestsellers', href: '/shop' },
-  { label: 'New Arrivals', href: '/new-arrivals' },
-  { label: 'Sale', href: '/promotions' },
-  { label: 'About', href: '/about' },
-]
 
 // ── SVG icons ──────────────────────────────────────────────────────────────────
 function SearchIcon() {
@@ -208,8 +170,8 @@ function ChevronDown() {
 
 // ── Mobile drawer ──────────────────────────────────────────────────────────────
 function MobileDrawer({
-  open, onClose, user, onSignOut,
-}: { open: boolean; onClose: () => void; user: any; onSignOut: () => void }) {
+  open, onClose, user, onSignOut, shopColumns, plainNav,
+}: { open: boolean; onClose: () => void; user: any; onSignOut: () => void; shopColumns: MegaMenuConfig['columns']; plainNav: MegaMenuConfig['plainNav'] }) {
   const [shopOpen, setShopOpen] = useState(false)
 
   return (
@@ -247,7 +209,7 @@ function MobileDrawer({
             </button>
             {shopOpen && (
               <div className="bg-gray-50/70 px-6 pb-5 pt-2 space-y-5 border-t border-gray-100">
-                {SHOP_COLUMNS.map(col => (
+                {shopColumns.map(col => (
                   <div key={col.heading}>
                     <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-2.5">{col.heading}</p>
                     <ul className="space-y-2">
@@ -265,7 +227,7 @@ function MobileDrawer({
             )}
           </div>
 
-          {PLAIN_NAV.map(item => (
+          {plainNav.map(item => (
             <Link
               key={item.label}
               href={item.href}
@@ -308,7 +270,9 @@ function MobileDrawer({
 }
 
 // ── Main header ────────────────────────────────────────────────────────────────
-export default function StoreHeader() {
+export default function StoreHeader({ megaMenu }: { megaMenu?: MegaMenuConfig }) {
+  const shopColumns = megaMenu?.columns ?? DEFAULT_MEGA_MENU.columns
+  const plainNav    = megaMenu?.plainNav ?? DEFAULT_MEGA_MENU.plainNav
   const [announcementVisible, setAnnouncementVisible] = useState(true)
   const [megaOpen, setMegaOpen] = useState(false)
   const [mobileOpen, setMobileOpen] = useState(false)
@@ -431,7 +395,7 @@ export default function StoreHeader() {
               Shop <ChevronDown />
             </button>
 
-            {PLAIN_NAV.map(item => (
+            {plainNav.map(item => (
               <Link
                 key={item.label}
                 href={item.href}
@@ -515,7 +479,7 @@ export default function StoreHeader() {
             <div className="px-6 md:px-8 py-8 max-w-[1400px]">
               <div className="grid grid-cols-[1fr_1fr_1fr_272px] gap-10">
                 {/* Link columns */}
-                {SHOP_COLUMNS.map((col, ci) => (
+                {shopColumns.map((col, ci) => (
                   <div key={col.heading}>
                     {ci === 0 && (
                       <Link
@@ -588,6 +552,8 @@ export default function StoreHeader() {
         onClose={() => setMobileOpen(false)}
         user={user}
         onSignOut={signOut}
+        shopColumns={shopColumns}
+        plainNav={plainNav}
       />
     </>
   )

@@ -3,15 +3,21 @@ import StoreFooter from '@/components/store/StoreFooter'
 import WhatsAppButton from '@/components/store/WhatsAppButton'
 import { CartProvider } from '@/lib/cart-context'
 import { WishlistProvider } from '@/lib/wishlist-context'
+import { getMegaMenuConfig, getFooterConfig } from '@/lib/actions/menus'
 
-export default function StoreLayout({ children }: { children: React.ReactNode }) {
+export default async function StoreLayout({ children }: { children: React.ReactNode }) {
+  const [megaMenu, footer] = await Promise.all([
+    getMegaMenuConfig(),
+    getFooterConfig(),
+  ])
+
   return (
     <CartProvider>
       <WishlistProvider>
         <div className="min-h-screen flex flex-col bg-white dark:bg-gray-950">
-          <StoreHeader />
+          <StoreHeader megaMenu={megaMenu} />
           <main className="flex-1">{children}</main>
-          <StoreFooter />
+          <StoreFooter footer={footer} />
           <WhatsAppButton />
         </div>
       </WishlistProvider>

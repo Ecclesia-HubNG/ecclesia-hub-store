@@ -2,44 +2,8 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
-
-const COLUMNS = {
-  'Shop': [
-    { label: 'Body Lotion', href: '/shop?category=body-lotion-1778779566716' },
-    { label: 'Face Serum', href: '/shop?category=face-serum' },
-    { label: 'Body Wash', href: '/shop?category=body-wash' },
-    { label: 'Sunscreen', href: '/shop?category=sunscreen' },
-    { label: 'Perfume Oil', href: '/shop?category=perfume-oil' },
-  ],
-  'About Us': [
-    { label: 'About Ecclesia Hub', href: '/about' },
-    { label: 'Our Brands', href: '/brands' },
-    { label: 'News & Blog', href: '#' },
-    { label: 'Careers', href: '#' },
-    { label: 'Affiliate Program', href: '#' },
-  ],
-  'Services': [
-    { label: 'Shipping & Delivery', href: '/about#delivery' },
-    { label: 'Deals of the Day', href: '/deals' },
-    { label: 'Shop by Brand', href: '/brands' },
-    { label: 'New Arrivals', href: '/shop' },
-    { label: 'Gift Card', href: '#' },
-  ],
-  'Help': [
-    { label: 'Help Center', href: '/about#faq' },
-    { label: 'Returns', href: '#' },
-    { label: 'Contact Us', href: '/about' },
-    { label: 'Privacy Policy', href: '/privacy' },
-    { label: 'Terms of Service', href: '/terms' },
-  ],
-  'Quick Links': [
-    { label: 'Sign In', href: '/account' },
-    { label: 'My Cart', href: '/cart' },
-    { label: 'Wishlist', href: '/wishlist' },
-    { label: 'Track Order', href: '/account' },
-    { label: 'My Account', href: '/account' },
-  ],
-}
+import type { FooterConfig } from '@/lib/actions/menus'
+import { DEFAULT_FOOTER } from '@/lib/actions/menus'
 
 const SOCIALS = [
   {
@@ -64,7 +28,8 @@ const SOCIALS = [
   },
 ]
 
-export default function StoreFooter() {
+export default function StoreFooter({ footer }: { footer?: FooterConfig }) {
+  const columns = footer?.columns ?? DEFAULT_FOOTER.columns
   const [email, setEmail] = useState('')
   const [subscribed, setSubscribed] = useState(false)
 
@@ -95,11 +60,11 @@ export default function StoreFooter() {
 
           {/* Nav columns */}
           <div className="grid grid-cols-2 md:grid-cols-5 gap-8">
-            {Object.entries(COLUMNS).map(([title, links]) => (
-              <div key={title}>
-                <p className="text-[10px] font-bold uppercase tracking-widest text-white/40 mb-4">{title}</p>
+            {columns.map(col => (
+              <div key={col.title}>
+                <p className="text-[10px] font-bold uppercase tracking-widest text-white/40 mb-4">{col.title}</p>
                 <ul className="space-y-2.5">
-                  {links.map(link => (
+                  {col.links.map(link => (
                     <li key={link.label}>
                       <Link href={link.href} className="text-sm text-white/60 hover:text-white transition-colors">
                         {link.label}
