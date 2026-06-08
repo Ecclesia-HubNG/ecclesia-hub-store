@@ -1,0 +1,30 @@
+export const revalidate = 60
+
+import { Suspense } from 'react'
+import { createClient } from '@/lib/supabase/server'
+import ShopClient from '@/components/store/ShopClient'
+
+export default async function BestSellersPage() {
+  const supabase = createClient()
+
+  const [{ data: categories }, { data: products }] = await Promise.all([
+    supabase.from('categories').select('id, name, slug').is('parent_id', null).order('name'),
+    supabase
+      .from('products')
+      .select('id, name, slug, price, compare_at_price, thumbnail, stock, category_id, is_featured, is_new_arrival, variants, categories(name)')
+      .eq('is_active', true)
+      .eq('is_bestseller', true)
+      .order('name'),
+  ])
+
+  return (
+    <Suspense>
+      <ShopClient
+        products={(products ?? []) as any}
+        categories={categories ?? []}
+        pageTag="Best Sellers"
+        pageTitle="Best Sellers"
+      />
+    </Suspense>
+  )
+}

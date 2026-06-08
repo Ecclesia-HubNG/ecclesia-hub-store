@@ -45,6 +45,7 @@ const ALL_NAV: NavItem[] = [
       { label: 'Brands',            href: '/admin/brands' },
       { label: 'Featured',          href: '/admin/featured' },
       { label: 'New Arrivals',      href: '/admin/new-arrivals' },
+      { label: 'Best Sellers',      href: '/admin/bestsellers' },
       { label: 'Product of Month',  href: '/admin/products/product-of-month' },
       { label: 'Promotions',        href: '/admin/promotions' },
       { label: 'Coupons',           href: '/admin/coupons', section: 'coupons' },
