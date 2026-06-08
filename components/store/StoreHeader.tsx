@@ -7,8 +7,8 @@ import { useCart } from '@/lib/cart-context'
 import { useWishlist } from '@/lib/wishlist-context'
 import { createClient } from '@/lib/supabase/client'
 import ThemeToggle from '@/components/store/ThemeToggle'
-import type { MegaMenuConfig } from '@/lib/actions/menus'
-import { DEFAULT_MEGA_MENU } from '@/lib/actions/menus'
+import type { MegaMenuConfig } from '@/lib/menu-types'
+import { DEFAULT_MEGA_MENU } from '@/lib/menu-types'
 
 // ── Search overlay ─────────────────────────────────────────────────────────────
 type SearchProduct = { id: string; name: string; slug: string; price: number; thumbnail: string | null; categories: { name: string } | null }

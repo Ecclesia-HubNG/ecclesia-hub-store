@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from 'react'
 import { saveMegaMenuConfig, saveFooterConfig } from '@/lib/actions/menus'
-import type { MegaMenuConfig, MegaMenuColumn, FooterConfig, FooterColumn, MenuLink } from '@/lib/actions/menus'
+import type { MegaMenuConfig, MegaMenuColumn, FooterConfig, FooterColumn, MenuLink } from '@/lib/menu-types'
 
 type Tab = 'mega' | 'footer'
 

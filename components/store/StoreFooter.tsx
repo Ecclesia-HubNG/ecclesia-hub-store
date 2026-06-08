@@ -2,8 +2,8 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
-import type { FooterConfig } from '@/lib/actions/menus'
-import { DEFAULT_FOOTER } from '@/lib/actions/menus'
+import type { FooterConfig } from '@/lib/menu-types'
+import { DEFAULT_FOOTER } from '@/lib/menu-types'
 
 const SOCIALS = [
   {
