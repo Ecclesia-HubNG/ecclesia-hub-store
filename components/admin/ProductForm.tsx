@@ -679,6 +679,14 @@ export default function ProductForm({
                 <div><p className="text-sm font-medium text-gray-700 dark:text-gray-300">Featured</p><p className="text-xs text-gray-400 dark:text-gray-600">Show on homepage</p></div>
               </label>
               <label className="flex items-center gap-3 cursor-pointer">
+                <input name="is_new_arrival" type="checkbox" defaultChecked={(product as any)?.is_new_arrival ?? false} className="w-4 h-4 rounded border-gray-300 accent-gray-900" />
+                <div><p className="text-sm font-medium text-gray-700 dark:text-gray-300">New Arrival</p><p className="text-xs text-gray-400 dark:text-gray-600">Show on New Arrivals page</p></div>
+              </label>
+              <label className="flex items-center gap-3 cursor-pointer">
+                <input name="is_bestseller" type="checkbox" defaultChecked={(product as any)?.is_bestseller ?? false} className="w-4 h-4 rounded border-gray-300 accent-gray-900" />
+                <div><p className="text-sm font-medium text-gray-700 dark:text-gray-300">Best Seller</p><p className="text-xs text-gray-400 dark:text-gray-600">Show on Best Sellers page</p></div>
+              </label>
+              <label className="flex items-center gap-3 cursor-pointer">
                 <input name="is_product_of_month" type="checkbox" defaultChecked={(product as any)?.is_product_of_month ?? false} className="w-4 h-4 rounded border-gray-300 accent-gray-900" />
                 <div><p className="text-sm font-medium text-gray-700 dark:text-gray-300">Product of the Month</p><p className="text-xs text-gray-400 dark:text-gray-600">Highlighted buy section on homepage</p></div>
               </label>

@@ -39,6 +39,8 @@ function parseForm(formData: FormData) {
     dimensions:        JSON.parse((formData.get('dimensions') as string) || 'null'),
     is_featured:          formData.get('is_featured') === 'on',
     is_product_of_month:  formData.get('is_product_of_month') === 'on',
+    is_new_arrival:       formData.get('is_new_arrival') === 'on',
+    is_bestseller:        formData.get('is_bestseller') === 'on',
     is_active:            formData.get('is_active') === 'on',
     tags:              JSON.parse((formData.get('tags') as string) || '[]'),
     variants:          JSON.parse((formData.get('variants') as string) || '[]'),

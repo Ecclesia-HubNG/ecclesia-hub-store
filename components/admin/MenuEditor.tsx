@@ -1,10 +1,26 @@
 'use client'
 
-import { useState, useTransition } from 'react'
+import { useState, useTransition, useRef } from 'react'
 import { saveMegaMenuConfig, saveFooterConfig } from '@/lib/actions/menus'
 import type { MegaMenuConfig, MegaMenuColumn, FooterConfig, FooterColumn, MenuLink } from '@/lib/menu-types'
 
 type Tab = 'mega' | 'footer'
+
+const STORE_PAGES = [
+  { label: 'Shop (All Products)',  href: '/shop' },
+  { label: 'Bestsellers',          href: '/bestsellers' },
+  { label: 'New Arrivals',         href: '/new-arrivals' },
+  { label: 'Sale / Promotions',    href: '/promotions' },
+  { label: 'Deals',                href: '/deals' },
+  { label: 'Brands',               href: '/brands' },
+  { label: 'About Us',             href: '/about' },
+  { label: 'Contact',              href: '/about' },
+  { label: 'Cart',                 href: '/cart' },
+  { label: 'Wishlist',             href: '/wishlist' },
+  { label: 'My Account',          href: '/account' },
+  { label: 'Privacy Policy',       href: '/privacy' },
+  { label: 'Terms of Service',     href: '/terms' },
+]
 
 function moveItem<T>(arr: T[], from: number, dir: -1 | 1): T[] {
   const to = from + dir
@@ -35,6 +51,48 @@ function Field({
         placeholder={placeholder}
         className={`w-full px-3 py-2 text-sm border border-gray-200 dark:border-gray-700 rounded-lg bg-gray-50 dark:bg-gray-800/60 text-gray-800 dark:text-gray-200 placeholder-gray-300 dark:placeholder-gray-600 focus:outline-none focus:border-gray-400 dark:focus:border-gray-500 focus:bg-white dark:focus:bg-gray-800 transition-colors ${mono ? 'font-mono text-xs' : ''}`}
       />
+    </div>
+  )
+}
+
+// ── Href autocomplete input ───────────────────────────────────────────────────
+function HrefInput({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+  const [open, setOpen] = useState(false)
+  const ref = useRef<HTMLDivElement>(null)
+
+  const q = value.toLowerCase()
+  const suggestions = q.length === 0
+    ? STORE_PAGES
+    : STORE_PAGES.filter(p =>
+        p.label.toLowerCase().includes(q) || p.href.toLowerCase().includes(q)
+      )
+
+  return (
+    <div ref={ref} className="relative flex-1 min-w-0">
+      <input
+        type="text"
+        value={value}
+        onChange={e => { onChange(e.target.value); setOpen(true) }}
+        onFocus={() => setOpen(true)}
+        onBlur={() => setTimeout(() => setOpen(false), 150)}
+        placeholder="/path"
+        className="w-full px-2.5 py-1.5 text-xs font-mono border border-gray-200 dark:border-gray-700 rounded-lg bg-gray-50 dark:bg-gray-800 text-gray-600 dark:text-gray-300 placeholder-gray-300 dark:placeholder-gray-600 focus:outline-none focus:border-gray-400 dark:focus:border-gray-500 focus:bg-white dark:focus:bg-gray-900 transition-colors"
+      />
+      {open && suggestions.length > 0 && (
+        <div className="absolute z-50 top-full mt-1 left-0 right-0 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl shadow-lg overflow-hidden">
+          {suggestions.map(p => (
+            <button
+              key={p.href + p.label}
+              type="button"
+              onMouseDown={() => { onChange(p.href); setOpen(false) }}
+              className="w-full flex items-center justify-between px-3 py-2 text-xs hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors text-left"
+            >
+              <span className="text-gray-700 dark:text-gray-300 font-medium truncate">{p.label}</span>
+              <span className="text-gray-400 dark:text-gray-500 font-mono ml-2 shrink-0">{p.href}</span>
+            </button>
+          ))}
+        </div>
+      )}
     </div>
   )
 }
@@ -88,14 +146,8 @@ function LinkRow({
         <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 4.5 21 12m0 0-7.5 7.5M21 12H3" />
       </svg>
 
-      {/* Href */}
-      <input
-        type="text"
-        value={link.href}
-        onChange={e => onChange({ ...link, href: e.target.value })}
-        placeholder="/path"
-        className="flex-1 min-w-0 px-2.5 py-1.5 text-xs font-mono border border-gray-200 dark:border-gray-700 rounded-lg bg-gray-50 dark:bg-gray-800 text-gray-600 dark:text-gray-300 placeholder-gray-300 dark:placeholder-gray-600 focus:outline-none focus:border-gray-400 dark:focus:border-gray-500 focus:bg-white dark:focus:bg-gray-900 transition-colors"
-      />
+      {/* Href with autocomplete */}
+      <HrefInput value={link.href} onChange={v => onChange({ ...link, href: v })} />
 
       {/* Remove */}
       <button
