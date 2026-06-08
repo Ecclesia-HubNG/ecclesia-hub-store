@@ -62,6 +62,85 @@ function IconCheck({ active }: { active: boolean }) {
   )
 }
 
+// ── Bulk location form ────────────────────────────────────────────────────────
+
+function BulkLocationForm({
+  onSave,
+  onCancel,
+  pending,
+}: {
+  onSave: (names: string[], price: number) => void
+  onCancel: () => void
+  pending: boolean
+}) {
+  const [text, setText] = useState('')
+  const [price, setPrice] = useState('')
+
+  const names = text.split(',').map(s => s.trim()).filter(Boolean)
+
+  function handleSubmit(e: React.FormEvent) {
+    e.preventDefault()
+    const p = parseFloat(price)
+    if (names.length === 0 || isNaN(p) || p < 0) return
+    onSave(names, p)
+  }
+
+  return (
+    <form onSubmit={handleSubmit} className="px-4 py-3 bg-amber-50 dark:bg-amber-900/10 rounded-xl border border-dashed border-amber-200 dark:border-amber-800 space-y-3">
+      <div className="flex items-center gap-2 mb-1">
+        <svg className="w-4 h-4 text-amber-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 12h16.5m-16.5 3.75h16.5M3.75 19.5h16.5M5.625 4.5h12.75a1.875 1.875 0 0 1 0 3.75H5.625a1.875 1.875 0 0 1 0-3.75Z" />
+        </svg>
+        <p className="text-xs font-semibold text-amber-700 dark:text-amber-400">Bulk add — paste comma-separated location names</p>
+      </div>
+      <div>
+        <label className="block text-[10px] font-semibold uppercase tracking-wide text-gray-400 mb-1">
+          Location names <span className="normal-case font-normal text-gray-400">({names.length} detected)</span>
+        </label>
+        <textarea
+          autoFocus
+          value={text}
+          onChange={e => setText(e.target.value)}
+          placeholder="Surulere, Ebute Metta, Fadeyi, Yaba, Orile Coker, Shomolu…"
+          rows={3}
+          required
+          className={`${fieldCls} resize-none`}
+        />
+        {names.length > 0 && (
+          <div className="flex flex-wrap gap-1.5 mt-2">
+            {names.map((n, i) => (
+              <span key={i} className="px-2 py-0.5 text-[11px] bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-full text-gray-600 dark:text-gray-300">{n}</span>
+            ))}
+          </div>
+        )}
+      </div>
+      <div className="flex flex-wrap items-end gap-3">
+        <div className="w-36">
+          <label className="block text-[10px] font-semibold uppercase tracking-wide text-gray-400 mb-1">Shared price (₦)</label>
+          <div className="relative">
+            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-gray-400">₦</span>
+            <input
+              type="number" min="0" step="50"
+              value={price}
+              onChange={e => setPrice(e.target.value)}
+              placeholder="3000"
+              required
+              className={fieldCls.replace('px-3', 'pl-7 pr-3')}
+            />
+          </div>
+        </div>
+        <div className="flex gap-2 pb-0.5">
+          <button type="submit" disabled={pending || names.length === 0 || !price}
+            className="px-4 py-2 bg-[#4A0F1C] text-white text-sm font-semibold rounded-lg disabled:opacity-50 hover:bg-[#3A0B15] transition-colors">
+            {pending ? 'Adding…' : `Add ${names.length || ''} location${names.length !== 1 ? 's' : ''}`}
+          </button>
+          <button type="button" onClick={onCancel} className="px-4 py-2 text-sm text-gray-500 hover:text-gray-700 dark:hover:text-gray-300">Cancel</button>
+        </div>
+      </div>
+    </form>
+  )
+}
+
 // ── Inline name+price form (for locations) ────────────────────────────────────
 
 function LocationForm({
@@ -186,6 +265,7 @@ function BranchSection({
   const [open, setOpen] = useState(branch.locations.length === 0)
   const [editing, setEditing] = useState(false)
   const [addingLoc, setAddingLoc] = useState(branch.locations.length === 0)
+  const [bulkAdding, setBulkAdding] = useState(false)
   const [editingLocId, setEditingLocId] = useState<string | null>(null)
   const [pending, startTransition] = useTransition()
 
@@ -222,6 +302,22 @@ function BranchSection({
         locations: [...branch.locations, { ...res, locations: [] } as unknown as ShippingLocation],
       })
       setAddingLoc(false)
+    })
+  }
+
+  function handleBulkAdd(names: string[], price: number) {
+    startTransition(async () => {
+      const created: ShippingLocation[] = []
+      for (const name of names) {
+        const res = await createLocation(branch.id, name, price)
+        if (!('error' in res)) {
+          created.push({ ...res, locations: [] } as unknown as ShippingLocation)
+        }
+      }
+      if (created.length > 0) {
+        onBranchUpdated({ ...branch, locations: [...branch.locations, ...created] })
+      }
+      setBulkAdding(false)
     })
   }
 
@@ -285,9 +381,15 @@ function BranchSection({
             <p className="text-xs text-gray-400 mt-0.5">{branch.locations.length} location{branch.locations.length !== 1 ? 's' : ''}</p>
           </div>
           <div className="flex items-center gap-1 shrink-0" onClick={e => e.stopPropagation()}>
-            <button type="button" onClick={() => { setAddingLoc(true); setOpen(true) }}
+            <button type="button" onClick={() => { setAddingLoc(true); setBulkAdding(false); setOpen(true) }}
               className="flex items-center gap-1 px-2.5 py-1 text-xs font-semibold text-[#4A0F1C] dark:text-[#E8C4CB] bg-[#4A0F1C]/5 dark:bg-[#4A0F1C]/20 hover:bg-[#4A0F1C]/10 dark:hover:bg-[#4A0F1C]/30 rounded-lg transition-colors">
               <IconPlus /> Add location
+            </button>
+            <button type="button" onClick={() => { setBulkAdding(true); setAddingLoc(false); setOpen(true) }}
+              className="flex items-center gap-1 px-2.5 py-1 text-xs font-semibold text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20 hover:bg-amber-100 dark:hover:bg-amber-900/40 rounded-lg transition-colors">
+              <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 12h16.5m-16.5 3.75h16.5M3.75 19.5h16.5M5.625 4.5h12.75a1.875 1.875 0 0 1 0 3.75H5.625a1.875 1.875 0 0 1 0-3.75Z" />
+              </svg> Bulk add
             </button>
             <button type="button" onClick={() => setEditing(true)} disabled={pending}
               className="w-7 h-7 flex items-center justify-center rounded-lg text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors">
@@ -357,7 +459,15 @@ function BranchSection({
             />
           )}
 
-          {!addingLoc && branch.locations.length > 0 && (
+          {bulkAdding && (
+            <BulkLocationForm
+              onSave={handleBulkAdd}
+              onCancel={() => setBulkAdding(false)}
+              pending={pending}
+            />
+          )}
+
+          {!addingLoc && !bulkAdding && branch.locations.length > 0 && (
             <button type="button" onClick={() => setAddingLoc(true)}
               className="flex items-center gap-2 w-full px-4 py-2 rounded-xl border border-dashed border-gray-200 dark:border-gray-700 text-sm text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:border-gray-300 dark:hover:border-gray-600 transition-colors">
               <IconPlus /> Add another location
