@@ -1,7 +1,16 @@
+export const revalidate = 60
+
 import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import ProductCard from '@/components/store/ProductCard'
+
+export async function generateStaticParams() {
+  const supabase = createAdminClient()
+  const { data } = await supabase.from('categories').select('slug')
+  return (data ?? []).map(c => ({ slug: c.slug }))
+}
 
 export default async function CategoryPage({ params }: { params: { slug: string } }) {
   const supabase = createClient()

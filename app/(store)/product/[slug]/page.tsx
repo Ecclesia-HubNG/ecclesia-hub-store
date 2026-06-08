@@ -1,9 +1,18 @@
+export const revalidate = 60
+
 import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import ImageGallery from '@/components/store/ImageGallery'
 import AddToCart from '@/components/store/AddToCart'
 import WishlistButton from '@/components/store/WishlistButton'
+
+export async function generateStaticParams() {
+  const supabase = createAdminClient()
+  const { data } = await supabase.from('products').select('slug').eq('is_active', true)
+  return (data ?? []).map(p => ({ slug: p.slug }))
+}
 
 function fmt(n: number) {
   return `₦${n.toLocaleString('en', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
