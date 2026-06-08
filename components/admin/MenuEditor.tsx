@@ -74,6 +74,13 @@ function HrefInput({
         p.label.toLowerCase().includes(q) || p.href.toLowerCase().includes(q)
       )
 
+  // Group by section
+  const groups: Record<string, typeof allPages> = {}
+  for (const p of suggestions) {
+    const key = p.group ?? 'Pages'
+    ;(groups[key] ??= []).push(p)
+  }
+
   return (
     <div ref={ref} className="relative flex-1 min-w-0">
       <input
@@ -86,22 +93,24 @@ function HrefInput({
         className="w-full px-2.5 py-1.5 text-xs font-mono border border-gray-200 dark:border-gray-700 rounded-lg bg-gray-50 dark:bg-gray-800 text-gray-600 dark:text-gray-300 placeholder-gray-300 dark:placeholder-gray-600 focus:outline-none focus:border-gray-400 dark:focus:border-gray-500 focus:bg-white dark:focus:bg-gray-900 transition-colors"
       />
       {open && suggestions.length > 0 && (
-        <div className="absolute z-50 top-full mt-1 left-0 right-0 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl shadow-lg overflow-hidden">
-          {suggestions.map(p => (
-            <button
-              key={p.href + p.label}
-              type="button"
-              onMouseDown={() => { onChange(p.href); setOpen(false) }}
-              className="w-full flex items-center justify-between gap-2 px-3 py-2 text-xs hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors text-left"
-            >
-              <div className="flex items-center gap-2 min-w-0">
-                {p.group && (
-                  <span className="text-[9px] font-bold uppercase tracking-wider text-gray-400 dark:text-gray-500 shrink-0 w-14 text-right">{p.group}</span>
-                )}
-                <span className="text-gray-700 dark:text-gray-300 font-medium truncate">{p.label}</span>
+        <div className="absolute z-50 top-full mt-1 left-0 right-0 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl shadow-xl overflow-hidden max-h-64 overflow-y-auto">
+          {Object.entries(groups).map(([group, items]) => (
+            <div key={group}>
+              <div className="sticky top-0 px-3 py-1 bg-gray-50 dark:bg-gray-800 border-b border-gray-100 dark:border-gray-700/60">
+                <span className="text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500">{group}</span>
               </div>
-              <span className="text-gray-400 dark:text-gray-500 font-mono shrink-0">{p.href}</span>
-            </button>
+              {items.map(p => (
+                <button
+                  key={p.href + p.label}
+                  type="button"
+                  onMouseDown={() => { onChange(p.href); setOpen(false) }}
+                  className="w-full flex items-center justify-between gap-3 px-3 py-2 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+                >
+                  <span className="text-sm text-gray-800 dark:text-gray-200 font-medium truncate text-left">{p.label}</span>
+                  <span className="text-[11px] text-gray-400 dark:text-gray-500 font-mono shrink-0 truncate max-w-[140px]">{p.href}</span>
+                </button>
+              ))}
+            </div>
           ))}
         </div>
       )}
