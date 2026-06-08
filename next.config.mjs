@@ -1,4 +1,5 @@
 /** @type {import('next').NextConfig} */
+import { withSentryConfig } from '@sentry/nextjs'
 
 const supabaseHost = 'paiongqpgggxgfiacspt.supabase.co'
 const r2Host = 'pub-10bc4fec8b2b43a0992e28a4cf1acf41.r2.dev'
@@ -25,8 +26,8 @@ const securityHeaders = [
       // Allow images from any HTTPS source — product images can come from any URL
       "img-src 'self' data: blob: https:",
       "font-src 'self'",
-      // Supabase API + realtime
-      `connect-src 'self' https://${supabaseHost} wss://${supabaseHost} https://api.flutterwave.com https://checkout.flutterwave.com`,
+      // Supabase API + realtime + Sentry error reporting
+      `connect-src 'self' https://${supabaseHost} wss://${supabaseHost} https://api.flutterwave.com https://checkout.flutterwave.com https://*.ingest.sentry.io`,
       // Flutterwave checkout uses iframes for 3DS and bank auth flows
       "frame-src 'self' https://checkout.flutterwave.com https://*.flutterwave.com",
       // Remove X-Frame-Options conflict — frame-src handles it
@@ -63,4 +64,11 @@ const nextConfig = {
   },
 };
 
-export default nextConfig;
+export default withSentryConfig(nextConfig, {
+  org: 'zaane-technologies',
+  project: 'ecclesiahub',
+  silent: !process.env.CI,
+  widenClientFileUpload: true,
+  hideSourceMaps: true,
+  disableLogger: true,
+})

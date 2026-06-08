@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { sendOrderConfirmation } from '@/lib/email'
 import { logAudit } from '@/lib/audit'
+import { qstash } from '@/lib/qstash'
+import type { OrderConfirmationJobPayload } from '@/app/api/jobs/order-confirmation/route'
 
 export const runtime = 'nodejs'
 
@@ -162,30 +163,40 @@ export async function POST(req: NextRequest) {
 
   const shipping = order.shipping_address as Record<string, string>
   const items = (order.items as Array<Record<string, unknown>>) ?? []
-  sendOrderConfirmation(shipping.email, {
-    orderNumber: order.id.slice(0, 8).toUpperCase(),
-    customerName: `${shipping.firstName} ${shipping.lastName}`,
-    items: items.map(i => ({
-      name: i.name as string,
-      quantity: i.quantity as number,
-      price: i.price as number,
-      thumbnail: (i.thumbnail as string) ?? undefined,
-      variant: Array.isArray(i.selectedVariants) && (i.selectedVariants as Array<{ value: string }>).length
-        ? (i.selectedVariants as Array<{ value: string }>).map(sv => sv.value).join(', ')
-        : undefined,
-    })),
-    subtotal: (order.subtotal ?? order.total) as number,
-    shipping: (order.shipping_fee ?? 0) as number,
-    total: order.total as number,
-    shippingAddress: {
-      firstName: shipping.firstName,
-      lastName: shipping.lastName,
-      phone: shipping.phone,
-      address: shipping.address,
-      city: shipping.city,
-      state: shipping.state,
+  const jobPayload: OrderConfirmationJobPayload = {
+    to: shipping.email,
+    props: {
+      orderNumber: order.id.slice(0, 8).toUpperCase(),
+      customerName: `${shipping.firstName} ${shipping.lastName}`,
+      items: items.map(i => ({
+        name: i.name as string,
+        quantity: i.quantity as number,
+        price: i.price as number,
+        thumbnail: (i.thumbnail as string) ?? undefined,
+        variant: Array.isArray(i.selectedVariants) && (i.selectedVariants as Array<{ value: string }>).length
+          ? (i.selectedVariants as Array<{ value: string }>).map(sv => sv.value).join(', ')
+          : undefined,
+      })),
+      subtotal: (order.subtotal ?? order.total) as number,
+      shipping: (order.shipping_fee ?? 0) as number,
+      total: order.total as number,
+      shippingAddress: {
+        firstName: shipping.firstName,
+        lastName: shipping.lastName,
+        phone: shipping.phone,
+        address: shipping.address,
+        city: shipping.city,
+        state: shipping.state,
+      },
     },
-  }).catch((err) => console.error('[flutterwave-webhook] email failed:', err?.message))
+  }
+
+  await qstash.publishJSON({
+    url: `${process.env.NEXT_PUBLIC_SITE_URL}/api/jobs/order-confirmation`,
+    body: jobPayload,
+    retries: 3,
+    delay: 0,
+  }).catch((err) => console.error('[flutterwave-webhook] qstash enqueue failed:', err?.message))
 
   return NextResponse.json({ received: true })
 }

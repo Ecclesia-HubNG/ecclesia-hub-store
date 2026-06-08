@@ -1,5 +1,6 @@
 import { type NextRequest, NextResponse } from 'next/server'
 import { updateSession, updateSessionWithAdminCheck } from '@/lib/supabase/middleware'
+import { ratelimit } from '@/lib/redis'
 
 const ADMIN_PUBLIC_PATHS = [
   '/admin/login',
@@ -20,6 +21,26 @@ export async function middleware(request: NextRequest) {
   // exchangeCodeForSession to fail with AuthPKCECodeVerifierMissingError.
   if (pathname === '/auth/callback') {
     return NextResponse.next()
+  }
+
+  // Rate limit all API routes
+  if (pathname.startsWith('/api/')) {
+    const ip = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ?? 'anonymous'
+    const { success, limit, remaining, reset } = await ratelimit.limit(ip)
+    if (!success) {
+      return NextResponse.json(
+        { error: 'Too many requests' },
+        {
+          status: 429,
+          headers: {
+            'X-RateLimit-Limit': String(limit),
+            'X-RateLimit-Remaining': String(remaining),
+            'X-RateLimit-Reset': String(reset),
+            'Retry-After': String(Math.ceil((reset - Date.now()) / 1000)),
+          },
+        }
+      )
+    }
   }
 
   if (pathname.startsWith('/admin')) {

@@ -1,4 +1,4 @@
-export const dynamic = 'force-dynamic'
+export const revalidate = 60
 
 import { createAdminClient } from '@/lib/supabase/admin'
 import Link from 'next/link'

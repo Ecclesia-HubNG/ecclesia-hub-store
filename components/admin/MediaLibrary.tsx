@@ -1,7 +1,7 @@
 'use client'
 
-import { useRef, useState, useTransition } from 'react'
-import type { ChangeEvent } from 'react'
+import { useCallback, useRef, useState, useTransition } from 'react'
+import type { ChangeEvent, DragEvent } from 'react'
 import { uploadMedia, deleteMedia } from '@/lib/actions/media'
 
 type Asset = {
@@ -37,6 +37,8 @@ export default function MediaLibrary({ initialAssets, onSelect }: Props) {
   const [uploadError, setUploadError] = useState('')
   const [copied, setCopied] = useState<string | null>(null)
   const [deleting, setDeleting] = useState<string | null>(null)
+  const [isDragging, setIsDragging] = useState(false)
+  const dragCounter = useRef(0)
   const [isPending, startTransition] = useTransition()
 
   const KNOWN_FOLDERS = ['products', 'brands', 'categories', 'homepage', 'featured', 'general']
@@ -50,34 +52,61 @@ export default function MediaLibrary({ initialAssets, onSelect }: Props) {
     return matchFolder && matchSearch
   })
 
-  const handleUpload = async (e: ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files
-    if (!files?.length) return
-    e.target.value = ''
+  const uploadFiles = useCallback(async (files: File[]) => {
+    if (!files.length) return
     setUploading(true)
     setUploadError('')
+    const targetFolder = folder === 'all' ? 'general' : folder
 
-    for (const file of Array.from(files)) {
+    for (const file of files) {
+      if (!file.type.startsWith('image/')) continue
       const fd = new FormData()
       fd.append('file', file)
-      const result = await uploadMedia(fd, folder === 'all' ? 'general' : folder)
+      const result = await uploadMedia(fd, targetFolder)
       if (result.error) {
         setUploadError(result.error)
       } else if (result.url && result.id) {
-        const newAsset: Asset = {
-          id: result.id,
-          url: result.url,
-          key: `${folder === 'all' ? 'general' : folder}/${file.name}`,
+        setAssets(prev => [{
+          id: result.id!,
+          url: result.url!,
+          key: `${targetFolder}/${file.name}`,
           name: file.name,
           size: file.size,
           mime_type: file.type,
-          folder: folder === 'all' ? 'general' : folder,
+          folder: targetFolder,
           created_at: new Date().toISOString(),
-        }
-        setAssets(prev => [newAsset, ...prev])
+        }, ...prev])
       }
     }
     setUploading(false)
+  }, [folder])
+
+  const handleUpload = (e: ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files ?? [])
+    e.target.value = ''
+    uploadFiles(files)
+  }
+
+  const handleDragEnter = (e: DragEvent) => {
+    e.preventDefault()
+    dragCounter.current++
+    if (dragCounter.current === 1) setIsDragging(true)
+  }
+
+  const handleDragLeave = (e: DragEvent) => {
+    e.preventDefault()
+    dragCounter.current--
+    if (dragCounter.current === 0) setIsDragging(false)
+  }
+
+  const handleDragOver = (e: DragEvent) => { e.preventDefault() }
+
+  const handleDrop = (e: DragEvent) => {
+    e.preventDefault()
+    dragCounter.current = 0
+    setIsDragging(false)
+    const files = Array.from(e.dataTransfer.files)
+    uploadFiles(files)
   }
 
   const copyUrl = async (url: string, id: string) => {
@@ -102,7 +131,23 @@ export default function MediaLibrary({ initialAssets, onSelect }: Props) {
   }
 
   return (
-    <div>
+    <div
+      onDragEnter={handleDragEnter}
+      onDragLeave={handleDragLeave}
+      onDragOver={handleDragOver}
+      onDrop={handleDrop}
+      className="relative"
+    >
+      {/* Drop overlay */}
+      {isDragging && (
+        <div className="absolute inset-0 z-50 flex flex-col items-center justify-center gap-3 rounded-2xl border-2 border-dashed border-[#4A0F1C] bg-[#4A0F1C]/5 dark:bg-[#4A0F1C]/10 pointer-events-none">
+          <svg className="w-12 h-12 text-[#4A0F1C] dark:text-[#D4849A]" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5m-13.5-9L12 3m0 0 4.5 4.5M12 3v13.5" />
+          </svg>
+          <p className="text-sm font-semibold text-[#4A0F1C] dark:text-[#D4849A]">Drop images to upload</p>
+        </div>
+      )}
+      <div>
       {/* Toolbar */}
       <div className="flex flex-wrap items-center gap-3 mb-6">
         <div className="relative flex-1 min-w-48">
@@ -258,6 +303,7 @@ export default function MediaLibrary({ initialAssets, onSelect }: Props) {
         {filtered.length} {filtered.length === 1 ? 'image' : 'images'}{folder !== 'all' ? ` in ${folder}` : ''}
         {search ? ` matching "${search}"` : ''}
       </p>
+      </div>
     </div>
   )
 }
