@@ -237,48 +237,49 @@ export default function CheckoutPage() {
               ) : (
                 <div className="space-y-4">
 
-                  {/* State */}
-                  <div>
-                    <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1.5">State</label>
-                    <select
-                      value={selectedStateId}
-                      onChange={e => setSelectedStateId(e.target.value)}
-                      className={inputCls}
-                    >
-                      <option value="">Select your state</option>
-                      {shippingStates.map(s => (
-                        <option key={s.id} value={s.id}>{s.name}</option>
-                      ))}
-                    </select>
-                  </div>
+                  {/* State · Area · Location — horizontal on md+ */}
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    {/* State */}
+                    <div>
+                      <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1.5">State</label>
+                      <select
+                        value={selectedStateId}
+                        onChange={e => setSelectedStateId(e.target.value)}
+                        className={inputCls}
+                      >
+                        <option value="">Select state</option>
+                        {shippingStates.map(s => (
+                          <option key={s.id} value={s.id}>{s.name}</option>
+                        ))}
+                      </select>
+                    </div>
 
-                  {/* Branch */}
-                  {selectedStateId && branchesForState.length > 0 && (
+                    {/* Branch */}
                     <div>
                       <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1.5">Area</label>
                       <select
                         value={selectedBranchId}
                         onChange={e => setSelectedBranchId(e.target.value)}
+                        disabled={!selectedStateId || branchesForState.length === 0}
                         className={inputCls}
                       >
-                        <option value="">Select your area</option>
+                        <option value="">Select area</option>
                         {branchesForState.map(b => (
                           <option key={b.id} value={b.id}>{b.name}</option>
                         ))}
                       </select>
                     </div>
-                  )}
 
-                  {/* Location */}
-                  {selectedBranchId && locationsForBranch.length > 0 && (
+                    {/* Location */}
                     <div>
                       <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1.5">Location</label>
                       <select
                         value={selectedLocationId}
                         onChange={e => setSelectedLocationId(e.target.value)}
+                        disabled={!selectedBranchId || locationsForBranch.length === 0}
                         className={inputCls}
                       >
-                        <option value="">Select your location</option>
+                        <option value="">Select location</option>
                         {locationsForBranch.map(l => (
                           <option key={l.id} value={l.id}>
                             {l.name} — {l.price === 0 ? 'Free' : `₦${l.price.toLocaleString('en')}`}
@@ -286,7 +287,7 @@ export default function CheckoutPage() {
                         ))}
                       </select>
                     </div>
-                  )}
+                  </div>
 
                   {/* Fee callout */}
                   {selectedLocation && (
