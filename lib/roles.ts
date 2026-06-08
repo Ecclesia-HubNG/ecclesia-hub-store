@@ -28,14 +28,14 @@ export const ROLE_COLORS: Record<Role, string> = {
   financier:   'bg-green-50 dark:bg-green-950/40 text-green-700 dark:text-green-400',
 }
 
-export type Section = 'dashboard' | 'homepage' | 'media' | 'products' | 'orders' | 'customers' | 'users' | 'settings' | 'coupons' | 'emails' | 'finance' | 'support' | 'shipping'
+export type Section = 'dashboard' | 'homepage' | 'media' | 'appearance' | 'products' | 'orders' | 'customers' | 'users' | 'settings' | 'coupons' | 'emails' | 'finance' | 'support' | 'shipping'
 
 export const ROLE_PERMISSIONS: Record<Role, Section[]> = {
-  super_admin: ['dashboard', 'homepage', 'media', 'products', 'orders', 'customers', 'users', 'settings', 'coupons', 'emails', 'finance', 'support', 'shipping'],
-  admin:       ['dashboard', 'homepage', 'media', 'products', 'orders', 'customers', 'users', 'settings', 'coupons', 'emails', 'finance', 'support', 'shipping'],
-  editor:      ['dashboard', 'homepage', 'media', 'products'],
+  super_admin: ['dashboard', 'homepage', 'media', 'appearance', 'products', 'orders', 'customers', 'users', 'settings', 'coupons', 'emails', 'finance', 'support', 'shipping'],
+  admin:       ['dashboard', 'homepage', 'media', 'appearance', 'products', 'orders', 'customers', 'users', 'settings', 'coupons', 'emails', 'finance', 'support', 'shipping'],
+  editor:      ['dashboard', 'homepage', 'media', 'appearance', 'products'],
   manager:     ['dashboard', 'orders', 'customers', 'finance', 'support', 'shipping'],
-  shop_keeper: ['dashboard', 'media', 'products', 'orders'],
+  shop_keeper: ['dashboard', 'media', 'appearance', 'products', 'orders'],
   financier:   ['dashboard', 'orders', 'coupons', 'finance'],
 }
 

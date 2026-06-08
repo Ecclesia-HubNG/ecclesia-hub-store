@@ -28,8 +28,12 @@ const ALL_NAV: NavItem[] = [
     icon: 'M2.25 12l8.954-8.955c.44-.439 1.152-.439 1.591 0L21.75 12M4.5 9.75v10.125c0 .621.504 1.125 1.125 1.125H9.75v-4.875c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21h4.125c.621 0 1.125-.504 1.125-1.125V9.75M8.25 21h8.25',
   },
   {
-    label: 'Media', href: '/admin/media', section: 'media',
-    icon: 'M2.25 15.75l5.159-5.159a2.25 2.25 0 013.182 0l5.159 5.159m-1.5-1.5l1.409-1.409a2.25 2.25 0 013.182 0l2.909 2.909m-18 3.75h16.5a1.5 1.5 0 001.5-1.5V6a1.5 1.5 0 00-1.5-1.5H3.75A1.5 1.5 0 002.25 6v12a1.5 1.5 0 001.5 1.5zm10.5-11.25h.008v.008h-.008V8.25zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0z',
+    label: 'Appearance', href: '/admin/appearance', section: 'appearance',
+    icon: 'M9.53 16.122a3 3 0 0 0-5.78 1.128 2.25 2.25 0 0 1-2.4 2.245 4.5 4.5 0 0 0 8.4-2.245c0-.399-.078-.78-.22-1.128Zm0 0a15.998 15.998 0 0 0 3.388-1.62m-5.043-.025a15.994 15.994 0 0 1 1.622-3.395m3.42 3.42a15.995 15.995 0 0 0 4.764-4.648l3.876-5.814a1.151 1.151 0 0 0-1.597-1.597L14.146 6.32a15.996 15.996 0 0 0-4.649 4.763m3.42 3.42a6.776 6.776 0 0 0-3.42-3.42',
+    children: [
+      { label: 'Media', href: '/admin/media', exact: true },
+      { label: 'Menu',  href: '/admin/appearance/menu' },
+    ],
   },
   {
     label: 'Products', href: '/admin/products', section: 'products',
@@ -109,7 +113,7 @@ const ALL_NAV: NavItem[] = [
   },
 ]
 
-const EXPANDABLE_ROOTS = ['/admin/products', '/admin/orders', '/admin/users', '/admin/finance', '/admin/emails', '/admin/shipping']
+const EXPANDABLE_ROOTS = ['/admin/appearance', '/admin/products', '/admin/orders', '/admin/users', '/admin/finance', '/admin/emails', '/admin/shipping']
 
 export default function AdminSidebar({ role }: { role: string }) {
   const pathname = usePathname()
@@ -145,8 +149,11 @@ export default function AdminSidebar({ role }: { role: string }) {
 
   const [openSections, setOpenSections] = useState<Set<string>>(() => {
     const open = new Set<string>()
-    for (const root of EXPANDABLE_ROOTS) {
-      if (pathname.startsWith(root)) open.add(root)
+    for (const item of ALL_NAV) {
+      if (!item.children) continue
+      const shouldOpen = pathname.startsWith(item.href) ||
+        item.children.some(c => c.exact ? pathname === c.href : pathname.startsWith(c.href))
+      if (shouldOpen) open.add(item.href)
     }
     return open
   })
@@ -154,8 +161,11 @@ export default function AdminSidebar({ role }: { role: string }) {
   useEffect(() => {
     setOpenSections(prev => {
       const next = new Set(prev)
-      for (const root of EXPANDABLE_ROOTS) {
-        if (pathname.startsWith(root)) next.add(root)
+      for (const item of ALL_NAV) {
+        if (!item.children) continue
+        const shouldOpen = pathname.startsWith(item.href) ||
+          item.children.some(c => c.exact ? pathname === c.href : pathname.startsWith(c.href))
+        if (shouldOpen) next.add(item.href)
       }
       return next
     })
