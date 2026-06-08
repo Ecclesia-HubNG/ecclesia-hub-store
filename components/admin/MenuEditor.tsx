@@ -10,6 +10,7 @@ const STORE_PAGES = [
   { label: 'Shop (All Products)',  href: '/shop' },
   { label: 'Bestsellers',          href: '/bestsellers' },
   { label: 'New Arrivals',         href: '/new-arrivals' },
+  { label: 'Gift Items',           href: '/gifts' },
   { label: 'Sale / Promotions',    href: '/promotions' },
   { label: 'Deals',                href: '/deals' },
   { label: 'Brands',               href: '/brands' },

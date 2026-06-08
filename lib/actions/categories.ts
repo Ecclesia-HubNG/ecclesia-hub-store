@@ -68,3 +68,12 @@ export async function createCategoryInline(
   revalidatePath('/admin/categories')
   return data
 }
+
+export async function setGiftCategory(categoryId: string, value: boolean) {
+  const supabase = createAdminClient()
+  const { error } = await supabase.from('categories').update({ is_gift: value }).eq('id', categoryId)
+  if (error) return { error: error.message }
+  revalidatePath('/admin/gift-items')
+  revalidatePath('/gifts')
+  return { success: true as const }
+}
