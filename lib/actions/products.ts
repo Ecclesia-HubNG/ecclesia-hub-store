@@ -267,3 +267,12 @@ export async function setBestseller(productId: string, value: boolean) {
   revalidatePath('/bestsellers')
   return { success: true as const }
 }
+
+export async function setGiftProduct(productId: string, value: boolean) {
+  const supabase = createAdminClient()
+  const { error } = await supabase.from('products').update({ is_gift: value }).eq('id', productId)
+  if (error) return { error: error.message }
+  revalidatePath('/admin/gift-items')
+  revalidatePath('/gifts')
+  return { success: true as const }
+}

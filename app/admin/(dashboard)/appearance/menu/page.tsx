@@ -1,10 +1,14 @@
 import { getMegaMenuConfig, getFooterConfig } from '@/lib/actions/menus'
+import { createAdminClient } from '@/lib/supabase/admin'
 import MenuEditor from '@/components/admin/MenuEditor'
 
 export default async function MenuPage() {
-  const [megaMenu, footer] = await Promise.all([
+  const supabase = createAdminClient()
+  const [megaMenu, footer, { data: categories }, { data: brands }] = await Promise.all([
     getMegaMenuConfig(),
     getFooterConfig(),
+    supabase.from('categories').select('id, name, slug').order('name'),
+    supabase.from('brands').select('id, name, slug').order('name'),
   ])
 
   return (
@@ -15,7 +19,12 @@ export default async function MenuPage() {
           Manage your store&apos;s header mega menu and footer navigation links.
         </p>
       </div>
-      <MenuEditor initialMegaMenu={megaMenu} initialFooter={footer} />
+      <MenuEditor
+        initialMegaMenu={megaMenu}
+        initialFooter={footer}
+        categories={(categories ?? []).map(c => ({ label: c.name, href: `/category/${c.slug}` }))}
+        brands={(brands ?? []).map(b => ({ label: b.name, href: `/brands/${b.slug}` }))}
+      />
     </div>
   )
 }

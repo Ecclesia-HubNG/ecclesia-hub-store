@@ -7,29 +7,45 @@ import ShopClient from '@/components/store/ShopClient'
 export default async function GiftsPage() {
   const supabase = createClient()
 
-  const { data: giftCategories } = await supabase
-    .from('categories')
-    .select('id, name, slug')
+  const [{ data: giftCategories }, { data: allCategories }] = await Promise.all([
+    supabase.from('categories').select('id').eq('is_gift', true),
+    supabase.from('categories').select('id, name, slug').is('parent_id', null).order('name'),
+  ])
+
+  const giftCategoryIds = (giftCategories ?? []).map(c => c.id)
+
+  // Products tagged directly as gift OR products in gift categories
+  let query = supabase
+    .from('products')
+    .select('id, name, slug, price, compare_at_price, thumbnail, stock, category_id, is_featured, is_new_arrival, variants, categories(name)')
+    .eq('is_active', true)
+
+  const { data: directProducts } = await supabase
+    .from('products')
+    .select('id, name, slug, price, compare_at_price, thumbnail, stock, category_id, is_featured, is_new_arrival, variants, categories(name)')
+    .eq('is_active', true)
     .eq('is_gift', true)
 
-  const categoryIds = (giftCategories ?? []).map(c => c.id)
+  const { data: categoryProducts } = giftCategoryIds.length > 0
+    ? await supabase
+        .from('products')
+        .select('id, name, slug, price, compare_at_price, thumbnail, stock, category_id, is_featured, is_new_arrival, variants, categories(name)')
+        .eq('is_active', true)
+        .in('category_id', giftCategoryIds)
+    : { data: [] }
 
-  const [{ data: allCategories }, { data: products }] = await Promise.all([
-    supabase.from('categories').select('id, name, slug').is('parent_id', null).order('name'),
-    categoryIds.length > 0
-      ? supabase
-          .from('products')
-          .select('id, name, slug, price, compare_at_price, thumbnail, stock, category_id, is_featured, is_new_arrival, variants, categories(name)')
-          .eq('is_active', true)
-          .in('category_id', categoryIds)
-          .order('name')
-      : Promise.resolve({ data: [] }),
-  ])
+  // Merge and deduplicate by id
+  const seen = new Set<string>()
+  const products: any[] = []
+  for (const p of [...(directProducts ?? []), ...(categoryProducts ?? [])]) {
+    if (!seen.has(p.id)) { seen.add(p.id); products.push(p) }
+  }
+  products.sort((a, b) => a.name.localeCompare(b.name))
 
   return (
     <Suspense>
       <ShopClient
-        products={(products ?? []) as any}
+        products={products}
         categories={allCategories ?? []}
         pageTag="Gift Items"
         pageTitle="Gift Items"

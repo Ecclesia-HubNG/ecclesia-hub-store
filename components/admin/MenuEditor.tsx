@@ -6,7 +6,7 @@ import type { MegaMenuConfig, MegaMenuColumn, FooterConfig, FooterColumn, MenuLi
 
 type Tab = 'mega' | 'footer'
 
-const STORE_PAGES = [
+const STORE_PAGES: { label: string; href: string; group?: string }[] = [
   { label: 'Shop (All Products)',  href: '/shop' },
   { label: 'Bestsellers',          href: '/bestsellers' },
   { label: 'New Arrivals',         href: '/new-arrivals' },
@@ -57,14 +57,20 @@ function Field({
 }
 
 // ── Href autocomplete input ───────────────────────────────────────────────────
-function HrefInput({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+function HrefInput({
+  value, onChange, extraPages,
+}: {
+  value: string; onChange: (v: string) => void
+  extraPages: { label: string; href: string; group?: string }[]
+}) {
   const [open, setOpen] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
 
+  const allPages = [...STORE_PAGES, ...extraPages]
   const q = value.toLowerCase()
   const suggestions = q.length === 0
-    ? STORE_PAGES
-    : STORE_PAGES.filter(p =>
+    ? allPages
+    : allPages.filter(p =>
         p.label.toLowerCase().includes(q) || p.href.toLowerCase().includes(q)
       )
 
@@ -86,10 +92,15 @@ function HrefInput({ value, onChange }: { value: string; onChange: (v: string) =
               key={p.href + p.label}
               type="button"
               onMouseDown={() => { onChange(p.href); setOpen(false) }}
-              className="w-full flex items-center justify-between px-3 py-2 text-xs hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors text-left"
+              className="w-full flex items-center justify-between gap-2 px-3 py-2 text-xs hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors text-left"
             >
-              <span className="text-gray-700 dark:text-gray-300 font-medium truncate">{p.label}</span>
-              <span className="text-gray-400 dark:text-gray-500 font-mono ml-2 shrink-0">{p.href}</span>
+              <div className="flex items-center gap-2 min-w-0">
+                {p.group && (
+                  <span className="text-[9px] font-bold uppercase tracking-wider text-gray-400 dark:text-gray-500 shrink-0 w-14 text-right">{p.group}</span>
+                )}
+                <span className="text-gray-700 dark:text-gray-300 font-medium truncate">{p.label}</span>
+              </div>
+              <span className="text-gray-400 dark:text-gray-500 font-mono shrink-0">{p.href}</span>
             </button>
           ))}
         </div>
@@ -100,12 +111,13 @@ function HrefInput({ value, onChange }: { value: string; onChange: (v: string) =
 
 // ── Link row ─────────────────────────────────────────────────────────────────
 function LinkRow({
-  link, index, total, onChange, onRemove, onMove,
+  link, index, total, onChange, onRemove, onMove, extraPages,
 }: {
   link: MenuLink; index: number; total: number
   onChange: (l: MenuLink) => void
   onRemove: () => void
   onMove: (dir: -1 | 1) => void
+  extraPages: { label: string; href: string; group?: string }[]
 }) {
   return (
     <div className="flex items-center gap-2 p-2.5 bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-700/60 rounded-xl group hover:border-gray-200 dark:hover:border-gray-600 transition-colors">
@@ -148,7 +160,7 @@ function LinkRow({
       </svg>
 
       {/* Href with autocomplete */}
-      <HrefInput value={link.href} onChange={v => onChange({ ...link, href: v })} />
+      <HrefInput value={link.href} onChange={v => onChange({ ...link, href: v })} extraPages={extraPages} />
 
       {/* Remove */}
       <button
@@ -168,7 +180,7 @@ function LinkRow({
 function ColumnCard({
   heading, links, total,
   onHeadingChange, onLinkChange, onLinkRemove, onLinkMove, onAddLink, onRemove,
-  headingPlaceholder,
+  headingPlaceholder, extraPages,
 }: {
   heading: string
   links: MenuLink[]
@@ -180,6 +192,7 @@ function ColumnCard({
   onAddLink: () => void
   onRemove: () => void
   headingPlaceholder?: string
+  extraPages: { label: string; href: string; group?: string }[]
 }) {
   return (
     <div className="rounded-2xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 overflow-hidden shadow-sm">
@@ -218,6 +231,7 @@ function ColumnCard({
             onChange={l => onLinkChange(i, l)}
             onRemove={() => onLinkRemove(i)}
             onMove={dir => onLinkMove(i, dir)}
+            extraPages={extraPages}
           />
         ))}
 
@@ -237,13 +251,19 @@ function ColumnCard({
   )
 }
 
+type PageOption = { label: string; href: string; group?: string }
+
 // ── Main editor ───────────────────────────────────────────────────────────────
 export default function MenuEditor({
   initialMegaMenu,
   initialFooter,
+  categories = [],
+  brands = [],
 }: {
   initialMegaMenu: MegaMenuConfig
   initialFooter: FooterConfig
+  categories?: PageOption[]
+  brands?: PageOption[]
 }) {
   const [tab, setTab] = useState<Tab>('mega')
   const [megaMenu, setMegaMenu] = useState<MegaMenuConfig>(initialMegaMenu)
@@ -251,6 +271,11 @@ export default function MenuEditor({
   const [isPending, startTransition] = useTransition()
   const [saved, setSaved] = useState(false)
   const [saveError, setSaveError] = useState('')
+
+  const extraPages: PageOption[] = [
+    ...categories.map(c => ({ ...c, group: 'Category' })),
+    ...brands.map(b => ({ ...b, group: 'Brand' })),
+  ]
 
   const save = () => {
     setSaveError('')
@@ -376,6 +401,7 @@ export default function MenuEditor({
                   onLinkMove={(li, dir) => updateMegaColumn(i, { ...col, links: moveItem(col.links, li, dir) })}
                   onAddLink={() => updateMegaColumn(i, { ...col, links: [...col.links, { label: '', href: '' }] })}
                   onRemove={() => removeMegaColumn(i)}
+                  extraPages={extraPages}
                 />
               ))}
             </div>
@@ -401,6 +427,7 @@ export default function MenuEditor({
                     onChange={l => updatePlainNav(i, l)}
                     onRemove={() => removePlainNav(i)}
                     onMove={dir => movePlainNav(i, dir)}
+                    extraPages={extraPages}
                   />
                 ))}
                 <button
@@ -454,6 +481,7 @@ export default function MenuEditor({
                 onLinkMove={(li, dir) => updateFooterColumn(i, { ...col, links: moveItem(col.links, li, dir) })}
                 onAddLink={() => updateFooterColumn(i, { ...col, links: [...col.links, { label: '', href: '' }] })}
                 onRemove={() => removeFooterColumn(i)}
+                extraPages={extraPages}
               />
             ))}
           </div>
