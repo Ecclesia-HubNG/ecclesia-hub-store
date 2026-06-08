@@ -6,67 +6,6 @@ import type { MegaMenuConfig, MegaMenuColumn, FooterConfig, FooterColumn, MenuLi
 
 type Tab = 'mega' | 'footer'
 
-// ── Reusable link row ──────────────────────────────────────────────────────────
-function LinkRow({
-  link, index, total,
-  onChange, onRemove, onMove,
-}: {
-  link: MenuLink; index: number; total: number
-  onChange: (l: MenuLink) => void
-  onRemove: () => void
-  onMove: (dir: -1 | 1) => void
-}) {
-  return (
-    <div className="flex items-center gap-2 group">
-      <div className="flex flex-col gap-0.5 shrink-0">
-        <button
-          type="button"
-          disabled={index === 0}
-          onClick={() => onMove(-1)}
-          className="w-5 h-5 flex items-center justify-center rounded text-gray-300 hover:text-gray-500 dark:hover:text-gray-300 disabled:opacity-20 transition-colors"
-        >
-          <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" d="m4.5 15.75 7.5-7.5 7.5 7.5" />
-          </svg>
-        </button>
-        <button
-          type="button"
-          disabled={index === total - 1}
-          onClick={() => onMove(1)}
-          className="w-5 h-5 flex items-center justify-center rounded text-gray-300 hover:text-gray-500 dark:hover:text-gray-300 disabled:opacity-20 transition-colors"
-        >
-          <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
-          </svg>
-        </button>
-      </div>
-      <input
-        type="text"
-        value={link.label}
-        onChange={e => onChange({ ...link, label: e.target.value })}
-        placeholder="Label"
-        className="w-32 px-2.5 py-1.5 text-xs border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-900 text-gray-800 dark:text-gray-200 placeholder-gray-400 focus:outline-none focus:ring-1 focus:ring-gray-400"
-      />
-      <input
-        type="text"
-        value={link.href}
-        onChange={e => onChange({ ...link, href: e.target.value })}
-        placeholder="/path or https://..."
-        className="flex-1 px-2.5 py-1.5 text-xs border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-900 text-gray-800 dark:text-gray-200 placeholder-gray-400 font-mono focus:outline-none focus:ring-1 focus:ring-gray-400"
-      />
-      <button
-        type="button"
-        onClick={onRemove}
-        className="w-6 h-6 flex items-center justify-center rounded text-gray-300 hover:text-red-400 transition-colors shrink-0"
-      >
-        <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
-          <path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" />
-        </svg>
-      </button>
-    </div>
-  )
-}
-
 function moveItem<T>(arr: T[], from: number, dir: -1 | 1): T[] {
   const to = from + dir
   if (to < 0 || to >= arr.length) return arr
@@ -75,128 +14,167 @@ function moveItem<T>(arr: T[], from: number, dir: -1 | 1): T[] {
   return next
 }
 
-// ── Mega menu column card ──────────────────────────────────────────────────────
-function MegaColumnCard({
-  column, colIndex, total,
-  onChange, onRemove,
+// ── Input field ──────────────────────────────────────────────────────────────
+function Field({
+  label, value, onChange, placeholder, mono, className,
 }: {
-  column: MegaMenuColumn; colIndex: number; total: number
-  onChange: (c: MegaMenuColumn) => void
-  onRemove: () => void
+  label?: string; value: string; onChange: (v: string) => void
+  placeholder?: string; mono?: boolean; className?: string
 }) {
-  const updateLink = (i: number, l: MenuLink) =>
-    onChange({ ...column, links: column.links.map((x, idx) => idx === i ? l : x) })
-  const removeLink = (i: number) =>
-    onChange({ ...column, links: column.links.filter((_, idx) => idx !== i) })
-  const moveLink = (i: number, dir: -1 | 1) =>
-    onChange({ ...column, links: moveItem(column.links, i, dir) })
-  const addLink = () =>
-    onChange({ ...column, links: [...column.links, { label: '', href: '' }] })
-
   return (
-    <div className="border border-gray-200 dark:border-gray-700 rounded-xl bg-white dark:bg-gray-900 overflow-hidden">
-      <div className="flex items-center gap-2 px-4 py-3 border-b border-gray-100 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/60">
-        <input
-          type="text"
-          value={column.heading}
-          onChange={e => onChange({ ...column, heading: e.target.value })}
-          placeholder="Column heading"
-          className="flex-1 text-sm font-semibold bg-transparent text-gray-800 dark:text-gray-100 placeholder-gray-400 focus:outline-none"
-        />
-        {total > 1 && (
-          <button
-            type="button"
-            onClick={onRemove}
-            className="text-xs text-gray-400 hover:text-red-400 transition-colors px-1.5 py-0.5 rounded"
-          >
-            Remove column
-          </button>
-        )}
-      </div>
-
-      <div className="p-4 space-y-2">
-        {column.links.map((link, i) => (
-          <LinkRow
-            key={i}
-            link={link}
-            index={i}
-            total={column.links.length}
-            onChange={l => updateLink(i, l)}
-            onRemove={() => removeLink(i)}
-            onMove={dir => moveLink(i, dir)}
-          />
-        ))}
-        <button
-          type="button"
-          onClick={addLink}
-          className="flex items-center gap-1.5 mt-1 text-xs text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
-        >
-          <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
-          </svg>
-          Add link
-        </button>
-      </div>
+    <div className={`flex flex-col gap-1 ${className ?? ''}`}>
+      {label && (
+        <span className="text-[10px] font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500 px-0.5">
+          {label}
+        </span>
+      )}
+      <input
+        type="text"
+        value={value}
+        onChange={e => onChange(e.target.value)}
+        placeholder={placeholder}
+        className={`w-full px-3 py-2 text-sm border border-gray-200 dark:border-gray-700 rounded-lg bg-gray-50 dark:bg-gray-800/60 text-gray-800 dark:text-gray-200 placeholder-gray-300 dark:placeholder-gray-600 focus:outline-none focus:border-gray-400 dark:focus:border-gray-500 focus:bg-white dark:focus:bg-gray-800 transition-colors ${mono ? 'font-mono text-xs' : ''}`}
+      />
     </div>
   )
 }
 
-// ── Footer column card ─────────────────────────────────────────────────────────
-function FooterColumnCard({
-  column, colIndex, total,
-  onChange, onRemove,
+// ── Link row ─────────────────────────────────────────────────────────────────
+function LinkRow({
+  link, index, total, onChange, onRemove, onMove,
 }: {
-  column: FooterColumn; colIndex: number; total: number
-  onChange: (c: FooterColumn) => void
+  link: MenuLink; index: number; total: number
+  onChange: (l: MenuLink) => void
   onRemove: () => void
+  onMove: (dir: -1 | 1) => void
 }) {
-  const updateLink = (i: number, l: MenuLink) =>
-    onChange({ ...column, links: column.links.map((x, idx) => idx === i ? l : x) })
-  const removeLink = (i: number) =>
-    onChange({ ...column, links: column.links.filter((_, idx) => idx !== i) })
-  const moveLink = (i: number, dir: -1 | 1) =>
-    onChange({ ...column, links: moveItem(column.links, i, dir) })
-  const addLink = () =>
-    onChange({ ...column, links: [...column.links, { label: '', href: '' }] })
-
   return (
-    <div className="border border-gray-200 dark:border-gray-700 rounded-xl bg-white dark:bg-gray-900 overflow-hidden">
-      <div className="flex items-center gap-2 px-4 py-3 border-b border-gray-100 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/60">
+    <div className="flex items-center gap-2 p-2.5 bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-700/60 rounded-xl group hover:border-gray-200 dark:hover:border-gray-600 transition-colors">
+      {/* Reorder handle */}
+      <div className="flex flex-col gap-0.5 shrink-0 opacity-40 group-hover:opacity-100 transition-opacity">
+        <button
+          type="button"
+          disabled={index === 0}
+          onClick={() => onMove(-1)}
+          className="w-5 h-4 flex items-center justify-center rounded hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-400 disabled:opacity-20 transition-colors"
+        >
+          <svg className="w-2.5 h-2.5" fill="none" viewBox="0 0 24 24" strokeWidth={3} stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" d="m4.5 15.75 7.5-7.5 7.5 7.5" />
+          </svg>
+        </button>
+        <button
+          type="button"
+          disabled={index === total - 1}
+          onClick={() => onMove(1)}
+          className="w-5 h-4 flex items-center justify-center rounded hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-400 disabled:opacity-20 transition-colors"
+        >
+          <svg className="w-2.5 h-2.5" fill="none" viewBox="0 0 24 24" strokeWidth={3} stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
+          </svg>
+        </button>
+      </div>
+
+      {/* Label */}
+      <input
+        type="text"
+        value={link.label}
+        onChange={e => onChange({ ...link, label: e.target.value })}
+        placeholder="Label"
+        className="w-28 shrink-0 px-2.5 py-1.5 text-sm border border-gray-200 dark:border-gray-700 rounded-lg bg-gray-50 dark:bg-gray-800 text-gray-800 dark:text-gray-200 placeholder-gray-300 dark:placeholder-gray-600 focus:outline-none focus:border-gray-400 dark:focus:border-gray-500 focus:bg-white dark:focus:bg-gray-900 transition-colors"
+      />
+
+      {/* Divider */}
+      <svg className="w-3 h-3 shrink-0 text-gray-300 dark:text-gray-600" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+        <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 4.5 21 12m0 0-7.5 7.5M21 12H3" />
+      </svg>
+
+      {/* Href */}
+      <input
+        type="text"
+        value={link.href}
+        onChange={e => onChange({ ...link, href: e.target.value })}
+        placeholder="/path"
+        className="flex-1 min-w-0 px-2.5 py-1.5 text-xs font-mono border border-gray-200 dark:border-gray-700 rounded-lg bg-gray-50 dark:bg-gray-800 text-gray-600 dark:text-gray-300 placeholder-gray-300 dark:placeholder-gray-600 focus:outline-none focus:border-gray-400 dark:focus:border-gray-500 focus:bg-white dark:focus:bg-gray-900 transition-colors"
+      />
+
+      {/* Remove */}
+      <button
+        type="button"
+        onClick={onRemove}
+        className="shrink-0 w-6 h-6 flex items-center justify-center rounded-md text-gray-300 dark:text-gray-600 hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors opacity-0 group-hover:opacity-100"
+      >
+        <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" />
+        </svg>
+      </button>
+    </div>
+  )
+}
+
+// ── Column card ───────────────────────────────────────────────────────────────
+function ColumnCard({
+  heading, links, total,
+  onHeadingChange, onLinkChange, onLinkRemove, onLinkMove, onAddLink, onRemove,
+  headingPlaceholder,
+}: {
+  heading: string
+  links: MenuLink[]
+  total: number
+  onHeadingChange: (v: string) => void
+  onLinkChange: (i: number, l: MenuLink) => void
+  onLinkRemove: (i: number) => void
+  onLinkMove: (i: number, dir: -1 | 1) => void
+  onAddLink: () => void
+  onRemove: () => void
+  headingPlaceholder?: string
+}) {
+  return (
+    <div className="rounded-2xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 overflow-hidden shadow-sm">
+      {/* Header */}
+      <div className="flex items-center gap-3 px-4 py-3 border-b border-gray-100 dark:border-gray-700/60 bg-gray-50/80 dark:bg-gray-800/40">
+        <div className="w-1.5 h-5 rounded-full bg-gray-200 dark:bg-gray-600 shrink-0" />
         <input
           type="text"
-          value={column.title}
-          onChange={e => onChange({ ...column, title: e.target.value })}
-          placeholder="Column title"
-          className="flex-1 text-sm font-semibold bg-transparent text-gray-800 dark:text-gray-100 placeholder-gray-400 focus:outline-none"
+          value={heading}
+          onChange={e => onHeadingChange(e.target.value)}
+          placeholder={headingPlaceholder ?? 'Column heading'}
+          className="flex-1 text-sm font-semibold bg-transparent text-gray-800 dark:text-gray-100 placeholder-gray-300 focus:outline-none"
         />
         {total > 1 && (
           <button
             type="button"
             onClick={onRemove}
-            className="text-xs text-gray-400 hover:text-red-400 transition-colors px-1.5 py-0.5 rounded"
+            className="text-xs text-gray-300 dark:text-gray-600 hover:text-red-400 transition-colors px-2 py-0.5 rounded-md hover:bg-red-50 dark:hover:bg-red-900/20"
           >
             Remove
           </button>
         )}
       </div>
-      <div className="p-4 space-y-2">
-        {column.links.map((link, i) => (
+
+      {/* Links */}
+      <div className="p-3 space-y-1.5">
+        {links.length === 0 && (
+          <p className="text-xs text-gray-300 dark:text-gray-600 text-center py-3">No links yet</p>
+        )}
+        {links.map((link, i) => (
           <LinkRow
             key={i}
             link={link}
             index={i}
-            total={column.links.length}
-            onChange={l => updateLink(i, l)}
-            onRemove={() => removeLink(i)}
-            onMove={dir => moveLink(i, dir)}
+            total={links.length}
+            onChange={l => onLinkChange(i, l)}
+            onRemove={() => onLinkRemove(i)}
+            onMove={dir => onLinkMove(i, dir)}
           />
         ))}
+
+        {/* Add link */}
         <button
           type="button"
-          onClick={addLink}
-          className="flex items-center gap-1.5 mt-1 text-xs text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
+          onClick={onAddLink}
+          className="w-full flex items-center justify-center gap-1.5 mt-1 py-2 text-xs text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800/60 rounded-lg border border-dashed border-gray-200 dark:border-gray-700 transition-colors"
         >
-          <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor">
+          <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
           </svg>
           Add link
@@ -206,7 +184,7 @@ function FooterColumnCard({
   )
 }
 
-// ── Main editor ────────────────────────────────────────────────────────────────
+// ── Main editor ───────────────────────────────────────────────────────────────
 export default function MenuEditor({
   initialMegaMenu,
   initialFooter,
@@ -236,7 +214,7 @@ export default function MenuEditor({
     })
   }
 
-  // Mega menu column helpers
+  // Mega menu helpers
   const updateMegaColumn = (i: number, col: MegaMenuColumn) =>
     setMegaMenu(m => ({ ...m, columns: m.columns.map((c, idx) => idx === i ? col : c) }))
   const removeMegaColumn = (i: number) =>
@@ -253,7 +231,7 @@ export default function MenuEditor({
   const addPlainNav = () =>
     setMegaMenu(m => ({ ...m, plainNav: [...m.plainNav, { label: '', href: '' }] }))
 
-  // Footer column helpers
+  // Footer helpers
   const updateFooterColumn = (i: number, col: FooterColumn) =>
     setFooter(f => ({ ...f, columns: f.columns.map((c, idx) => idx === i ? col : c) }))
   const removeFooterColumn = (i: number) =>
@@ -264,14 +242,14 @@ export default function MenuEditor({
   return (
     <div>
       {/* Tab bar + Save */}
-      <div className="flex items-center justify-between mb-6">
-        <div className="flex items-center gap-1 bg-gray-100 dark:bg-gray-800 rounded-lg p-1">
+      <div className="flex items-center justify-between mb-7">
+        <div className="flex items-center gap-1 bg-gray-100 dark:bg-gray-800 rounded-xl p-1">
           {(['mega', 'footer'] as Tab[]).map(t => (
             <button
               key={t}
               type="button"
               onClick={() => setTab(t)}
-              className={`px-4 py-1.5 text-sm font-medium rounded-md transition-colors ${
+              className={`px-5 py-1.5 text-sm font-medium rounded-lg transition-all ${
                 tab === t
                   ? 'bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm'
                   : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'
@@ -288,7 +266,7 @@ export default function MenuEditor({
             type="button"
             onClick={save}
             disabled={isPending}
-            className="flex items-center gap-2 px-4 py-2 bg-gray-900 dark:bg-white text-white dark:text-gray-900 text-sm font-medium rounded-lg hover:bg-gray-700 dark:hover:bg-gray-100 disabled:opacity-50 transition-colors"
+            className="flex items-center gap-2 px-5 py-2 bg-gray-900 dark:bg-white text-white dark:text-gray-900 text-sm font-medium rounded-xl hover:bg-gray-700 dark:hover:bg-gray-100 disabled:opacity-50 transition-colors shadow-sm"
           >
             {isPending ? (
               <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
@@ -313,17 +291,17 @@ export default function MenuEditor({
       {tab === 'mega' && (
         <div className="space-y-8">
           {/* Columns */}
-          <div>
-            <div className="flex items-center justify-between mb-3">
+          <section>
+            <div className="flex items-center justify-between mb-4">
               <div>
                 <h3 className="text-sm font-semibold text-gray-800 dark:text-gray-100">Shop Columns</h3>
-                <p className="text-xs text-gray-400 mt-0.5">These appear in the "Shop" dropdown mega menu.</p>
+                <p className="text-xs text-gray-400 mt-0.5">Appear in the "Shop" dropdown mega menu.</p>
               </div>
               {megaMenu.columns.length < 4 && (
                 <button
                   type="button"
                   onClick={addMegaColumn}
-                  className="flex items-center gap-1.5 text-xs font-medium text-gray-500 hover:text-gray-800 dark:hover:text-gray-200 border border-gray-200 dark:border-gray-700 rounded-lg px-3 py-1.5 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+                  className="flex items-center gap-1.5 text-xs font-medium text-gray-500 hover:text-gray-800 dark:hover:text-gray-200 border border-gray-200 dark:border-gray-700 rounded-xl px-3 py-1.5 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
                 >
                   <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
@@ -334,55 +312,64 @@ export default function MenuEditor({
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
               {megaMenu.columns.map((col, i) => (
-                <MegaColumnCard
+                <ColumnCard
                   key={i}
-                  column={col}
-                  colIndex={i}
+                  heading={col.heading}
+                  links={col.links}
                   total={megaMenu.columns.length}
-                  onChange={c => updateMegaColumn(i, c)}
+                  onHeadingChange={v => updateMegaColumn(i, { ...col, heading: v })}
+                  onLinkChange={(li, l) => updateMegaColumn(i, { ...col, links: col.links.map((x, idx) => idx === li ? l : x) })}
+                  onLinkRemove={li => updateMegaColumn(i, { ...col, links: col.links.filter((_, idx) => idx !== li) })}
+                  onLinkMove={(li, dir) => updateMegaColumn(i, { ...col, links: moveItem(col.links, li, dir) })}
+                  onAddLink={() => updateMegaColumn(i, { ...col, links: [...col.links, { label: '', href: '' }] })}
                   onRemove={() => removeMegaColumn(i)}
                 />
               ))}
             </div>
-          </div>
+          </section>
 
           {/* Plain nav */}
-          <div>
-            <div className="mb-3">
+          <section>
+            <div className="mb-4">
               <h3 className="text-sm font-semibold text-gray-800 dark:text-gray-100">Plain Navigation</h3>
               <p className="text-xs text-gray-400 mt-0.5">Top-level nav links shown beside the "Shop" button.</p>
             </div>
-            <div className="border border-gray-200 dark:border-gray-700 rounded-xl bg-white dark:bg-gray-900 p-4 space-y-2 max-w-xl">
-              {megaMenu.plainNav.map((link, i) => (
-                <LinkRow
-                  key={i}
-                  link={link}
-                  index={i}
-                  total={megaMenu.plainNav.length}
-                  onChange={l => updatePlainNav(i, l)}
-                  onRemove={() => removePlainNav(i)}
-                  onMove={dir => movePlainNav(i, dir)}
-                />
-              ))}
-              <button
-                type="button"
-                onClick={addPlainNav}
-                className="flex items-center gap-1.5 mt-1 text-xs text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
-              >
-                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
-                </svg>
-                Add link
-              </button>
+            <div className="rounded-2xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 overflow-hidden shadow-sm max-w-xl">
+              <div className="p-3 space-y-1.5">
+                {megaMenu.plainNav.length === 0 && (
+                  <p className="text-xs text-gray-300 dark:text-gray-600 text-center py-3">No links yet</p>
+                )}
+                {megaMenu.plainNav.map((link, i) => (
+                  <LinkRow
+                    key={i}
+                    link={link}
+                    index={i}
+                    total={megaMenu.plainNav.length}
+                    onChange={l => updatePlainNav(i, l)}
+                    onRemove={() => removePlainNav(i)}
+                    onMove={dir => movePlainNav(i, dir)}
+                  />
+                ))}
+                <button
+                  type="button"
+                  onClick={addPlainNav}
+                  className="w-full flex items-center justify-center gap-1.5 py-2 text-xs text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800/60 rounded-lg border border-dashed border-gray-200 dark:border-gray-700 transition-colors"
+                >
+                  <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+                  </svg>
+                  Add link
+                </button>
+              </div>
             </div>
-          </div>
+          </section>
         </div>
       )}
 
       {/* ── Footer Menu Tab ── */}
       {tab === 'footer' && (
         <div>
-          <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center justify-between mb-4">
             <div>
               <h3 className="text-sm font-semibold text-gray-800 dark:text-gray-100">Footer Columns</h3>
               <p className="text-xs text-gray-400 mt-0.5">Link columns shown in the store footer.</p>
@@ -391,7 +378,7 @@ export default function MenuEditor({
               <button
                 type="button"
                 onClick={addFooterColumn}
-                className="flex items-center gap-1.5 text-xs font-medium text-gray-500 hover:text-gray-800 dark:hover:text-gray-200 border border-gray-200 dark:border-gray-700 rounded-lg px-3 py-1.5 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+                className="flex items-center gap-1.5 text-xs font-medium text-gray-500 hover:text-gray-800 dark:hover:text-gray-200 border border-gray-200 dark:border-gray-700 rounded-xl px-3 py-1.5 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
               >
                 <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
@@ -402,12 +389,17 @@ export default function MenuEditor({
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
             {footer.columns.map((col, i) => (
-              <FooterColumnCard
+              <ColumnCard
                 key={i}
-                column={col}
-                colIndex={i}
+                heading={col.title}
+                links={col.links}
                 total={footer.columns.length}
-                onChange={c => updateFooterColumn(i, c)}
+                headingPlaceholder="Column title"
+                onHeadingChange={v => updateFooterColumn(i, { ...col, title: v })}
+                onLinkChange={(li, l) => updateFooterColumn(i, { ...col, links: col.links.map((x, idx) => idx === li ? l : x) })}
+                onLinkRemove={li => updateFooterColumn(i, { ...col, links: col.links.filter((_, idx) => idx !== li) })}
+                onLinkMove={(li, dir) => updateFooterColumn(i, { ...col, links: moveItem(col.links, li, dir) })}
+                onAddLink={() => updateFooterColumn(i, { ...col, links: [...col.links, { label: '', href: '' }] })}
                 onRemove={() => removeFooterColumn(i)}
               />
             ))}
