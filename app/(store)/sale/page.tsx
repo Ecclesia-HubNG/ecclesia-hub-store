@@ -10,6 +10,7 @@ export default async function SalePage() {
     .from('products')
     .select('id, name, slug, price, compare_at_price, thumbnail, stock, categories(name)')
     .eq('is_active', true)
+    .gt('stock', 0)
     .not('compare_at_price', 'is', null)
     .order('compare_at_price', { ascending: false })
 

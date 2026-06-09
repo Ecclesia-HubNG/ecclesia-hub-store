@@ -1435,16 +1435,17 @@ export function ProductsManager({
       {/* CSV Import modal */}
       {importRows !== null && (
         <>
-          <div className="fixed inset-0 z-40 bg-black/50 backdrop-blur-[2px]" onClick={() => setImportRows(null)} />
+          <div className="fixed inset-0 z-40 bg-black/60 backdrop-blur-[2px]" onClick={() => !isImporting && setImportRows(null)} />
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-            <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-2xl w-full max-w-md overflow-hidden">
+            <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] flex flex-col overflow-hidden">
+
               {/* Header */}
-              <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 dark:border-gray-800">
+              <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 dark:border-gray-800 shrink-0">
                 <div>
-                  <h2 className="font-semibold text-gray-900 dark:text-white">Import Products</h2>
-                  <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">{importRows.length} rows found in CSV</p>
+                  <h2 className="font-semibold text-gray-900 dark:text-white">Review Import</h2>
+                  <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">{importRows.length} rows parsed from CSV</p>
                 </div>
-                <button type="button" onClick={() => setImportRows(null)}
+                <button type="button" onClick={() => !isImporting && setImportRows(null)}
                   className="w-8 h-8 flex items-center justify-center rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
                   <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                     <path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" />
@@ -1452,88 +1453,164 @@ export function ProductsManager({
                 </button>
               </div>
 
-              {/* Summary */}
-              <div className="px-6 py-4 space-y-3">
-                <div className="grid grid-cols-4 gap-2">
-                  <div className="p-3 bg-gray-50 dark:bg-gray-800 rounded-xl text-center">
-                    <p className="text-xl font-bold text-gray-900 dark:text-white">{importRows.length}</p>
-                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">Total</p>
-                  </div>
-                  <div className="p-3 bg-green-50 dark:bg-green-950/40 rounded-xl text-center">
-                    <p className="text-xl font-bold text-green-700 dark:text-green-400">{importRows.filter(r => !r.isDuplicate && !r.id).length}</p>
-                    <p className="text-xs text-green-600 dark:text-green-500 mt-0.5">New</p>
-                  </div>
-                  <div className="p-3 bg-blue-50 dark:bg-blue-950/40 rounded-xl text-center">
-                    <p className="text-xl font-bold text-blue-700 dark:text-blue-400">{importRows.filter(r => !!r.id).length}</p>
-                    <p className="text-xs text-blue-600 dark:text-blue-500 mt-0.5">Updates</p>
-                  </div>
-                  <div className="p-3 bg-amber-50 dark:bg-amber-950/40 rounded-xl text-center">
-                    <p className="text-xl font-bold text-amber-700 dark:text-amber-400">{importRows.filter(r => r.isDuplicate).length}</p>
-                    <p className="text-xs text-amber-600 dark:text-amber-500 mt-0.5">Skip</p>
-                  </div>
-                </div>
+              {/* Summary chips */}
+              <div className="flex items-center gap-2 px-6 py-3 border-b border-gray-100 dark:border-gray-800 shrink-0 flex-wrap">
+                <span className="px-3 py-1 rounded-full text-xs font-semibold bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300">
+                  {importRows.length} total
+                </span>
+                {importRows.filter(r => !r.isDuplicate && !r.id).length > 0 && (
+                  <span className="px-3 py-1 rounded-full text-xs font-semibold bg-green-100 dark:bg-green-950/60 text-green-700 dark:text-green-400">
+                    {importRows.filter(r => !r.isDuplicate && !r.id).length} new
+                  </span>
+                )}
+                {importRows.filter(r => !!r.id).length > 0 && (
+                  <span className="px-3 py-1 rounded-full text-xs font-semibold bg-blue-100 dark:bg-blue-950/60 text-blue-700 dark:text-blue-400">
+                    {importRows.filter(r => !!r.id).length} updates
+                  </span>
+                )}
+                {importRows.filter(r => r.isDuplicate).length > 0 && (
+                  <span className="px-3 py-1 rounded-full text-xs font-semibold bg-amber-100 dark:bg-amber-950/60 text-amber-700 dark:text-amber-400">
+                    {importRows.filter(r => r.isDuplicate).length} duplicates (will skip)
+                  </span>
+                )}
+              </div>
 
-                {/* Preview list */}
-                {importRows.length > 0 && (
-                  <div className="max-h-52 overflow-y-auto border border-gray-100 dark:border-gray-800 rounded-xl divide-y divide-gray-100 dark:divide-gray-800">
-                    {importRows.map((r, i) => (
-                      <div key={i} className={`flex items-center gap-3 px-3 py-2.5 ${r.isDuplicate ? 'bg-amber-50/50 dark:bg-amber-950/20' : ''}`}>
-                        {r.thumbnail ? (
-                          <img src={r.thumbnail} alt="" className="w-8 h-8 rounded-lg object-cover bg-gray-100 dark:bg-gray-800 shrink-0" />
-                        ) : (
-                          <div className="w-8 h-8 rounded-lg bg-gray-100 dark:bg-gray-800 shrink-0 flex items-center justify-center">
-                            <svg className="w-3.5 h-3.5 text-gray-300 dark:text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                              <path strokeLinecap="round" strokeLinejoin="round" d="m2.25 15.75 5.159-5.159a2.25 2.25 0 0 1 3.182 0l5.159 5.159m-1.5-1.5 1.409-1.409a2.25 2.25 0 0 1 3.182 0l2.909 2.909" />
-                            </svg>
+              {/* Table */}
+              <div className="flex-1 overflow-auto min-h-0">
+                <table className="w-full text-sm">
+                  <thead className="sticky top-0 bg-gray-50 dark:bg-gray-800/80 backdrop-blur">
+                    <tr>
+                      <th className="text-left px-4 py-2.5 text-xs font-semibold text-gray-500 dark:text-gray-400 whitespace-nowrap">Product</th>
+                      <th className="text-left px-4 py-2.5 text-xs font-semibold text-gray-500 dark:text-gray-400 whitespace-nowrap">Brand / Category</th>
+                      <th className="text-right px-4 py-2.5 text-xs font-semibold text-gray-500 dark:text-gray-400 whitespace-nowrap">Price</th>
+                      <th className="text-right px-4 py-2.5 text-xs font-semibold text-gray-500 dark:text-gray-400 whitespace-nowrap">Stock</th>
+                      <th className="text-left px-4 py-2.5 text-xs font-semibold text-gray-500 dark:text-gray-400 whitespace-nowrap">Variants</th>
+                      <th className="text-center px-4 py-2.5 text-xs font-semibold text-gray-500 dark:text-gray-400 whitespace-nowrap">Status</th>
+                      <th className="text-center px-4 py-2.5 text-xs font-semibold text-gray-500 dark:text-gray-400 whitespace-nowrap">Action</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
+                    {importRows.filter(r => !r.isDuplicate).map((r, i) => (
+                      <tr key={i} className={r.id ? 'bg-blue-50/30 dark:bg-blue-950/10' : ''}>
+                        <td className="px-4 py-3">
+                          <div className="flex items-center gap-2.5 min-w-0">
+                            {r.thumbnail ? (
+                              <img src={r.thumbnail} alt="" className="w-9 h-9 rounded-lg object-cover bg-gray-100 dark:bg-gray-800 shrink-0" />
+                            ) : (
+                              <div className="w-9 h-9 rounded-lg bg-gray-100 dark:bg-gray-800 shrink-0 flex items-center justify-center">
+                                <svg className="w-3.5 h-3.5 text-gray-300 dark:text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                                  <path strokeLinecap="round" strokeLinejoin="round" d="m2.25 15.75 5.159-5.159a2.25 2.25 0 0 1 3.182 0l5.159 5.159m-1.5-1.5 1.409-1.409a2.25 2.25 0 0 1 3.182 0l2.909 2.909" />
+                                </svg>
+                              </div>
+                            )}
+                            <div className="min-w-0">
+                              <p className="font-medium text-gray-900 dark:text-white truncate max-w-[200px]">{r.name}</p>
+                              {r.sku && <p className="text-xs text-gray-400 dark:text-gray-600">SKU: {r.sku}</p>}
+                            </div>
                           </div>
-                        )}
-                        <div className="flex-1 min-w-0">
-                          <p className={`text-sm truncate ${r.isDuplicate ? 'text-amber-700 dark:text-amber-400' : 'text-gray-900 dark:text-white'}`}>{r.name}</p>
-                          <p className="text-xs text-gray-400 dark:text-gray-600 mt-0.5">
-                            ₦{r.price.toLocaleString()} · {r.stock} in stock
-                            {r.category_names?.[0] && <> · {r.category_names[0]}</>}
-                          </p>
-                        </div>
-                        {r.isDuplicate ? (
-                          <span className="text-xs font-medium text-amber-600 dark:text-amber-500 shrink-0">duplicate</span>
-                        ) : r.id ? (
-                          <span className="text-xs font-medium text-blue-600 dark:text-blue-400 shrink-0">update</span>
-                        ) : (
-                          <span className="text-xs font-medium text-green-600 dark:text-green-400 shrink-0">new</span>
-                        )}
-                      </div>
+                        </td>
+                        <td className="px-4 py-3 text-xs text-gray-500 dark:text-gray-400 whitespace-nowrap">
+                          {r.brand_name && <p className="font-medium text-gray-700 dark:text-gray-300">{r.brand_name}</p>}
+                          {r.category_names?.[0] && <p>{r.category_names[0]}</p>}
+                          {!r.brand_name && !r.category_names?.[0] && <span className="text-gray-300 dark:text-gray-700">—</span>}
+                        </td>
+                        <td className="px-4 py-3 text-right font-medium text-gray-900 dark:text-white whitespace-nowrap tabular-nums">
+                          ₦{r.price.toLocaleString()}
+                          {r.compare_at_price && (
+                            <p className="text-xs text-gray-400 line-through">₦{r.compare_at_price.toLocaleString()}</p>
+                          )}
+                        </td>
+                        <td className="px-4 py-3 text-right tabular-nums">
+                          <span className={`text-sm font-semibold ${r.stock === 0 ? 'text-red-500' : r.stock <= 5 ? 'text-amber-600 dark:text-amber-400' : 'text-gray-700 dark:text-gray-300'}`}>
+                            {r.stock}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3 text-xs text-gray-500 dark:text-gray-400">
+                          {r.variants?.length ? (
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-gray-100 dark:bg-gray-800 rounded-full text-[10px] font-medium text-gray-600 dark:text-gray-400">
+                              {r.variants.length} group{r.variants.length !== 1 ? 's' : ''}
+                            </span>
+                          ) : (
+                            <span className="text-gray-300 dark:text-gray-700">—</span>
+                          )}
+                        </td>
+                        <td className="px-4 py-3 text-center">
+                          <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold ${r.is_active ? 'bg-green-100 dark:bg-green-950/50 text-green-700 dark:text-green-400' : 'bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400'}`}>
+                            {r.is_active ? 'Active' : 'Inactive'}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3 text-center">
+                          {r.id ? (
+                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-blue-100 dark:bg-blue-950/50 text-blue-700 dark:text-blue-400">UPDATE</span>
+                          ) : (
+                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-green-100 dark:bg-green-950/50 text-green-700 dark:text-green-400">NEW</span>
+                          )}
+                        </td>
+                      </tr>
                     ))}
+                  </tbody>
+                </table>
+
+                {/* Duplicates section */}
+                {importRows.filter(r => r.isDuplicate).length > 0 && (
+                  <div className="border-t-2 border-dashed border-amber-200 dark:border-amber-900/50 mt-2">
+                    <div className="px-4 py-3 bg-amber-50/50 dark:bg-amber-950/10">
+                      <p className="text-xs font-semibold text-amber-700 dark:text-amber-500 uppercase tracking-wider mb-2">
+                        Duplicates — will be skipped ({importRows.filter(r => r.isDuplicate).length})
+                      </p>
+                      <div className="divide-y divide-amber-100 dark:divide-amber-900/30">
+                        {importRows.filter(r => r.isDuplicate).map((r, i) => (
+                          <div key={i} className="flex items-center gap-3 py-2">
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm text-amber-700 dark:text-amber-400 font-medium truncate">{r.name}</p>
+                              <p className="text-xs text-amber-500/70 dark:text-amber-600">
+                                ₦{r.price.toLocaleString()} · {r.stock} in stock — name already exists, no ID provided
+                              </p>
+                            </div>
+                            <span className="shrink-0 text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-100 dark:bg-amber-950/60 text-amber-600 dark:text-amber-500">SKIP</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
                   </div>
                 )}
 
-                {importRows.filter(r => !r.isDuplicate).length === 0 && importRows.length > 0 && (
-                  <p className="text-sm text-center text-gray-500 dark:text-gray-400 py-2">
-                    All rows are duplicates — nothing to import.
-                  </p>
+                {importRows.filter(r => !r.isDuplicate).length === 0 && (
+                  <div className="px-6 py-12 text-center">
+                    <p className="text-gray-400 dark:text-gray-600 text-sm">All rows are duplicates — nothing to import.</p>
+                  </div>
                 )}
-
-                <p className="text-xs text-gray-400 dark:text-gray-600">
-                  Rows with an ID update the existing product. Rows without an ID create new ones. Duplicates (same name, no ID) are skipped.
-                  {' '}<button type="button" onClick={downloadTemplate} className="underline underline-offset-2 hover:text-gray-600 dark:hover:text-gray-400 transition-colors">Download template</button>
-                </p>
               </div>
 
               {/* Footer */}
-              <div className="px-6 py-4 border-t border-gray-100 dark:border-gray-800 flex gap-3">
-                <button type="button" onClick={() => setImportRows(null)}
-                  className="flex-1 px-4 py-2.5 text-sm font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-800 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors">
-                  Cancel
-                </button>
-                <button type="button" onClick={handleConfirmImport} disabled={isImporting || importRows.filter(r => !r.isDuplicate).length === 0}
-                  className="flex-1 px-4 py-2.5 text-sm font-medium text-white bg-gray-900 dark:bg-white dark:text-gray-900 rounded-lg hover:bg-gray-700 dark:hover:bg-gray-100 transition-colors disabled:opacity-50">
-                  {isImporting ? 'Importing…' : (() => {
-                    const newCount = importRows.filter(r => !r.isDuplicate && !r.id).length
-                    const updateCount = importRows.filter(r => !!r.id).length
-                    if (newCount && updateCount) return `Import ${newCount} new · Update ${updateCount}`
-                    if (updateCount) return `Update ${updateCount} product${updateCount !== 1 ? 's' : ''}`
-                    return `Import ${newCount} product${newCount !== 1 ? 's' : ''}`
-                  })()}
-                </button>
+              <div className="px-6 py-4 border-t border-gray-100 dark:border-gray-800 flex items-center justify-between gap-4 shrink-0 bg-white dark:bg-gray-900">
+                <p className="text-xs text-gray-400 dark:text-gray-600 max-w-xs">
+                  Rows with an ID update existing products. Rows without an ID create new ones.
+                </p>
+                <div className="flex gap-3 shrink-0">
+                  <button type="button" onClick={() => setImportRows(null)} disabled={isImporting}
+                    className="px-5 py-2.5 text-sm font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-800 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-700 disabled:opacity-50 transition-colors">
+                    Cancel
+                  </button>
+                  <button type="button" onClick={handleConfirmImport} disabled={isImporting || importRows.filter(r => !r.isDuplicate).length === 0}
+                    className="flex items-center gap-2 px-5 py-2.5 text-sm font-medium text-white bg-gray-900 dark:bg-white dark:text-gray-900 rounded-lg hover:bg-gray-700 dark:hover:bg-gray-100 disabled:opacity-50 transition-colors min-w-[140px] justify-center">
+                    {isImporting ? (
+                      <>
+                        <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                        </svg>
+                        Importing…
+                      </>
+                    ) : (() => {
+                      const newCount = importRows.filter(r => !r.isDuplicate && !r.id).length
+                      const updateCount = importRows.filter(r => !!r.id).length
+                      if (newCount && updateCount) return `Import ${newCount} · Update ${updateCount}`
+                      if (updateCount) return `Update ${updateCount} product${updateCount !== 1 ? 's' : ''}`
+                      return `Import ${newCount} product${newCount !== 1 ? 's' : ''}`
+                    })()}
+                  </button>
+                </div>
               </div>
             </div>
           </div>

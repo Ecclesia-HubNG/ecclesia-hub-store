@@ -30,8 +30,9 @@ export default async function CategoryPage({ params }: { params: { slug: string 
 
   const { data: products } = await supabase
     .from('products')
-    .select('id, name, slug, price, compare_at_price, thumbnail')
+    .select('id, name, slug, price, compare_at_price, thumbnail, stock, is_new_arrival, variants, categories(name)')
     .eq('is_active', true)
+    .gt('stock', 0)
     .in('category_id', categoryIds)
     .order('created_at', { ascending: false })
 
@@ -145,7 +146,7 @@ export default async function CategoryPage({ params }: { params: { slug: string 
         ) : (
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
             {products.map(product => (
-              <ProductCard key={product.id} product={product} showCategory={false} />
+              <ProductCard key={product.id} product={product as any} showCategory={false} />
             ))}
           </div>
         )}

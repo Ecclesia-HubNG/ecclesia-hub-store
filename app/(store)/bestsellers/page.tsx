@@ -13,6 +13,7 @@ export default async function BestSellersPage() {
       .from('products')
       .select('id, name, slug, price, compare_at_price, thumbnail, stock, category_id, is_featured, is_new_arrival, variants, categories(name)')
       .eq('is_active', true)
+      .gt('stock', 0)
       .eq('is_bestseller', true)
       .order('name'),
   ])

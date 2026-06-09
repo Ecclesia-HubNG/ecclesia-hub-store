@@ -11,6 +11,7 @@ export type CartItem = {
   price: number
   thumbnail: string | null
   quantity: number
+  stock?: number
   selectedVariants?: SelectedVariant[]
 }
 
@@ -85,14 +86,17 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     const key = itemKey(item.productId, item.selectedVariants)
     setItems(prev => {
       const existing = prev.find(i => itemKey(i.productId, i.selectedVariants) === key)
+      const max = item.stock ?? existing?.stock
       if (existing) {
+        const next = existing.quantity + (item.quantity ?? 1)
         return prev.map(i =>
           itemKey(i.productId, i.selectedVariants) === key
-            ? { ...i, quantity: i.quantity + (item.quantity ?? 1) }
+            ? { ...i, stock: item.stock ?? i.stock, quantity: max != null ? Math.min(next, max) : next }
             : i
         )
       }
-      return [...prev, { ...item, quantity: item.quantity ?? 1 }]
+      const qty = item.quantity ?? 1
+      return [...prev, { ...item, quantity: max != null ? Math.min(qty, max) : qty }]
     })
   }, [])
 

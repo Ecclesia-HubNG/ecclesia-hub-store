@@ -16,6 +16,7 @@ type Product = {
   stock?: number
   categories?: { name: string } | null
   is_new_arrival?: boolean
+  variants?: Array<{ name: string; options: Array<{ value: string }> }> | null
 }
 
 function CartIcon() {
@@ -38,19 +39,20 @@ export default function ProductCard({ product, showCategory = true }: { product:
 
   const outOfStock = product.stock !== undefined && product.stock === 0
   const lowStock = product.stock !== undefined && product.stock > 0 && product.stock <= 5
+  const hasVariants = !!(product.variants && product.variants.length > 0)
 
   function handleAddToCart(e: React.MouseEvent) {
     e.preventDefault()
-    if (outOfStock) return
-    addItem({ productId: product.id, slug: product.slug, name: product.name, price: product.price, thumbnail: product.thumbnail })
+    if (outOfStock || hasVariants) return
+    addItem({ productId: product.id, slug: product.slug, name: product.name, price: product.price, thumbnail: product.thumbnail, stock: product.stock })
     setAdded(true)
     setTimeout(() => setAdded(false), 1800)
   }
 
   function handleBuyNow(e: React.MouseEvent) {
     e.preventDefault()
-    if (outOfStock) return
-    addItem({ productId: product.id, slug: product.slug, name: product.name, price: product.price, thumbnail: product.thumbnail })
+    if (outOfStock || hasVariants) return
+    addItem({ productId: product.id, slug: product.slug, name: product.name, price: product.price, thumbnail: product.thumbnail, stock: product.stock })
     router.push('/cart')
   }
 
@@ -132,36 +134,47 @@ export default function ProductCard({ product, showCategory = true }: { product:
 
         {/* Buttons */}
         <div className="flex items-center gap-2 mt-auto pt-1">
-          <button
-            type="button"
-            onClick={handleBuyNow}
-            disabled={outOfStock}
-            className={`flex-1 h-10 rounded-xl text-xs font-bold transition-all ${
-              outOfStock
-                ? 'bg-gray-100 dark:bg-gray-800 text-gray-400 cursor-not-allowed'
-                : 'bg-[#4A0F1C] text-white hover:bg-[#3A0B15]'
-            }`}
-          >
-            {outOfStock ? 'Sold out' : 'Buy Now'}
-          </button>
-          <button
-            type="button"
-            onClick={handleAddToCart}
-            disabled={outOfStock}
-            title="Add to cart"
-            className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all shrink-0 ${
-              added
-                ? 'bg-green-600 text-white'
-                : outOfStock
-                ? 'bg-gray-100 dark:bg-gray-800 text-gray-400 cursor-not-allowed'
-                : 'bg-[#4A0F1C] text-white hover:bg-[#3A0B15]'
-            }`}
-          >
-            {added
-              ? <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="m4.5 12.75 6 6 9-13.5" /></svg>
-              : <CartIcon />
-            }
-          </button>
+          {hasVariants ? (
+            <Link
+              href={`/product/${product.slug}`}
+              className="flex-1 h-10 rounded-xl text-xs font-bold bg-[#4A0F1C] text-white hover:bg-[#3A0B15] transition-all flex items-center justify-center"
+            >
+              Select Options
+            </Link>
+          ) : (
+            <>
+              <button
+                type="button"
+                onClick={handleBuyNow}
+                disabled={outOfStock}
+                className={`flex-1 h-10 rounded-xl text-xs font-bold transition-all ${
+                  outOfStock
+                    ? 'bg-gray-100 dark:bg-gray-800 text-gray-400 cursor-not-allowed'
+                    : 'bg-[#4A0F1C] text-white hover:bg-[#3A0B15]'
+                }`}
+              >
+                {outOfStock ? 'Sold out' : 'Buy Now'}
+              </button>
+              <button
+                type="button"
+                onClick={handleAddToCart}
+                disabled={outOfStock}
+                title="Add to cart"
+                className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all shrink-0 ${
+                  added
+                    ? 'bg-green-600 text-white'
+                    : outOfStock
+                    ? 'bg-gray-100 dark:bg-gray-800 text-gray-400 cursor-not-allowed'
+                    : 'bg-[#4A0F1C] text-white hover:bg-[#3A0B15]'
+                }`}
+              >
+                {added
+                  ? <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="m4.5 12.75 6 6 9-13.5" /></svg>
+                  : <CartIcon />
+                }
+              </button>
+            </>
+          )}
         </div>
       </div>
     </div>

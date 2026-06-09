@@ -23,6 +23,7 @@ export default async function HomePage() {
       .select('id, name, slug, price, compare_at_price, thumbnail, stock, categories(name)')
       .eq('is_featured', true)
       .eq('is_active', true)
+      .gt('stock', 0)
       .limit(8),
     admin
       .from('homepage_widgets')

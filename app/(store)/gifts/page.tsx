@@ -19,11 +19,13 @@ export default async function GiftsPage() {
     .from('products')
     .select('id, name, slug, price, compare_at_price, thumbnail, stock, category_id, is_featured, is_new_arrival, variants, categories(name)')
     .eq('is_active', true)
+    .gt('stock', 0)
 
   const { data: directProducts } = await supabase
     .from('products')
     .select('id, name, slug, price, compare_at_price, thumbnail, stock, category_id, is_featured, is_new_arrival, variants, categories(name)')
     .eq('is_active', true)
+    .gt('stock', 0)
     .eq('is_gift', true)
 
   const { data: categoryProducts } = giftCategoryIds.length > 0
@@ -31,6 +33,7 @@ export default async function GiftsPage() {
         .from('products')
         .select('id, name, slug, price, compare_at_price, thumbnail, stock, category_id, is_featured, is_new_arrival, variants, categories(name)')
         .eq('is_active', true)
+        .gt('stock', 0)
         .in('category_id', giftCategoryIds)
     : { data: [] }
 

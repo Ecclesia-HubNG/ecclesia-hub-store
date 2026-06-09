@@ -148,7 +148,8 @@ export default function CartPage() {
                         <button
                           type="button"
                           onClick={() => updateQuantity(key, item.quantity + 1)}
-                          className="w-9 h-9 flex items-center justify-center text-gray-500 dark:text-gray-400 hover:bg-[#4A0F1C] hover:text-white transition-colors"
+                          disabled={item.stock != null && item.quantity >= item.stock}
+                          className="w-9 h-9 flex items-center justify-center text-gray-500 dark:text-gray-400 hover:bg-[#4A0F1C] hover:text-white disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
                         >
                           <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" /></svg>
                         </button>

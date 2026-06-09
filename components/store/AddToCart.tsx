@@ -97,12 +97,13 @@ export default function AddToCart({
           name,
           price: opt.price,
           thumbnail,
+          stock: opt.stock ?? stock,
           selectedVariants: [{ groupName: opt.groupName, value: opt.value, price: opt.price }],
           quantity: opt.qty,
         })
       }
     } else {
-      addItem({ productId, slug, name, price: basePrice, thumbnail, quantity: globalQty })
+      addItem({ productId, slug, name, price: basePrice, thumbnail, stock, quantity: globalQty })
     }
     setAdded(true)
     setTimeout(() => setAdded(false), 2000)

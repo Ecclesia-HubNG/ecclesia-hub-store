@@ -25,6 +25,7 @@ export default async function BrandPage({ params }: { params: { slug: string } }
       .from('products')
       .select('id, name, slug, price, compare_at_price, thumbnail, stock, variants, categories(name)')
       .eq('is_active', true)
+      .gt('stock', 0)
       .order('created_at', { ascending: false }),
   ])
 
@@ -36,6 +37,7 @@ export default async function BrandPage({ params }: { params: { slug: string } }
     .select('id, name, slug, price, compare_at_price, thumbnail, stock, variants, categories(name)')
     .eq('brand_id', brand.id)
     .eq('is_active', true)
+    .gt('stock', 0)
     .order('created_at', { ascending: false })
 
   return (

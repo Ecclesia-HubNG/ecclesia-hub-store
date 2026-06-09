@@ -10,6 +10,7 @@ export default async function DealsPage() {
     .from('products')
     .select('id, name, slug, price, compare_at_price, thumbnail, stock, categories(name)')
     .eq('is_active', true)
+    .gt('stock', 0)
     .order('created_at', { ascending: false })
     .limit(48)
 
