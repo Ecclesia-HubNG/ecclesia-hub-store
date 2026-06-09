@@ -20,7 +20,7 @@ export default async function HomePage() {
   const [{ data: featured }, { data: heroWidget }, { data: categories }, { data: potmRaw }] = await Promise.all([
     supabase
       .from('products')
-      .select('id, name, slug, price, compare_at_price, thumbnail, stock, categories(name)')
+      .select('id, name, slug, price, compare_at_price, thumbnail, stock, variants, categories(name)')
       .eq('is_featured', true)
       .eq('is_active', true)
       .gt('stock', 0)
@@ -69,7 +69,7 @@ export default async function HomePage() {
     } else {
       const { data: specific } = await supabase
         .from('products')
-        .select('id, name, slug, price, compare_at_price, thumbnail, stock, categories(name)')
+        .select('id, name, slug, price, compare_at_price, thumbnail, stock, variants, categories(name)')
         .eq('id', widgetConfig.product_id)
         .eq('is_active', true)
         .maybeSingle()

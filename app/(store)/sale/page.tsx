@@ -8,7 +8,7 @@ export default async function SalePage() {
 
   const { data: products } = await supabase
     .from('products')
-    .select('id, name, slug, price, compare_at_price, thumbnail, stock, categories(name)')
+    .select('id, name, slug, price, compare_at_price, thumbnail, stock, variants, categories(name)')
     .eq('is_active', true)
     .gt('stock', 0)
     .not('compare_at_price', 'is', null)

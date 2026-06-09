@@ -15,6 +15,7 @@ type Product = {
   thumbnail: string | null
   stock: number
   categories: { name: string } | null
+  variants?: Array<{ name: string; options: Array<{ value: string }> }> | null
 }
 
 export default function WishlistPage() {
@@ -29,7 +30,7 @@ export default function WishlistPage() {
     const supabase = createClient()
     supabase
       .from('products')
-      .select('id, name, slug, price, compare_at_price, thumbnail, stock, categories(name)')
+      .select('id, name, slug, price, compare_at_price, thumbnail, stock, variants, categories(name)')
       .in('id', items)
       .eq('is_active', true)
       .then(({ data }) => {

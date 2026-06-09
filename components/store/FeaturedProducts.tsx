@@ -10,6 +10,7 @@ type Product = {
   thumbnail: string | null
   stock: number
   categories: { name: string } | null
+  variants?: Array<{ name: string; options: Array<{ value: string }> }> | null
 }
 
 export default function FeaturedProducts({ products }: { products: Product[] }) {
