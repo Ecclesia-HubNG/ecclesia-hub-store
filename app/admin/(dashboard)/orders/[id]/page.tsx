@@ -6,6 +6,8 @@ import { OrderQuickActions } from '@/components/admin/OrderQuickActions'
 import { OrderTracking } from '@/components/admin/OrderTracking'
 import { DeleteOrderButton } from '@/components/admin/DeleteOrderButton'
 import { SendConfirmationEmailButton } from '@/components/admin/SendConfirmationEmailButton'
+import { OrderTimeline } from '@/components/admin/OrderTimeline'
+import { getOrderEvents, type OrderEvent } from '@/lib/actions/order-events'
 
 const CHANNEL_META: Record<string, { label: string; color: string }> = {
   store:     { label: 'Store',     color: 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300' },
@@ -47,9 +49,12 @@ export default async function OrderDetailPage({ params }: { params: { id: string
 
   if (!order) notFound()
 
-  const { data: customerRow } = order.customer_id
-    ? await supabase.from('customers').select('full_name, email, phone').eq('id', order.customer_id).maybeSingle()
-    : { data: null }
+  const [{ data: customerRow }, storedEvents] = await Promise.all([
+    order.customer_id
+      ? supabase.from('customers').select('full_name, email, phone').eq('id', order.customer_id).maybeSingle()
+      : Promise.resolve({ data: null }),
+    getOrderEvents(order.id),
+  ])
 
   const customer = customerRow as { full_name: string | null; email: string | null; phone?: string | null } | null
   const items: Array<{ product_id?: string; name: string; price: number; quantity: number; thumbnail?: string | null }> =
@@ -65,6 +70,55 @@ export default async function OrderDetailPage({ params }: { params: { id: string
   const subtotal = items.reduce((s, i) => s + i.price * i.quantity, 0)
   const isTerminal = ['cancelled', 'refunded'].includes(order.status)
   const currentStep = STATUS_STEPS.indexOf(order.status)
+
+  // Derive timeline events from order fields
+  const derivedEvents: Array<{ id: string; type: string; message: string; created_at: string }> = []
+  const customerName = shipping
+    ? [shipping.firstName, shipping.lastName].filter(Boolean).join(' ') || shipping.name || 'Customer'
+    : 'Customer'
+
+  derivedEvents.push({
+    id: 'placed',
+    type: 'derived',
+    message: `Order placed by ${customerName}${orderChannel !== 'store' ? ` via ${CHANNEL_META[orderChannel]?.label ?? orderChannel}` : ''}`,
+    created_at: order.created_at,
+  })
+  if (order.payment_reference) {
+    derivedEvents.push({
+      id: 'payment',
+      type: 'payment',
+      message: `Payment confirmed — ref: ${order.payment_reference}`,
+      created_at: order.created_at,
+    })
+  }
+  if (['processing', 'shipped', 'delivered'].includes(order.status)) {
+    derivedEvents.push({
+      id: 'processing',
+      type: 'status',
+      message: 'Order moved to processing',
+      created_at: order.created_at,
+    })
+  }
+  if (['shipped', 'delivered'].includes(order.status)) {
+    derivedEvents.push({
+      id: 'shipped',
+      type: 'status',
+      message: `Order shipped${(order as Record<string, unknown>).tracking_number ? ` — tracking: ${(order as Record<string, unknown>).tracking_number}` : ''}`,
+      created_at: order.created_at,
+    })
+  }
+  if (order.status === 'delivered') {
+    derivedEvents.push({ id: 'delivered', type: 'status', message: 'Order delivered', created_at: order.created_at })
+  }
+  if (order.status === 'cancelled') {
+    derivedEvents.push({ id: 'cancelled', type: 'status', message: 'Order cancelled', created_at: order.created_at })
+  }
+  if (order.status === 'refunded') {
+    derivedEvents.push({ id: 'refunded', type: 'status', message: 'Order refunded', created_at: order.created_at })
+  }
+  if (order.status === 'payment_failed') {
+    derivedEvents.push({ id: 'failed', type: 'status', message: 'Payment failed', created_at: order.created_at })
+  }
 
   return (
     <div className="p-8 max-w-4xl">
@@ -296,6 +350,13 @@ export default async function OrderDetailPage({ params }: { params: { id: string
           </div>
         </div>
       </div>
+
+      {/* Timeline */}
+      <OrderTimeline
+        orderId={order.id}
+        events={storedEvents}
+        derivedEvents={derivedEvents}
+      />
     </div>
   )
 }
