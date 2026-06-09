@@ -4,6 +4,7 @@ import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { revalidatePath } from 'next/cache'
 import { sendOrderShipped, sendOrderConfirmation } from '@/lib/email'
+import { logOrderEvent } from '@/lib/actions/order-events'
 
 export async function updateOrderStatus(formData: FormData) {
   const supabase = createClient()
@@ -17,6 +18,7 @@ export async function updateOrderStatus(formData: FormData) {
     .single()
 
   await supabase.from('orders').update({ status }).eq('id', id)
+  await logOrderEvent(id, 'status', `Status changed to ${status}`)
 
   const addr = order?.shipping_address
   const orderNumber = id.slice(0, 8).toUpperCase()
@@ -34,6 +36,7 @@ export async function updateOrderStatus(formData: FormData) {
         total: order?.total ?? 0,
         shippingAddress: addr,
       }).catch(() => {})
+      await logOrderEvent(id, 'email', `Order confirmation email sent to ${addr.email}`)
     }
 
     if (status === 'shipped') {
@@ -45,6 +48,7 @@ export async function updateOrderStatus(formData: FormData) {
         items: items.map((i: { name: string; quantity: number }) => ({ name: i.name, quantity: i.quantity })),
         shippingAddress: addr,
       }).catch(() => {})
+      await logOrderEvent(id, 'email', `Shipping confirmation email sent to ${addr.email}`)
     }
 
     if (status === 'delivered') {
@@ -57,6 +61,7 @@ export async function updateOrderStatus(formData: FormData) {
         total: order?.total ?? 0,
         shippingAddress: addr,
       }).catch(() => {})
+      await logOrderEvent(id, 'email', `Delivery confirmation email sent to ${addr.email}`)
     }
   }
 
@@ -134,6 +139,7 @@ export async function sendOrderConfirmationEmail(id: string): Promise<{ error?: 
         state: shipping.state ?? '',
       },
     })
+    await logOrderEvent(id, 'email', `Confirmation email manually resent to ${shipping.email}`)
     return {}
   } catch (err: any) {
     return { error: err?.message ?? 'Failed to send email.' }

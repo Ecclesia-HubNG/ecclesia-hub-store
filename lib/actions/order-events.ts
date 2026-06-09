@@ -33,3 +33,12 @@ export async function addOrderComment(
   })
   return error ? { error: error.message } : {}
 }
+
+export async function logOrderEvent(orderId: string, type: string, message: string): Promise<void> {
+  try {
+    const admin = createAdminClient()
+    await admin.from('order_events').insert({ order_id: orderId, type, message })
+  } catch {
+    // non-blocking — timeline logging must never break the main flow
+  }
+}

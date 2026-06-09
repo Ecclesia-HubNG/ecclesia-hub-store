@@ -4,6 +4,7 @@ import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { sendOrderConfirmation, sendAdminOrderNotification } from '@/lib/email'
 import type { CartItem } from '@/lib/cart-context'
+import { logOrderEvent } from '@/lib/actions/order-events'
 
 export type ShippingAddress = {
   firstName: string
@@ -272,6 +273,7 @@ export async function createBankTransferOrder(sessionId: string): Promise<
 
   if (orderErr) return { error: orderErr.message }
 
+  await logOrderEvent(order.id, 'order_placed', 'Order placed — awaiting bank transfer')
   await admin.from('checkout_sessions').delete().eq('id', sessionId)
 
   const bankDetails = {
@@ -293,6 +295,7 @@ export async function createBankTransferOrder(sessionId: string): Promise<
     total: session.total as number,
     shippingAddress: { firstName: shipping.firstName, lastName: shipping.lastName, phone: shipping.phone, address: shipping.address, city: shipping.city, state: shipping.state },
   }).catch((err) => console.error('[bank-transfer] order email failed:', err?.message))
+  await logOrderEvent(order.id, 'email', `Order confirmation email sent to ${shipping.email}`)
 
   // Notify admin of the new bank transfer order
   sendAdminOrderNotification({

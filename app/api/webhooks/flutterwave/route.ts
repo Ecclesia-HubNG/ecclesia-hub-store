@@ -3,6 +3,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { logAudit } from '@/lib/audit'
 import { qstash } from '@/lib/qstash'
 import type { OrderJobPayload } from '@/app/api/jobs/order-confirmation/route'
+import { logOrderEvent } from '@/lib/actions/order-events'
 
 export const runtime = 'nodejs'
 
@@ -173,6 +174,9 @@ export async function POST(req: NextRequest) {
     source: 'webhook',
   }, { email: 'flutterwave-webhook' }).catch(() => {})
 
+  await logOrderEvent(order.id, 'payment', `Payment confirmed via Flutterwave — ₦${Number(verifiedAmount).toLocaleString('en')} (ref: ${tx.tx_ref})`)
+  await logOrderEvent(order.id, 'status', 'Status changed to processing')
+
   const shipping = order.shipping_address as Record<string, string>
   const items = (order.items as Array<Record<string, unknown>>) ?? []
   const orderNum = order.id.slice(0, 8).toUpperCase()
@@ -230,6 +234,8 @@ export async function POST(req: NextRequest) {
     delay: 0,
   }).catch((err) => console.error('[flutterwave-webhook] qstash enqueue failed:', err?.message))
 
+  await logOrderEvent(order.id, 'email', `Order processing email sent to ${shipping.email}`)
+
   return NextResponse.json({ received: true })
 }
 
@@ -253,6 +259,8 @@ async function markPaymentFailed(txRef: string, txId: number) {
       })
       .eq('id', order.id)
 
+    await logOrderEvent(order.id, 'status', 'Status changed to payment_failed')
+
     const s = order.shipping_address as Record<string, string>
 
     // Import dynamically to avoid circular deps at module level
@@ -261,6 +269,7 @@ async function markPaymentFailed(txRef: string, txId: number) {
       customerName: `${s.firstName} ${s.lastName}`,
       orderNumber: order.id.slice(0, 8).toUpperCase(),
     }).catch(() => {})
+    await logOrderEvent(order.id, 'email', `Payment failed email sent to ${s.email}`)
   } catch (err) {
     console.error('[flutterwave-webhook] markPaymentFailed error:', err)
   }

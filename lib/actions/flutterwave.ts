@@ -3,6 +3,7 @@
 import { createAdminClient } from '@/lib/supabase/admin'
 import { createClient } from '@/lib/supabase/server'
 import { sendOrderProcessing, sendPaymentFailed, sendAdminOrderNotification } from '@/lib/email'
+import { logOrderEvent } from '@/lib/actions/order-events'
 
 
 const FLW_BASE = 'https://api.flutterwave.com/v3'
@@ -78,7 +79,7 @@ export async function initializePayment(
       const cartItems = (session.cart_items ?? []) as SessionItem[]
       const shipping = session.shipping as Record<string, string>
 
-      const { error: orderErr } = await supabase
+      const { data: newOrder, error: orderErr } = await supabase
         .from('orders')
         .insert({
           customer_id: session.customer_id ?? null,
@@ -96,9 +97,12 @@ export async function initializePayment(
           order_channel: 'store',
           payment_metadata: { provider: 'flutterwave' },
         })
+        .select('id')
+        .single()
       if (orderErr) {
         console.error('[flutterwave] failed to create pre-order:', orderErr.message)
       } else {
+        await logOrderEvent(newOrder.id, 'order_placed', 'Order placed — awaiting Flutterwave payment')
         // Notify admin that a new Flutterwave order is pending payment
         sendAdminOrderNotification({
           orderNumber: txRef.slice(0, 12),
