@@ -172,8 +172,6 @@ const TEMPLATE_CSV = [
   ',"Vitamin C Serum",,,"Skincare",8500,,30,Active,No,"Brightening serum","","","","","","",""',
 ].join('\n')
 
-type ImportFormat = 'template' | 'woocommerce' | 'platform'
-
 function parseTemplateCSV(text: string, existing: Product[]): ImportRow[] {
   const cleaned = text.replace(/^﻿/, '').replace(/^ï»¿/, '')
   const lines = cleaned.trim().split('\n').filter(l => !l.trimStart().startsWith('#') && l.trim())
@@ -270,176 +268,7 @@ function parseTemplateCSV(text: string, existing: Product[]): ImportRow[] {
   })
 }
 
-function parseWooCommerceCSV(text: string, existing: Product[]): ImportRow[] {
-  const cleaned = text.replace(/^﻿/, '').replace(/^ï»¿/, '')
-  const lines = cleaned.trim().split('\n').filter(Boolean)
-  if (lines.length < 2) return []
 
-  const headers = parseCSVLine(lines[0]).map(h => h.toLowerCase().trim())
-  const col = (names: string[]) => headers.findIndex(h => names.includes(h))
-
-  const nameIdx     = col(['name'])
-  const priceIdx    = col(['price', 'regular price'])
-  const compareIdx  = col(['compare at price', 'sale price'])
-  const stockIdx    = col(['stock'])
-  const inStockIdx  = col(['in stock?'])
-  const statusIdx   = col(['status', 'published'])
-  const featuredIdx = col(['featured', 'is featured?'])
-  const typeIdx     = col(['type'])
-
-  if (nameIdx === -1 || priceIdx === -1) return []
-
-  const existingNames = new Set(existing.map(p => p.name.toLowerCase().trim()))
-  const existingSlugs = new Set(existing.map(p => p.slug))
-
-  return lines.slice(1).flatMap(line => {
-    const vals = parseCSVLine(line)
-    const name = vals[nameIdx]?.trim() ?? ''
-    if (!name) return []
-
-    const type = typeIdx !== -1 ? vals[typeIdx]?.toLowerCase().trim() : 'simple'
-    if (type && type !== 'simple') return []
-
-    const rawPrice = vals[priceIdx]?.trim() ?? ''
-    const price = parseFloat(rawPrice)
-    if (isNaN(price) || rawPrice === '') return []
-
-    let stock = stockIdx !== -1 ? parseInt(vals[stockIdx] ?? '') : NaN
-    if (isNaN(stock)) {
-      const inStock = inStockIdx !== -1 ? vals[inStockIdx]?.trim() : '1'
-      stock = inStock === '1' || inStock?.toLowerCase() === 'yes' ? 1 : 0
-    }
-
-    let is_active = true
-    if (statusIdx !== -1) {
-      const s = vals[statusIdx]?.toLowerCase().trim()
-      is_active = s === 'active' || s === '1'
-    }
-
-    let is_featured = false
-    if (featuredIdx !== -1) {
-      const f = vals[featuredIdx]?.toLowerCase().trim()
-      is_featured = f === 'yes' || f === '1'
-    }
-
-    const compare_at_price = compareIdx !== -1 && vals[compareIdx]?.trim()
-      ? parseFloat(vals[compareIdx]) || null : null
-    const isDuplicate = existingNames.has(name.toLowerCase()) || existingSlugs.has(slugify(name))
-
-    return [{ name, price, compare_at_price, stock, is_active, is_featured, isDuplicate }]
-  })
-}
-
-function parsePlatformCSV(text: string, existing: Product[]): ImportRow[] {
-  const cleaned = text.replace(/^﻿/, '').replace(/^ï»¿/, '')
-  const lines = cleaned.trim().split('\n').filter(Boolean)
-  if (lines.length < 2) return []
-
-  const headers = parseCSVLine(lines[0]).map(h => h.trim().toLowerCase())
-  const col = (names: string[]) => headers.findIndex(h => names.includes(h))
-
-  const rowTypeIdx      = col(['row type'])
-  const nameIdx         = col(['title'])
-  const priceIdx        = col(['price'])
-  const salesIdx        = col(['sales'])
-  const stockIdx        = col(['stock'])
-  const isActiveIdx     = col(['is active'])
-  const featuredIdx     = col(['featured'])
-  const descIdx         = col(['description'])
-  const detailsIdx      = col(['details'])
-  const skuIdx          = col(['sku'])
-  const barcodeIdx      = col(['barcode'])
-  const weightIdx       = col(['weight (kg)'])
-  const collectionsIdx  = col(['collections'])
-  const mainImageIdx    = col(['main image'])
-  const addlImagesIdx   = col(['additional images'])
-  const seoTitleIdx     = col(['seo title'])
-  const seoDescIdx      = col(['seo description'])
-  const optNamesIdx     = col(['options names'])
-  const optValuesIdx    = col(['options values'])
-
-  if (nameIdx === -1 || priceIdx === -1) return []
-
-  const existingNames = new Set(existing.map(p => p.name.toLowerCase().trim()))
-  const existingSlugs = new Set(existing.map(p => p.slug))
-
-  return lines.slice(1).flatMap(line => {
-    const vals = parseCSVLine(line)
-
-    // Only process "product" rows
-    const rowType = rowTypeIdx !== -1 ? vals[rowTypeIdx]?.trim().toLowerCase() : 'product'
-    if (rowType && rowType !== 'product') return []
-
-    const name = vals[nameIdx]?.trim() ?? ''
-    if (!name) return []
-
-    const rawPrice = vals[priceIdx]?.trim() ?? ''
-    const price = parseFloat(rawPrice)
-    if (isNaN(price) || rawPrice === '') return []
-
-    const stock = stockIdx !== -1 ? parseInt(vals[stockIdx] ?? '') || 0 : 0
-
-    const isActiveRaw = isActiveIdx !== -1 ? vals[isActiveIdx]?.trim() : '1'
-    const is_active = isActiveRaw === '1' || isActiveRaw?.toLowerCase() === 'true' || isActiveRaw?.toLowerCase() === 'active' || isActiveRaw === ''
-
-    const featuredRaw = featuredIdx !== -1 ? vals[featuredIdx]?.trim() : ''
-    const is_featured = featuredRaw === '1' || featuredRaw?.toLowerCase() === 'true' || featuredRaw?.toLowerCase() === 'yes'
-
-    const compare_at_price = salesIdx !== -1 && vals[salesIdx]?.trim()
-      ? parseFloat(vals[salesIdx]) || null : null
-
-    const mainImage = mainImageIdx !== -1 ? vals[mainImageIdx]?.trim() : null
-    const addlRaw = addlImagesIdx !== -1 ? vals[addlImagesIdx]?.trim() : ''
-    const addlImages = addlRaw ? addlRaw.split('|').map(s => s.trim()).filter(Boolean) : []
-    const images = [mainImage, ...addlImages].filter((s): s is string => !!s)
-
-    const collections = collectionsIdx !== -1 ? vals[collectionsIdx]?.trim() : ''
-    const category_names = collections ? collections.split('|').map(s => s.trim()).filter(Boolean) : []
-
-    // Parse variants from Options Names + Options Values
-    // Options Names: "Color|Size", Options Values: "Red,Blue|S,M,L"
-    const optNamesRaw = optNamesIdx !== -1 ? vals[optNamesIdx]?.trim() : ''
-    const optValuesRaw = optValuesIdx !== -1 ? vals[optValuesIdx]?.trim() : ''
-    let variants: Array<{ name: string; values: string[] }> | undefined
-    if (optNamesRaw) {
-      const groupNames = optNamesRaw.split('|').map(s => s.trim()).filter(Boolean)
-      const groupValues = optValuesRaw ? optValuesRaw.split('|').map(s => s.trim()) : []
-      variants = groupNames.map((gName, i) => ({
-        name: gName,
-        values: groupValues[i] ? groupValues[i].split(',').map(v => v.trim()).filter(Boolean) : [],
-      })).filter(g => g.values.length > 0)
-    }
-
-    const isDuplicate = existingNames.has(name.toLowerCase()) || existingSlugs.has(slugify(name))
-
-    return [{
-      name,
-      price,
-      compare_at_price,
-      stock,
-      is_active,
-      is_featured,
-      isDuplicate,
-      description: descIdx !== -1 ? vals[descIdx]?.trim() || null : null,
-      short_description: detailsIdx !== -1 ? vals[detailsIdx]?.trim() || null : null,
-      thumbnail: mainImage || null,
-      images: images.length > 0 ? images : undefined,
-      sku: skuIdx !== -1 ? vals[skuIdx]?.trim() || null : null,
-      barcode: barcodeIdx !== -1 ? vals[barcodeIdx]?.trim() || null : null,
-      weight: weightIdx !== -1 && vals[weightIdx]?.trim() ? parseFloat(vals[weightIdx]) || null : null,
-      meta_title: seoTitleIdx !== -1 ? vals[seoTitleIdx]?.trim() || null : null,
-      meta_description: seoDescIdx !== -1 ? vals[seoDescIdx]?.trim() || null : null,
-      variants: variants && variants.length > 0 ? variants : undefined,
-      category_names: category_names.length > 0 ? category_names : undefined,
-    }]
-  })
-}
-
-function parseImportCSV(text: string, existing: Product[], format: ImportFormat): ImportRow[] {
-  if (format === 'woocommerce') return parseWooCommerceCSV(text, existing)
-  if (format === 'platform') return parsePlatformCSV(text, existing)
-  return parseTemplateCSV(text, existing)
-}
 
 function esc(v: string | null | undefined) {
   if (!v) return ''
@@ -568,23 +397,21 @@ export function ProductsManager({
 
   // CSV import
   const [showImportPicker, setShowImportPicker] = useState(false)
-  const [importFormat, setImportFormat] = useState<ImportFormat | null>(null)
   const [importRows, setImportRows] = useState<ImportRow[] | null>(null)
   const [isImporting, startImport] = useTransition()
   const [importDone, setImportDone] = useState('')
 
-  const handleImportFile = (e: React.ChangeEvent<HTMLInputElement>, format: ImportFormat) => {
+  const handleImportFile = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (!file) return
     e.target.value = ''
     const reader = new FileReader()
     reader.onload = ev => {
       const text = ev.target?.result as string
-      const rows = parseImportCSV(text, mergedProducts, format)
+      const rows = parseTemplateCSV(text, mergedProducts)
       setImportRows(rows)
       setImportDone('')
       setShowImportPicker(false)
-      setImportFormat(null)
     }
     reader.readAsText(file)
   }
@@ -1327,104 +1154,44 @@ export function ProductsManager({
         </div>
       )}
 
-      {/* Import format picker modal */}
+      {/* Import picker modal */}
       {showImportPicker && (
         <>
-          <div className="fixed inset-0 z-40 bg-black/50 backdrop-blur-[2px]" onClick={() => { setShowImportPicker(false); setImportFormat(null) }} />
+          <div className="fixed inset-0 z-40 bg-black/50 backdrop-blur-[2px]" onClick={() => setShowImportPicker(false)} />
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
             <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden">
-              {/* Header */}
               <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 dark:border-gray-800">
                 <div>
                   <h2 className="font-semibold text-gray-900 dark:text-white">Import Products</h2>
-                  <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">Choose your file format</p>
+                  <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">Upload a CSV in the Ecclesia Hub format</p>
                 </div>
-                <button type="button" onClick={() => { setShowImportPicker(false); setImportFormat(null) }}
+                <button type="button" onClick={() => setShowImportPicker(false)}
                   className="w-8 h-8 flex items-center justify-center rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
                   <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                     <path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" />
                   </svg>
                 </button>
               </div>
-
-              {/* Format options */}
-              <div className="px-6 py-5 space-y-3">
-                {/* Template option */}
+              <div className="px-6 py-5 space-y-4">
+                <p className="text-xs text-gray-500 dark:text-gray-400">
+                  Use the Ecclesia Hub CSV format — same columns as the export. Rows with an ID update existing products; rows without an ID create new ones.
+                </p>
                 <button
                   type="button"
-                  onClick={() => setImportFormat('template')}
-                  className={`w-full text-left p-4 rounded-xl border-2 transition-colors ${importFormat === 'template' ? 'border-gray-900 dark:border-white bg-gray-50 dark:bg-white/5' : 'border-gray-100 dark:border-gray-800 hover:border-gray-300 dark:hover:border-gray-600'}`}
+                  onClick={downloadTemplate}
+                  className="inline-flex items-center gap-2 text-xs font-medium text-gray-700 dark:text-gray-300 underline underline-offset-2 hover:text-gray-900 dark:hover:text-white transition-colors"
                 >
-                  <div className="flex items-start gap-3">
-                    <div className={`mt-0.5 w-4 h-4 rounded-full border-2 shrink-0 flex items-center justify-center transition-colors ${importFormat === 'template' ? 'border-gray-900 dark:border-white' : 'border-gray-300 dark:border-gray-600'}`}>
-                      {importFormat === 'template' && <div className="w-2 h-2 rounded-full bg-gray-900 dark:bg-white" />}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-gray-900 dark:text-white">Ecclesia Hub Template</p>
-                      <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">Our standard format — Name, Price, Stock, Status, Featured, and more.</p>
-                      {importFormat === 'template' && (
-                        <button
-                          type="button"
-                          onClick={e => { e.stopPropagation(); downloadTemplate() }}
-                          className="inline-flex items-center gap-1.5 mt-2 text-xs font-medium text-gray-700 dark:text-gray-300 underline underline-offset-2 hover:text-gray-900 dark:hover:text-white transition-colors"
-                        >
-                          <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5M16.5 12 12 16.5m0 0L7.5 12m4.5 4.5V3" />
-                          </svg>
-                          Download template
-                        </button>
-                      )}
-                    </div>
-                  </div>
+                  <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5M16.5 12 12 16.5m0 0L7.5 12m4.5 4.5V3" />
+                  </svg>
+                  Download template
                 </button>
-
-                {/* WooCommerce option */}
-                <button
-                  type="button"
-                  onClick={() => setImportFormat('woocommerce')}
-                  className={`w-full text-left p-4 rounded-xl border-2 transition-colors ${importFormat === 'woocommerce' ? 'border-gray-900 dark:border-white bg-gray-50 dark:bg-white/5' : 'border-gray-100 dark:border-gray-800 hover:border-gray-300 dark:hover:border-gray-600'}`}
-                >
-                  <div className="flex items-start gap-3">
-                    <div className={`mt-0.5 w-4 h-4 rounded-full border-2 shrink-0 flex items-center justify-center transition-colors ${importFormat === 'woocommerce' ? 'border-gray-900 dark:border-white' : 'border-gray-300 dark:border-gray-600'}`}>
-                      {importFormat === 'woocommerce' && <div className="w-2 h-2 rounded-full bg-gray-900 dark:bg-white" />}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-gray-900 dark:text-white">WooCommerce Export</p>
-                      <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">Exported directly from WooCommerce. Supports Regular price, Published, Is featured? columns.</p>
-                    </div>
-                  </div>
-                </button>
-
-                {/* Platform export option */}
-                <button
-                  type="button"
-                  onClick={() => setImportFormat('platform')}
-                  className={`w-full text-left p-4 rounded-xl border-2 transition-colors ${importFormat === 'platform' ? 'border-[#4A0F1C] dark:border-[#E8C4CB] bg-[#4A0F1C]/5 dark:bg-[#4A0F1C]/20' : 'border-gray-100 dark:border-gray-800 hover:border-gray-300 dark:hover:border-gray-600'}`}
-                >
-                  <div className="flex items-start gap-3">
-                    <div className={`mt-0.5 w-4 h-4 rounded-full border-2 shrink-0 flex items-center justify-center transition-colors ${importFormat === 'platform' ? 'border-[#4A0F1C] dark:border-[#E8C4CB]' : 'border-gray-300 dark:border-gray-600'}`}>
-                      {importFormat === 'platform' && <div className="w-2 h-2 rounded-full bg-[#4A0F1C] dark:bg-[#E8C4CB]" />}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-gray-900 dark:text-white">Platform Export <span className="ml-1.5 text-[10px] font-semibold px-1.5 py-0.5 bg-[#4A0F1C]/10 dark:bg-[#4A0F1C]/30 text-[#6B1A2A] dark:text-[#E8C4CB] rounded-full uppercase tracking-wide">Recommended</span></p>
-                      <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">The standard export format. Imports Title, Price, Stock, Images, Categories, Variants, and SEO fields.</p>
-                    </div>
-                  </div>
-                </button>
-
-                {/* Upload button */}
-                <label className={`flex items-center justify-center gap-2 w-full py-2.5 rounded-xl text-sm font-medium transition-colors mt-1 ${importFormat ? 'bg-gray-900 dark:bg-white text-white dark:text-gray-900 hover:bg-gray-700 dark:hover:bg-gray-100 cursor-pointer' : 'bg-gray-100 dark:bg-gray-800 text-gray-400 dark:text-gray-600 cursor-not-allowed'}`}>
+                <label className="flex items-center justify-center gap-2 w-full py-2.5 rounded-xl text-sm font-medium bg-gray-900 dark:bg-white text-white dark:text-gray-900 hover:bg-gray-700 dark:hover:bg-gray-100 cursor-pointer transition-colors">
                   <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
                     <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5m-13.5-9L12 3m0 0 4.5 4.5M12 3v13.5" />
                   </svg>
-                  {importFormat ? 'Choose CSV file' : 'Select a format first'}
-                  <input
-                    type="file"
-                    accept=".csv"
-                    disabled={!importFormat}
-                    className="hidden"
-                    onChange={e => { if (importFormat) handleImportFile(e, importFormat) }}
-                  />
+                  Choose CSV file
+                  <input type="file" accept=".csv" className="hidden" onChange={handleImportFile} />
                 </label>
               </div>
             </div>
