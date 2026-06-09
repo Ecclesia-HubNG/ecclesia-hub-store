@@ -125,23 +125,20 @@ export async function bulkImportProducts(rows: Array<{
   meta_description?: string | null
   variants?: Array<{ name: string; values: string[] }>
   category_names?: string[]
+  brand_name?: string | null
 }>) {
   if (!rows.length) return { success: true as const, count: 0 }
   const supabase = createAdminClient()
   const now = Date.now()
 
-  // Collect unique first-category names and look them up / create them
+  // Resolve category names → ids (create missing ones)
   const categoryMap: Record<string, string> = {}
   const uniqueCategoryNames = Array.from(new Set(
     rows.flatMap(r => r.category_names?.[0]?.trim() ? [r.category_names[0].trim()] : [])
   ))
   if (uniqueCategoryNames.length) {
-    const { data: existing } = await supabase
-      .from('categories')
-      .select('id, name')
-      .in('name', uniqueCategoryNames)
+    const { data: existing } = await supabase.from('categories').select('id, name').in('name', uniqueCategoryNames)
     for (const cat of existing ?? []) categoryMap[cat.name.toLowerCase()] = cat.id
-
     const missing = uniqueCategoryNames.filter(n => !categoryMap[n.toLowerCase()])
     if (missing.length) {
       const { data: created } = await supabase
@@ -150,6 +147,16 @@ export async function bulkImportProducts(rows: Array<{
         .select('id, name')
       for (const cat of created ?? []) categoryMap[cat.name.toLowerCase()] = cat.id
     }
+  }
+
+  // Resolve brand names → ids (look up only, never create)
+  const brandMap: Record<string, string> = {}
+  const uniqueBrandNames = Array.from(new Set(
+    rows.flatMap(r => r.brand_name?.trim() ? [r.brand_name.trim()] : [])
+  ))
+  if (uniqueBrandNames.length) {
+    const { data: existingBrands } = await supabase.from('brands').select('id, name').in('name', uniqueBrandNames)
+    for (const b of existingBrands ?? []) brandMap[b.name.toLowerCase()] = b.id
   }
 
   const toInsert = rows.map((r, i) => ({
@@ -169,11 +176,21 @@ export async function bulkImportProducts(rows: Array<{
     weight: r.weight ?? null,
     meta_title: r.meta_title ?? null,
     meta_description: r.meta_description ?? null,
-    variants: r.variants ? JSON.stringify(r.variants) : '[]',
+    // Convert import shape { name, values[] } → DB shape { name, options: [{ value, price }] }
+    variants: r.variants?.length
+      ? JSON.stringify(r.variants.map(g => ({
+          name: g.name,
+          options: g.values.map(v => ({ value: v, price: null })),
+        })))
+      : '[]',
     category_id: r.category_names?.[0]?.trim()
       ? (categoryMap[r.category_names[0].trim().toLowerCase()] ?? null)
       : null,
+    brand_id: r.brand_name?.trim()
+      ? (brandMap[r.brand_name.trim().toLowerCase()] ?? null)
+      : null,
   }))
+
   const { error, data } = await supabase.from('products').insert(toInsert).select('id')
   if (error) return { error: error.message }
   revalidatePath('/admin/products')

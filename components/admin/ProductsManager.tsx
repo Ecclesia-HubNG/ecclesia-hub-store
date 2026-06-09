@@ -21,7 +21,14 @@ type Product = {
   created_at: string
   category_id: string | null
   brand_id: string | null
+  sku: string | null
+  variants: Array<{ name: string; options: Array<{ value: string; price?: number | null }> }> | null
+  images: string[] | null
+  description: string | null
+  meta_title: string | null
+  meta_description: string | null
   categories: { name: string } | null
+  brands: { name: string } | null
 }
 
 type Category = { id: string; name: string }
@@ -138,37 +145,30 @@ type ImportRow = {
   meta_description?: string | null
   variants?: Array<{ name: string; values: string[] }>
   category_names?: string[]
+  brand_name?: string | null
 }
 
 const TEMPLATE_COLUMNS = [
-  'Name', 'Short Description', 'Long Description',
-  'Price', 'Compare At Price', 'Sale Price', 'Sale Starts At', 'Sale Ends At',
-  'SKU', 'Barcode', 'Stock', 'Weight (kg)',
-  'Brand', 'Category', 'Tags',
-  'Status', 'Featured', 'Shipping Type',
-  'Variants (JSON)', 'Attributes (JSON)',
-  'Thumbnail URL', 'Image URLs', 'Video URL',
+  'ID', 'Name', 'SKU', 'Brand', 'Category',
+  'Price', 'Compare At Price', 'Stock', 'Status', 'Featured',
+  'Short Description', 'Long Description', 'Thumbnail URL', 'Image URLs',
+  'Variant Groups', 'Variant Values',
   'Meta Title', 'Meta Description',
 ] as const
 
 const TEMPLATE_CSV = [
   '# Ecclesia Hub — Product Import Template',
-  '# Fill this sheet and send it back. Delete all rows starting with # before uploading.',
-  '#',
+  '# Delete all rows starting with # before uploading.',
   '# REQUIRED: Name, Price, Stock, Status, Featured',
-  '# DATES: Use YYYY-MM-DD format (e.g. 2026-06-01)',
-  '# STATUS: Active or Inactive',
-  '# FEATURED: Yes or No',
-  '# SHIPPING TYPE: standard | express | free | digital',
-  '# TAGS: comma-separated inside the cell (e.g. "audio,wireless,sale")',
-  '# IMAGE URLs: pipe-separated for multiple (e.g. "https://…/1.jpg|https://…/2.jpg")',
-  '# VARIANTS JSON: e.g. [{"name":"Color","values":["Black","White"]},{"name":"Size","values":["S","M","L"]}]',
-  '# ATTRIBUTES JSON: e.g. [{"name":"Material","value":"Cotton"},{"name":"Weight","value":"200g"}]',
+  '# STATUS: Active or Inactive  |  FEATURED: Yes or No',
+  '# IMAGE URLs: pipe-separated  e.g. https://.../1.jpg|https://.../2.jpg',
+  '# VARIANT GROUPS: pipe-separated group names  e.g. Color|Size',
+  '# VARIANT VALUES: pipe-separated values per group  e.g. Red,Blue|S,M,L',
+  '# BRAND: must match an existing brand name exactly (case-insensitive)',
   '#',
   TEMPLATE_COLUMNS.join(','),
-  '"Wireless Earbuds Pro","Crystal-clear sound with deep bass","Experience studio-quality audio anywhere with our flagship earbuds. Features active noise cancellation, 24-hour battery life, and IPX5 water resistance.",15000,20000,12500,2026-06-01,2026-06-30,WEP-001,6009876543210,30,0.18,"SoundTech","Electronics","audio,wireless,sale",Active,Yes,standard,"[{""name"":""Color"",""values"":[""Black"",""White"",""Navy""]}]","[{""name"":""Driver Size"",""value"":""10mm""},{""name"":""Battery"",""value"":""24h""}]","https://example.com/img/earbuds-thumb.jpg","https://example.com/img/earbuds-1.jpg|https://example.com/img/earbuds-2.jpg","https://youtube.com/watch?v=example","Wireless Earbuds Pro — SoundTech | Ecclesia Hub","Shop the SoundTech Wireless Earbuds Pro. Noise cancellation, 24h battery, IPX5 rated."',
-  '"Phone Case - Black","Slim protection for your phone","",2500,,,,PHC-BLK,,100,0.05,"","Accessories","cases,protection",Active,No,standard,"","[{""name"":""Material"",""value"":""TPU+PC Hybrid""}]","","","",,',
-  '"Study Bible (KJV)","King James Version with study notes","",8500,,,,BIB-KJV-001,9781234567890,15,0.9,"","Books & Media","bible,study,kjv",Active,No,standard,"","[{""name"":""Cover"",""value"":""Hardback""},{""name"":""Pages"",""value"":""1800""}]","","","","KJV Study Bible | Ecclesia Hub","King James Version Study Bible with comprehensive concordance and study notes."',
+  ',"Moisturising Body Lotion",,"Coco Nu Lab","Skincare",5500,7000,50,Active,Yes,"Deeply hydrating lotion","Rich formula with shea butter and vitamin E for all-day moisture.",https://example.com/thumb.jpg,https://example.com/img1.jpg|https://example.com/img2.jpg,Size|Scent,"100ml,200ml|Unscented,Rose","Moisturising Body Lotion | Coco Nu Lab","Shop our best-selling body lotion."',
+  ',"Vitamin C Serum",,,"Skincare",8500,,30,Active,No,"Brightening serum","","","","","","",""',
 ].join('\n')
 
 type ImportFormat = 'template' | 'woocommerce' | 'platform'
@@ -178,15 +178,26 @@ function parseTemplateCSV(text: string, existing: Product[]): ImportRow[] {
   const lines = cleaned.trim().split('\n').filter(l => !l.trimStart().startsWith('#') && l.trim())
   if (lines.length < 2) return []
 
-  const headers = parseCSVLine(lines[0]).map(h => h.trim())
-  const col = (name: string) => headers.findIndex(h => h.toLowerCase() === name.toLowerCase())
+  const headers = parseCSVLine(lines[0]).map(h => h.trim().toLowerCase())
+  const col = (name: string) => headers.findIndex(h => h === name.toLowerCase())
 
-  const nameIdx     = col('Name')
-  const priceIdx    = col('Price')
-  const compareIdx  = col('Compare At Price')
-  const stockIdx    = col('Stock')
-  const statusIdx   = col('Status')
-  const featuredIdx = col('Featured')
+  const nameIdx        = col('name')
+  const priceIdx       = col('price')
+  const compareIdx     = col('compare at price')
+  const stockIdx       = col('stock')
+  const statusIdx      = col('status')
+  const featuredIdx    = col('featured')
+  const skuIdx         = col('sku')
+  const brandIdx       = col('brand')
+  const categoryIdx    = col('category')
+  const shortDescIdx   = col('short description')
+  const longDescIdx    = col('long description')
+  const thumbIdx       = col('thumbnail url')
+  const imagesIdx      = col('image urls')
+  const varGroupsIdx   = col('variant groups')
+  const varValuesIdx   = col('variant values')
+  const metaTitleIdx   = col('meta title')
+  const metaDescIdx    = col('meta description')
 
   if (nameIdx === -1 || priceIdx === -1) return []
 
@@ -202,14 +213,55 @@ function parseTemplateCSV(text: string, existing: Product[]): ImportRow[] {
     const price = parseFloat(rawPrice)
     if (isNaN(price) || rawPrice === '') return []
 
-    const stock = stockIdx !== -1 ? parseInt(vals[stockIdx] ?? '') || 0 : 0
-    const is_active = statusIdx !== -1 ? vals[statusIdx]?.trim().toLowerCase() === 'active' : true
-    const is_featured = featuredIdx !== -1 ? vals[featuredIdx]?.trim().toLowerCase() === 'yes' : false
+    const stock         = stockIdx !== -1 ? parseInt(vals[stockIdx] ?? '') || 0 : 0
+    const is_active     = statusIdx !== -1 ? vals[statusIdx]?.trim().toLowerCase() === 'active' : true
+    const is_featured   = featuredIdx !== -1 ? vals[featuredIdx]?.trim().toLowerCase() === 'yes' : false
     const compare_at_price = compareIdx !== -1 && vals[compareIdx]?.trim()
       ? parseFloat(vals[compareIdx]) || null : null
-    const isDuplicate = existingNames.has(name.toLowerCase()) || existingSlugs.has(slugify(name))
+    const isDuplicate   = existingNames.has(name.toLowerCase()) || existingSlugs.has(slugify(name))
 
-    return [{ name, price, compare_at_price, stock, is_active, is_featured, isDuplicate }]
+    const thumbnail  = thumbIdx !== -1 ? vals[thumbIdx]?.trim() || null : null
+    const imagesRaw  = imagesIdx !== -1 ? vals[imagesIdx]?.trim() : ''
+    const extraImages = imagesRaw ? imagesRaw.split('|').map(s => s.trim()).filter(Boolean) : []
+    const images = [thumbnail, ...extraImages].filter((s): s is string => !!s)
+
+    const category = categoryIdx !== -1 ? vals[categoryIdx]?.trim() || null : null
+    const brand    = brandIdx !== -1 ? vals[brandIdx]?.trim() || null : null
+
+    // Variants: Groups = "Color|Size", Values = "Red,Blue|S,M,L"
+    const groupsRaw  = varGroupsIdx !== -1 ? vals[varGroupsIdx]?.trim() : ''
+    const valuesRaw  = varValuesIdx !== -1 ? vals[varValuesIdx]?.trim() : ''
+    let variants: Array<{ name: string; values: string[] }> | undefined
+    if (groupsRaw) {
+      const groupNames  = groupsRaw.split('|').map(s => s.trim()).filter(Boolean)
+      const groupValues = valuesRaw ? valuesRaw.split('|').map(s => s.trim()) : []
+      variants = groupNames
+        .map((gName, i) => ({
+          name: gName,
+          values: groupValues[i] ? groupValues[i].split(',').map(v => v.trim()).filter(Boolean) : [],
+        }))
+        .filter(g => g.values.length > 0)
+    }
+
+    return [{
+      name,
+      price,
+      compare_at_price,
+      stock,
+      is_active,
+      is_featured,
+      isDuplicate,
+      sku:              skuIdx !== -1 ? vals[skuIdx]?.trim() || null : null,
+      description:      longDescIdx !== -1 ? vals[longDescIdx]?.trim() || null : null,
+      short_description: shortDescIdx !== -1 ? vals[shortDescIdx]?.trim() || null : null,
+      thumbnail,
+      images:           images.length > 0 ? images : undefined,
+      meta_title:       metaTitleIdx !== -1 ? vals[metaTitleIdx]?.trim() || null : null,
+      meta_description: metaDescIdx !== -1 ? vals[metaDescIdx]?.trim() || null : null,
+      variants:         variants?.length ? variants : undefined,
+      category_names:   category ? [category] : undefined,
+      brand_name:       brand || undefined,
+    }]
   })
 }
 
@@ -384,21 +436,49 @@ function parseImportCSV(text: string, existing: Product[], format: ImportFormat)
   return parseTemplateCSV(text, existing)
 }
 
+function esc(v: string | null | undefined) {
+  if (!v) return ''
+  return `"${String(v).replace(/"/g, '""')}"`
+}
+
 function exportToCSV(products: Product[]) {
-  const headers = ['Name', 'Slug', 'Price', 'Compare At Price', 'Stock', 'Status', 'Featured', 'Category', 'Created At']
-  const rows = products.map(p => [
-    `"${p.name.replace(/"/g, '""')}"`,
-    `"${p.slug}"`,
-    p.price,
-    p.compare_at_price ?? '',
-    p.stock,
-    p.is_active ? 'Active' : 'Inactive',
-    p.is_featured ? 'Yes' : 'No',
-    `"${p.categories?.name ?? ''}"`,
-    p.created_at,
-  ])
-  const csv = [headers.join(','), ...rows.map(r => r.join(','))].join('\n')
-  const blob = new Blob([csv], { type: 'text/csv' })
+  const headers = [
+    'ID', 'Name', 'SKU', 'Brand', 'Category',
+    'Price', 'Compare At Price', 'Stock', 'Status', 'Featured',
+    'Short Description', 'Long Description', 'Thumbnail URL', 'Image URLs',
+    'Variant Groups', 'Variant Values',
+    'Meta Title', 'Meta Description',
+  ]
+
+  const rows = products.map(p => {
+    const variantGroups = (p.variants ?? []).map(g => g.name).join('|')
+    const variantValues = (p.variants ?? []).map(g => g.options.map(o => o.value).join(',')).join('|')
+    const imageUrls = (p.images ?? []).filter(Boolean).join('|')
+
+    return [
+      esc(p.id),
+      esc(p.name),
+      esc(p.sku),
+      esc(p.brands?.name),
+      esc(p.categories?.name),
+      p.price,
+      p.compare_at_price ?? '',
+      p.stock,
+      p.is_active ? 'Active' : 'Inactive',
+      p.is_featured ? 'Yes' : 'No',
+      esc(null),                   // short description — not in list view, blank
+      esc(p.description),
+      esc(p.thumbnail),
+      esc(imageUrls),
+      esc(variantGroups),
+      esc(variantValues),
+      esc(p.meta_title),
+      esc(p.meta_description),
+    ].join(',')
+  })
+
+  const csv = [headers.join(','), ...rows].join('\n')
+  const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8' })
   const url = URL.createObjectURL(blob)
   const a = document.createElement('a')
   a.href = url
@@ -534,6 +614,7 @@ export function ProductsManager({
       meta_description: r.meta_description,
       variants: r.variants,
       category_names: r.category_names,
+      brand_name: r.brand_name,
     }))
     if (!toImport.length) { setImportRows(null); return }
     startImport(async () => {
