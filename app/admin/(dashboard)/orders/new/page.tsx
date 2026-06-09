@@ -5,20 +5,8 @@ import Link from 'next/link'
 export default async function NewOrderPage() {
   const supabase = createAdminClient()
 
-  const [{ data: products }, { data: types }, { data: zones }, { data: rates }] = await Promise.all([
-    supabase.from('products').select('id, name, price, thumbnail, stock').eq('is_active', true).order('name'),
-    supabase.from('delivery_types').select('id, name').eq('is_active', true).order('sort_order'),
-    supabase.from('delivery_zones').select('id, type_id, name').eq('is_active', true).order('sort_order'),
-    supabase.from('delivery_rates').select('id, zone_id, name, price, estimated_days').eq('is_active', true).order('sort_order'),
-  ])
-
-  // Flatten to a list of selectable options
-  const deliveryRates = (rates ?? []).map(r => {
-    const zone = (zones ?? []).find(z => z.id === r.zone_id)
-    const type = zone ? (types ?? []).find(t => t.id === zone.type_id) : null
-    const label = [type?.name, zone?.name, r.name].filter(Boolean).join(' · ')
-    return { id: r.id, label, price: r.price as number, estimated_days: r.estimated_days as string | null }
-  })
+  const { data: products } = await supabase
+    .from('products').select('id, name, price, thumbnail, stock').eq('is_active', true).order('name')
 
   return (
     <div className="p-8 max-w-3xl">
@@ -37,7 +25,7 @@ export default async function NewOrderPage() {
         <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">Enter an offline or social media order</p>
       </div>
 
-      <NewOrderForm products={products ?? []} deliveryRates={deliveryRates} />
+      <NewOrderForm products={products ?? []} />
     </div>
   )
 }
