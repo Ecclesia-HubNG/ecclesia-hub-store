@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
+import { claimGuestOrders } from '@/lib/actions/customer-orders'
 
 type Order = {
   id: string
@@ -33,8 +34,9 @@ export default function OrdersPage() {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    supabase.auth.getUser().then(({ data: { user } }) => {
+    supabase.auth.getUser().then(async ({ data: { user } }) => {
       if (!user) return
+      await claimGuestOrders()
       supabase
         .from('orders')
         .select('id, status, total, items, created_at')

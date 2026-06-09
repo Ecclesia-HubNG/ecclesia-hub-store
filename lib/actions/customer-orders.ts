@@ -196,6 +196,21 @@ export async function cancelMyOrder(id: string): Promise<{ error?: string }> {
   return {}
 }
 
+// Backfills customer_id on any guest orders placed with the signed-in user's email.
+// Called before querying orders so previous guest purchases show up immediately after signup.
+export async function claimGuestOrders() {
+  const supabase = createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user?.email) return
+
+  const admin = createAdminClient()
+  await admin
+    .from('orders')
+    .update({ customer_id: user.id })
+    .is('customer_id', null)
+    .filter('shipping_address->>email', 'eq', user.email)
+}
+
 export async function getMyOrders() {
   const supabase = createClient()
   const { data: { user } } = await supabase.auth.getUser()
