@@ -32,7 +32,7 @@ function VerifyContent() {
           setErrorMsg('Payment was cancelled.')
           return
         }
-        result = await flwVerify(transactionId)
+        result = await flwVerify(transactionId!)
       } else if (reference) {
         // Paystack callback
         result = await psVerify(reference)
