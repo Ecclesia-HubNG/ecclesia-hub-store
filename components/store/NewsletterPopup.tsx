@@ -2,12 +2,25 @@
 
 import { useState, useEffect, useTransition } from 'react'
 import { addSubscriber } from '@/lib/actions/email-subscribers'
+import type { PopupConfig } from '@/lib/actions/popup-config'
 
 const STORAGE_KEY = 'ecclesia-newsletter'
-const SUPPRESS_DAYS = 14
-const DELAY_MS = 2500
 
-export default function NewsletterPopup() {
+type Props = {
+  config?: PopupConfig | null
+}
+
+export default function NewsletterPopup({ config }: Props) {
+  const isEnabled  = config?.is_enabled  ?? true
+  const delayMs    = (config?.delay_seconds ?? 3) * 1000
+  const suppressMs = (config?.suppress_days ?? 14) * 24 * 60 * 60 * 1000
+  const imageUrl   = config?.image_url   ?? null
+  const preHeadline = config?.pre_headline ?? 'Join the community'
+  const headline   = config?.headline    ?? 'UNLOCK\n15% OFF'
+  const bodyText   = config?.body_text   ?? 'On your next order. Sign up for exclusive updates, new arrivals & insider-only discounts.'
+  const buttonText = config?.button_text ?? 'SUBSCRIBE & SAVE 15%'
+  const dismissText = config?.dismiss_text ?? "No thanks, I'll pay full price"
+
   const [visible, setVisible] = useState(false)
   const [email, setEmail] = useState('')
   const [done, setDone] = useState(false)
@@ -15,16 +28,17 @@ export default function NewsletterPopup() {
   const [isPending, startTransition] = useTransition()
 
   useEffect(() => {
+    if (!isEnabled) return
     try {
       const raw = localStorage.getItem(STORAGE_KEY)
       if (raw) {
         const { ts } = JSON.parse(raw) as { ts: number }
-        if (Date.now() - ts < SUPPRESS_DAYS * 24 * 60 * 60 * 1000) return
+        if (Date.now() - ts < suppressMs) return
       }
     } catch {}
-    const t = setTimeout(() => setVisible(true), DELAY_MS)
+    const t = setTimeout(() => setVisible(true), delayMs)
     return () => clearTimeout(t)
-  }, [])
+  }, [isEnabled, delayMs, suppressMs])
 
   function dismiss() {
     try { localStorage.setItem(STORAGE_KEY, JSON.stringify({ ts: Date.now() })) } catch {}
@@ -62,28 +76,35 @@ export default function NewsletterPopup() {
         <div className="w-full max-w-2xl rounded-2xl overflow-hidden shadow-2xl flex pointer-events-auto">
 
           {/* Left — brand panel */}
-          <div className="hidden sm:flex w-[45%] shrink-0 bg-[#4A0F1C] flex-col items-center justify-center p-8 relative overflow-hidden">
-            {/* Decorative rings */}
-            <div className="absolute -right-12 -top-12 w-56 h-56 rounded-full border border-white/10" />
-            <div className="absolute -right-12 -top-12 w-80 h-80 rounded-full border border-white/[0.06]" />
-            <div className="absolute -left-10 -bottom-10 w-56 h-56 rounded-full border border-white/10" />
-            {/* Dot grid */}
-            <div
-              className="absolute inset-0 opacity-[0.04]"
-              style={{ backgroundImage: 'radial-gradient(circle, #fff 1px, transparent 1px)', backgroundSize: '20px 20px' }}
-            />
-            <div className="relative z-10 text-center">
-              <p className="text-[10px] font-bold uppercase tracking-[0.3em] text-[#D4849A] mb-4">Ecclesia Hub</p>
-              <div className="w-14 h-14 rounded-full bg-white/10 flex items-center justify-center mx-auto mb-5">
-                <svg className="w-7 h-7 text-[#E8C4CB]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M21.75 6.75v10.5a2.25 2.25 0 0 1-2.25 2.25h-15a2.25 2.25 0 0 1-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0 0 19.5 4.5h-15a2.25 2.25 0 0 0-2.25 2.25m19.5 0v.243a2.25 2.25 0 0 1-1.07 1.916l-7.5 4.615a2.25 2.25 0 0 1-2.36 0L3.32 8.91a2.25 2.25 0 0 1-1.07-1.916V6.75" />
-                </svg>
-              </div>
-              <p className="text-white font-bold text-lg leading-snug">Glow. Nourish.<br />Thrive.</p>
-              <p className="text-white/50 text-xs mt-3 leading-relaxed max-w-[160px] mx-auto">
-                Premium skincare & body care crafted with intention.
-              </p>
-            </div>
+          <div
+            className="hidden sm:flex w-[45%] shrink-0 flex-col items-center justify-center p-8 relative overflow-hidden"
+            style={{ background: imageUrl ? undefined : '#4A0F1C' }}
+          >
+            {imageUrl ? (
+              <img src={imageUrl} alt="" className="absolute inset-0 w-full h-full object-cover" />
+            ) : (
+              <>
+                <div className="absolute -right-12 -top-12 w-56 h-56 rounded-full border border-white/10" />
+                <div className="absolute -right-12 -top-12 w-80 h-80 rounded-full border border-white/[0.06]" />
+                <div className="absolute -left-10 -bottom-10 w-56 h-56 rounded-full border border-white/10" />
+                <div
+                  className="absolute inset-0 opacity-[0.04]"
+                  style={{ backgroundImage: 'radial-gradient(circle, #fff 1px, transparent 1px)', backgroundSize: '20px 20px' }}
+                />
+                <div className="relative z-10 text-center">
+                  <p className="text-[10px] font-bold uppercase tracking-[0.3em] text-[#D4849A] mb-4">Ecclesia Hub</p>
+                  <div className="w-14 h-14 rounded-full bg-white/10 flex items-center justify-center mx-auto mb-5">
+                    <svg className="w-7 h-7 text-[#E8C4CB]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M21.75 6.75v10.5a2.25 2.25 0 0 1-2.25 2.25h-15a2.25 2.25 0 0 1-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0 0 19.5 4.5h-15a2.25 2.25 0 0 0-2.25 2.25m19.5 0v.243a2.25 2.25 0 0 1-1.07 1.916l-7.5 4.615a2.25 2.25 0 0 1-2.36 0L3.32 8.91a2.25 2.25 0 0 1-1.07-1.916V6.75" />
+                    </svg>
+                  </div>
+                  <p className="text-white font-bold text-lg leading-snug">Glow. Nourish.<br />Thrive.</p>
+                  <p className="text-white/50 text-xs mt-3 leading-relaxed max-w-[160px] mx-auto">
+                    Premium skincare & body care crafted with intention.
+                  </p>
+                </div>
+              </>
+            )}
           </div>
 
           {/* Right — form */}
@@ -116,13 +137,13 @@ export default function NewsletterPopup() {
             ) : (
               <>
                 <p className="text-xs font-bold uppercase tracking-[0.2em] text-[#6B1A2A] dark:text-[#D4849A] mb-2">
-                  Join the community
+                  {preHeadline}
                 </p>
-                <h2 className="text-3xl font-black text-gray-900 dark:text-white leading-tight mb-1">
-                  UNLOCK<br />15% OFF
+                <h2 className="text-3xl font-black text-gray-900 dark:text-white leading-tight mb-1 whitespace-pre-line">
+                  {headline}
                 </h2>
                 <p className="text-sm text-gray-500 dark:text-gray-400 mb-6 leading-relaxed">
-                  On your next order. Sign up for exclusive updates, new arrivals & insider-only discounts.
+                  {bodyText}
                 </p>
 
                 <form onSubmit={handleSubmit} className="space-y-3">
@@ -134,15 +155,13 @@ export default function NewsletterPopup() {
                     placeholder="Enter your email address"
                     className="w-full px-4 py-3 text-sm border border-gray-200 dark:border-gray-700 rounded-xl bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#4A0F1C]/30 focus:border-[#4A0F1C]/50 transition"
                   />
-                  {error && (
-                    <p className="text-xs text-red-500">{error}</p>
-                  )}
+                  {error && <p className="text-xs text-red-500">{error}</p>}
                   <button
                     type="submit"
                     disabled={isPending}
                     className="w-full py-3 bg-[#4A0F1C] hover:bg-[#3A0B15] text-white text-sm font-bold rounded-xl transition-colors disabled:opacity-60"
                   >
-                    {isPending ? 'Subscribing…' : 'SUBSCRIBE & SAVE 15%'}
+                    {isPending ? 'Subscribing…' : buttonText}
                   </button>
                 </form>
 
@@ -151,7 +170,7 @@ export default function NewsletterPopup() {
                   onClick={dismiss}
                   className="mt-4 w-full text-xs text-gray-400 dark:text-gray-600 hover:text-gray-600 dark:hover:text-gray-400 transition-colors"
                 >
-                  No thanks, I'll pay full price
+                  {dismissText}
                 </button>
               </>
             )}
