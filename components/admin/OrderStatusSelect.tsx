@@ -5,7 +5,7 @@ import { updateOrderStatus } from '@/lib/actions/orders'
 
 const STATUSES = [
   'pending', 'pending_verification', 'pending_bank_transfer',
-  'paid', 'processing', 'shipped', 'delivered', 'cancelled', 'refunded',
+  'paid', 'processing', 'shipped', 'delivered', 'cancelled', 'refunded', 'payment_failed',
 ]
 
 const STATUS_LABELS: Record<string, string> = {
@@ -18,6 +18,7 @@ const STATUS_LABELS: Record<string, string> = {
   delivered:             'Delivered',
   cancelled:             'Cancelled',
   refunded:              'Refunded',
+  payment_failed:        'Payment Failed',
 }
 
 const STATUS_STYLES: Record<string, string> = {
@@ -30,6 +31,7 @@ const STATUS_STYLES: Record<string, string> = {
   delivered:             'bg-green-50 text-green-700 dark:bg-green-950/40 dark:text-green-400',
   cancelled:             'bg-gray-100 text-gray-500 dark:bg-white/10 dark:text-gray-400',
   refunded:              'bg-red-50 text-red-700 dark:bg-red-950/40 dark:text-red-400',
+  payment_failed:        'bg-red-50 text-red-700 dark:bg-red-950/40 dark:text-red-400',
 }
 
 export function OrderStatusSelect({ id, status }: { id: string; status: string }) {

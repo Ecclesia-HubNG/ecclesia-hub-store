@@ -4,6 +4,9 @@ import { createElement } from 'react'
 import { createAdminClient } from '@/lib/supabase/admin'
 
 import OrderConfirmation, { type OrderConfirmationProps } from '@/emails/OrderConfirmation'
+import OrderProcessingEmail, { type OrderProcessingEmailProps } from '@/emails/OrderProcessingEmail'
+import PaymentFailedEmail, { type PaymentFailedEmailProps } from '@/emails/PaymentFailedEmail'
+import AdminOrderNotificationEmail, { type AdminOrderNotificationEmailProps } from '@/emails/AdminOrderNotificationEmail'
 import OrderShipped, { type OrderShippedProps } from '@/emails/OrderShipped'
 import WelcomeEmail, { type WelcomeEmailProps } from '@/emails/WelcomeEmail'
 import PromoEmail, { type PromoEmailProps } from '@/emails/PromoEmail'
@@ -40,6 +43,44 @@ export async function sendOrderConfirmation(to: string, props: OrderConfirmation
   } catch (err: any) {
     await logEmail('order_confirmation', to, subject, 'failed', err?.message)
     throw err
+  }
+}
+
+export async function sendOrderProcessing(to: string, props: OrderProcessingEmailProps) {
+  const subject = `Payment received — Order #${props.orderNumber} is processing`
+  try {
+    const html = await render(createElement(OrderProcessingEmail, props))
+    await resend.emails.send({ from: FROM, to, subject, html })
+    await logEmail('order_processing', to, subject, 'sent', undefined, { orderId: props.orderNumber })
+  } catch (err: any) {
+    await logEmail('order_processing', to, subject, 'failed', err?.message)
+    throw err
+  }
+}
+
+export async function sendPaymentFailed(to: string, props: PaymentFailedEmailProps) {
+  const subject = `Payment failed — Order #${props.orderNumber}`
+  try {
+    const html = await render(createElement(PaymentFailedEmail, props))
+    await resend.emails.send({ from: FROM, to, subject, html })
+    await logEmail('payment_failed', to, subject, 'sent', undefined, { orderNumber: props.orderNumber })
+  } catch (err: any) {
+    await logEmail('payment_failed', to, subject, 'failed', err?.message)
+    throw err
+  }
+}
+
+export async function sendAdminOrderNotification(props: AdminOrderNotificationEmailProps) {
+  const adminEmail = process.env.ADMIN_NOTIFICATION_EMAIL
+  if (!adminEmail) return
+  const subject = props.event === 'payment_confirmed'
+    ? `Payment confirmed — Order #${props.orderNumber} · ₦${props.total.toLocaleString('en')}`
+    : `New order — #${props.orderNumber} · ₦${props.total.toLocaleString('en')}`
+  try {
+    const html = await render(createElement(AdminOrderNotificationEmail, props))
+    await resend.emails.send({ from: FROM, to: adminEmail, subject, html })
+  } catch (err: any) {
+    console.error('[admin-notification] email failed:', err?.message)
   }
 }
 

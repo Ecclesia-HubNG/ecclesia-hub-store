@@ -2,7 +2,7 @@
 
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { sendOrderConfirmation } from '@/lib/email'
+import { sendOrderConfirmation, sendAdminOrderNotification } from '@/lib/email'
 import type { CartItem } from '@/lib/cart-context'
 
 export type ShippingAddress = {
@@ -265,16 +265,35 @@ export async function createBankTransferOrder(sessionId: string): Promise<
   }
 
   const orderNumber = order.id.slice(0, 8).toUpperCase()
+  const emailItems = cartItems.map(i => ({ name: i.name, quantity: i.quantity, price: i.price, thumbnail: i.thumbnail ?? undefined }))
 
+  // Tell the customer their bank transfer order is placed and awaiting payment
   sendOrderConfirmation(shipping.email, {
     orderNumber,
     customerName: `${shipping.firstName} ${shipping.lastName}`,
-    items: cartItems.map(i => ({ name: i.name, quantity: i.quantity, price: i.price, thumbnail: i.thumbnail ?? undefined })),
+    items: emailItems,
     subtotal: session.subtotal as number,
     shipping: session.shipping_fee as number,
     total: session.total as number,
     shippingAddress: { firstName: shipping.firstName, lastName: shipping.lastName, phone: shipping.phone, address: shipping.address, city: shipping.city, state: shipping.state },
-  }).catch((err) => console.error('[bank-transfer] order confirmation email failed:', err?.message))
+  }).catch((err) => console.error('[bank-transfer] order email failed:', err?.message))
+
+  // Notify admin of the new bank transfer order
+  sendAdminOrderNotification({
+    orderNumber,
+    orderId: order.id,
+    customerName: `${shipping.firstName} ${shipping.lastName}`,
+    customerEmail: shipping.email,
+    customerPhone: shipping.phone,
+    total: session.total as number,
+    paymentMethod: 'bank_transfer',
+    status: 'pending_bank_transfer',
+    items: emailItems,
+    address: shipping.address,
+    city: shipping.city,
+    state: shipping.state,
+    event: 'new_order',
+  }).catch(() => {})
 
   return { orderId: order.id, orderNumber, bankDetails }
 }

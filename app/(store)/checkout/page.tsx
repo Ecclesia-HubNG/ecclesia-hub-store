@@ -8,6 +8,7 @@ import { useCart } from '@/lib/cart-context'
 import { createCheckoutSession, createBankTransferOrder } from '@/lib/actions/customer-orders'
 import { initializePayment as initFlutterwave } from '@/lib/actions/flutterwave'
 import { getActiveShippingTree, type ShippingState, type ShippingBranch, type ShippingLocation } from '@/lib/actions/shipping'
+import { createClient } from '@/lib/supabase/client'
 
 type PaymentMethod = 'flutterwave' | 'bank_transfer'
 
@@ -27,6 +28,8 @@ export default function CheckoutPage() {
   const [error, setError] = useState<string | null>(null)
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('bank_transfer')
   const [bankConfirm, setBankConfirm] = useState<BankConfirm | null>(null)
+  const [isLoggedIn, setIsLoggedIn] = useState<boolean | null>(null)
+  const [authBannerDismissed, setAuthBannerDismissed] = useState(false)
 
   // Shipping tree
   const [shippingStates, setShippingStates] = useState<ShippingState[]>([])
@@ -41,6 +44,7 @@ export default function CheckoutPage() {
 
   useEffect(() => {
     getActiveShippingTree().then(s => setShippingStates(s))
+    createClient().auth.getUser().then(({ data }) => setIsLoggedIn(!!data.user))
   }, [])
 
   useEffect(() => { if (items.length === 0 && !bankConfirm) router.replace('/cart') }, [items.length, router, bankConfirm])
@@ -187,7 +191,37 @@ export default function CheckoutPage() {
 
   return (
     <div className="max-w-7xl mx-auto px-8 py-10">
-      <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-8">Checkout</h1>
+      <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-6">Checkout</h1>
+
+      {/* Auth prompt — shown to guests only */}
+      {isLoggedIn === false && !authBannerDismissed && (
+        <div className="mb-6 flex items-start gap-3 px-4 py-3.5 bg-[#4A0F1C]/5 dark:bg-[#4A0F1C]/20 border border-[#4A0F1C]/20 dark:border-[#4A0F1C]/40 rounded-xl">
+          <svg className="w-4 h-4 text-[#4A0F1C] dark:text-[#E8C4CB] shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 6a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0ZM4.501 20.118a7.5 7.5 0 0 1 14.998 0A17.933 17.933 0 0 1 12 21.75c-2.676 0-5.216-.584-7.499-1.632Z" />
+          </svg>
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-semibold text-[#4A0F1C] dark:text-[#E8C4CB]">Track your order — create an account</p>
+            <p className="text-xs text-[#4A0F1C]/70 dark:text-[#E8C4CB]/70 mt-0.5">
+              Sign in or create a free account to track your order, view your receipt, and get faster checkout next time.
+            </p>
+            <div className="flex items-center gap-3 mt-2">
+              <a
+                href={`/auth?redirect=/checkout`}
+                className="text-xs font-semibold text-[#4A0F1C] dark:text-[#E8C4CB] underline underline-offset-2"
+              >
+                Sign in / Create account →
+              </a>
+              <button
+                type="button"
+                onClick={() => setAuthBannerDismissed(true)}
+                className="text-xs text-[#4A0F1C]/50 dark:text-[#E8C4CB]/50 hover:text-[#4A0F1C] dark:hover:text-[#E8C4CB] transition-colors"
+              >
+                Continue as guest
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       <form onSubmit={handleSubmit}>
         <div className="flex flex-col lg:flex-row gap-10 items-start">

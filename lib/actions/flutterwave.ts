@@ -1,7 +1,8 @@
 'use server'
 
 import { createAdminClient } from '@/lib/supabase/admin'
-import { sendOrderConfirmation } from '@/lib/email'
+import { sendOrderProcessing, sendPaymentFailed, sendAdminOrderNotification } from '@/lib/email'
+
 
 const FLW_BASE = 'https://api.flutterwave.com/v3'
 
@@ -94,7 +95,30 @@ export async function initializePayment(
           order_channel: 'store',
           payment_metadata: { provider: 'flutterwave' },
         })
-      if (orderErr) console.error('[flutterwave] failed to create pre-order:', orderErr.message)
+      if (orderErr) {
+        console.error('[flutterwave] failed to create pre-order:', orderErr.message)
+      } else {
+        // Notify admin that a new Flutterwave order is pending payment
+        sendAdminOrderNotification({
+          orderNumber: txRef.slice(0, 12),
+          orderId: '',
+          customerName,
+          customerEmail: email,
+          customerPhone: phone,
+          total: amountNaira,
+          paymentMethod: 'flutterwave',
+          status: 'pending_verification',
+          items: (session.cart_items as Array<{ name: string; quantity: number; price: number }> ?? []).map(i => ({
+            name: i.name,
+            quantity: i.quantity,
+            price: i.price,
+          })),
+          address: (session.shipping as Record<string, string>)?.address ?? '',
+          city: (session.shipping as Record<string, string>)?.city ?? '',
+          state: (session.shipping as Record<string, string>)?.state ?? '',
+          event: 'new_order',
+        }).catch(() => {})
+      }
 
       const { error: refErr } = await supabase
         .from('checkout_sessions')
@@ -140,10 +164,31 @@ export async function verifyAndFinalizeOrder(transactionId: string) {
       bank?: string
     }
 
-    if (tx.status !== 'successful') return { error: `Payment was not successful (status: ${tx.status}).` }
     if (tx.currency !== 'NGN') return { error: 'Unexpected payment currency.' }
 
     const supabase = createAdminClient()
+
+    if (tx.status !== 'successful') {
+      // Mark pre-order as payment_failed and notify customer
+      if (tx.tx_ref) {
+        const { data: failedOrder } = await supabase
+          .from('orders')
+          .select('id, shipping_address')
+          .eq('payment_reference', tx.tx_ref)
+          .eq('status', 'pending_verification')
+          .maybeSingle()
+
+        if (failedOrder) {
+          await supabase.from('orders').update({ status: 'payment_failed' }).eq('id', failedOrder.id)
+          const s = failedOrder.shipping_address as Record<string, string>
+          sendPaymentFailed(s.email, {
+            customerName: `${s.firstName} ${s.lastName}`,
+            orderNumber: failedOrder.id.slice(0, 8).toUpperCase(),
+          }).catch(() => {})
+        }
+      }
+      return { error: `Payment was not successful (status: ${tx.status}).` }
+    }
 
     // Find the pre-order created at init time
     const { data: existingOrder } = await supabase
@@ -152,8 +197,8 @@ export async function verifyAndFinalizeOrder(transactionId: string) {
       .eq('payment_reference', tx.tx_ref)
       .maybeSingle()
 
-    // Already paid — idempotent return
-    if (existingOrder?.status === 'paid') return { orderId: existingOrder.id }
+    // Already processing — idempotent return
+    if (existingOrder?.status === 'processing') return { orderId: existingOrder.id }
 
     // Pre-order found — finalise it
     if (existingOrder?.status === 'pending_verification') {
@@ -164,7 +209,7 @@ export async function verifyAndFinalizeOrder(transactionId: string) {
       const { error: updateErr } = await supabase
         .from('orders')
         .update({
-          status: 'paid',
+          status: 'processing',
           paid_at: new Date().toISOString(),
           payment_metadata: {
             provider: 'flutterwave',
@@ -186,30 +231,43 @@ export async function verifyAndFinalizeOrder(transactionId: string) {
       await decrementVariantStock(supabase, cartItems)
 
       const shipping = existingOrder.shipping_address as Record<string, string>
-      sendOrderConfirmation(shipping.email, {
-        orderNumber: existingOrder.id.slice(0, 8).toUpperCase(),
+      const orderNum = existingOrder.id.slice(0, 8).toUpperCase()
+      const emailItems = cartItems.map(i => ({
+        name: i.name,
+        quantity: i.quantity,
+        price: i.price,
+        thumbnail: i.thumbnail ?? undefined,
+        variant: Array.isArray(i.selectedVariants) && i.selectedVariants.length
+          ? i.selectedVariants.map(sv => sv.value).join(', ')
+          : undefined,
+      }))
+
+      sendOrderProcessing(shipping.email, {
+        orderNumber: orderNum,
+        orderId: existingOrder.id,
         customerName: `${shipping.firstName} ${shipping.lastName}`,
-        items: cartItems.map(i => ({
-          name: i.name,
-          quantity: i.quantity,
-          price: i.price,
-          thumbnail: i.thumbnail ?? undefined,
-          variant: Array.isArray(i.selectedVariants) && i.selectedVariants.length
-            ? i.selectedVariants.map(sv => sv.value).join(', ')
-            : undefined,
-        })),
+        items: emailItems,
         subtotal: existingOrder.subtotal as number,
         shipping: existingOrder.shipping_fee as number,
         total: existingOrder.total as number,
-        shippingAddress: {
-          firstName: shipping.firstName,
-          lastName: shipping.lastName,
-          phone: shipping.phone,
-          address: shipping.address,
-          city: shipping.city,
-          state: shipping.state,
-        },
-      }).catch((err) => console.error('[flutterwave] order confirmation email failed:', err?.message))
+        shippingAddress: { firstName: shipping.firstName, lastName: shipping.lastName, phone: shipping.phone, address: shipping.address, city: shipping.city, state: shipping.state },
+      }).catch((err) => console.error('[flutterwave] processing email failed:', err?.message))
+
+      sendAdminOrderNotification({
+        orderNumber: orderNum,
+        orderId: existingOrder.id,
+        customerName: `${shipping.firstName} ${shipping.lastName}`,
+        customerEmail: shipping.email,
+        customerPhone: shipping.phone,
+        total: existingOrder.total as number,
+        paymentMethod: 'flutterwave',
+        status: 'processing',
+        items: emailItems,
+        address: shipping.address,
+        city: shipping.city,
+        state: shipping.state,
+        event: 'payment_confirmed',
+      }).catch(() => {})
 
       return { orderId: existingOrder.id }
     }
@@ -275,7 +333,7 @@ export async function verifyAndFinalizeOrder(transactionId: string) {
       .from('orders')
       .insert({
         customer_id: session.customer_id ?? null,
-        status: 'paid',
+        status: 'processing',
         total: session.total,
         shipping_fee: session.shipping_fee,
         subtotal: session.subtotal,
@@ -304,30 +362,43 @@ export async function verifyAndFinalizeOrder(transactionId: string) {
     await decrementVariantStock(supabase, cartItems)
     await supabase.from('checkout_sessions').delete().eq('id', session.id)
 
-    sendOrderConfirmation(shipping.email, {
-      orderNumber: newOrder.id.slice(0, 8).toUpperCase(),
+    const orderNum = newOrder.id.slice(0, 8).toUpperCase()
+    const emailItems = cartItems.map(i => ({
+      name: i.name,
+      quantity: i.quantity,
+      price: i.price,
+      thumbnail: i.thumbnail ?? undefined,
+      variant: Array.isArray(i.selectedVariants) && i.selectedVariants.length
+        ? i.selectedVariants.map(sv => sv.value).join(', ')
+        : undefined,
+    }))
+
+    sendOrderProcessing(shipping.email, {
+      orderNumber: orderNum,
+      orderId: newOrder.id,
       customerName: `${shipping.firstName} ${shipping.lastName}`,
-      items: cartItems.map(i => ({
-        name: i.name,
-        quantity: i.quantity,
-        price: i.price,
-        thumbnail: i.thumbnail ?? undefined,
-        variant: Array.isArray(i.selectedVariants) && i.selectedVariants.length
-          ? i.selectedVariants.map(sv => sv.value).join(', ')
-          : undefined,
-      })),
+      items: emailItems,
       subtotal: session.subtotal as number,
       shipping: session.shipping_fee as number,
       total: session.total as number,
-      shippingAddress: {
-        firstName: shipping.firstName,
-        lastName: shipping.lastName,
-        phone: shipping.phone,
-        address: shipping.address,
-        city: shipping.city,
-        state: shipping.state,
-      },
-    }).catch((err) => console.error('[flutterwave] order confirmation email failed:', err?.message))
+      shippingAddress: { firstName: shipping.firstName, lastName: shipping.lastName, phone: shipping.phone, address: shipping.address, city: shipping.city, state: shipping.state },
+    }).catch((err) => console.error('[flutterwave] processing email failed:', err?.message))
+
+    sendAdminOrderNotification({
+      orderNumber: orderNum,
+      orderId: newOrder.id,
+      customerName: `${shipping.firstName} ${shipping.lastName}`,
+      customerEmail: shipping.email,
+      customerPhone: shipping.phone,
+      total: session.total as number,
+      paymentMethod: 'flutterwave',
+      status: 'processing',
+      items: emailItems,
+      address: shipping.address,
+      city: shipping.city,
+      state: shipping.state,
+      event: 'payment_confirmed',
+    }).catch(() => {})
 
     return { orderId: newOrder.id }
   } catch {

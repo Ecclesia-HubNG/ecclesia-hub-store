@@ -18,13 +18,16 @@ const CHANNEL_META: Record<string, { label: string; color: string }> = {
 }
 
 const STATUS_COLORS: Record<string, string> = {
-  pending:    'bg-amber-50 dark:bg-amber-950/30 text-amber-700 dark:text-amber-400',
-  paid:       'bg-blue-50 dark:bg-blue-950/30 text-blue-700 dark:text-blue-400',
-  processing: 'bg-blue-50 dark:bg-blue-950/30 text-blue-700 dark:text-blue-400',
-  shipped:    'bg-purple-50 dark:bg-purple-950/30 text-purple-700 dark:text-purple-400',
-  delivered:  'bg-green-50 dark:bg-green-950/30 text-green-700 dark:text-green-400',
-  cancelled:  'bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400',
-  refunded:   'bg-red-50 dark:bg-red-950/30 text-red-700 dark:text-red-400',
+  pending:               'bg-amber-50 dark:bg-amber-950/30 text-amber-700 dark:text-amber-400',
+  pending_verification:  'bg-yellow-50 dark:bg-yellow-950/30 text-yellow-700 dark:text-yellow-400',
+  pending_bank_transfer: 'bg-orange-50 dark:bg-orange-950/30 text-orange-700 dark:text-orange-400',
+  paid:                  'bg-blue-50 dark:bg-blue-950/30 text-blue-700 dark:text-blue-400',
+  processing:            'bg-blue-50 dark:bg-blue-950/30 text-blue-700 dark:text-blue-400',
+  shipped:               'bg-purple-50 dark:bg-purple-950/30 text-purple-700 dark:text-purple-400',
+  delivered:             'bg-green-50 dark:bg-green-950/30 text-green-700 dark:text-green-400',
+  cancelled:             'bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400',
+  refunded:              'bg-red-50 dark:bg-red-950/30 text-red-700 dark:text-red-400',
+  payment_failed:        'bg-red-50 dark:bg-red-950/30 text-red-700 dark:text-red-400',
 }
 
 const STATUS_STEPS = ['pending', 'paid', 'processing', 'shipped', 'delivered']
@@ -178,8 +181,20 @@ export default async function OrderDetailPage({ params }: { params: { id: string
               {customer.email && <p className="text-xs text-gray-500 dark:text-gray-400">{customer.email}</p>}
               {customer.phone && <p className="text-xs text-gray-500 dark:text-gray-400">{customer.phone}</p>}
             </div>
+          ) : shipping ? (
+            // Guest order — show details from shipping_address
+            <div className="space-y-1">
+              {(shipping.firstName || shipping.lastName) && (
+                <p className="text-sm font-medium text-gray-900 dark:text-white">
+                  {[shipping.firstName, shipping.lastName].filter(Boolean).join(' ')}
+                  <span className="ml-1.5 text-[10px] text-gray-400 font-normal">guest</span>
+                </p>
+              )}
+              {shipping.email && <p className="text-xs text-gray-500 dark:text-gray-400">{shipping.email}</p>}
+              {shipping.phone && <p className="text-xs text-gray-500 dark:text-gray-400">{shipping.phone}</p>}
+            </div>
           ) : (
-            <p className="text-sm text-gray-400 dark:text-gray-600">Guest checkout</p>
+            <p className="text-sm text-gray-400 dark:text-gray-600">No customer info</p>
           )}
         </div>
 
@@ -188,13 +203,15 @@ export default async function OrderDetailPage({ params }: { params: { id: string
           <h2 className="text-xs font-semibold uppercase tracking-wide text-gray-400 dark:text-gray-600 mb-3">Shipping address</h2>
           {shipping && Object.keys(shipping).length > 0 ? (
             <div className="space-y-0.5">
-              {shipping.name && <p className="text-sm font-medium text-gray-900 dark:text-white">{shipping.name}</p>}
+              {/* Support both name (legacy) and firstName/lastName formats */}
+              {(shipping.firstName || shipping.lastName)
+                ? <p className="text-sm font-medium text-gray-900 dark:text-white">{[shipping.firstName, shipping.lastName].filter(Boolean).join(' ')}</p>
+                : shipping.name && <p className="text-sm font-medium text-gray-900 dark:text-white">{shipping.name}</p>
+              }
               {shipping.address && <p className="text-xs text-gray-500 dark:text-gray-400">{shipping.address}</p>}
               {(shipping.city || shipping.state) && (
                 <p className="text-xs text-gray-500 dark:text-gray-400">{[shipping.city, shipping.state].filter(Boolean).join(', ')}</p>
               )}
-              {shipping.postal_code && <p className="text-xs text-gray-500 dark:text-gray-400">{shipping.postal_code}</p>}
-              {shipping.country && <p className="text-xs text-gray-500 dark:text-gray-400">{shipping.country}</p>}
               {shipping.phone && <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">{shipping.phone}</p>}
             </div>
           ) : (

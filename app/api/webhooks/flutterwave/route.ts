@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { logAudit } from '@/lib/audit'
 import { qstash } from '@/lib/qstash'
-import type { OrderConfirmationJobPayload } from '@/app/api/jobs/order-confirmation/route'
+import type { OrderJobPayload } from '@/app/api/jobs/order-confirmation/route'
 
 export const runtime = 'nodejs'
 
@@ -10,6 +10,17 @@ function verifyHash(hash: string): boolean {
   const secret = process.env.FLUTTERWAVE_WEBHOOK_HASH
   if (!secret) return false
   return hash === secret
+}
+
+type FlwTx = {
+  tx_ref: string
+  status: string
+  amount: number
+  currency: string
+  id: number
+  payment_type: string
+  card?: { type?: string }
+  bank?: string
 }
 
 export async function POST(req: NextRequest) {
@@ -26,22 +37,22 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 })
   }
 
+  // Handle explicit charge.failed events
+  if (payload.event === 'charge.failed') {
+    const tx = payload.data as FlwTx
+    if (tx.tx_ref) await markPaymentFailed(tx.tx_ref, tx.id)
+    return NextResponse.json({ received: true })
+  }
+
   if (payload.event !== 'charge.completed') {
     return NextResponse.json({ received: true })
   }
 
-  const tx = payload.data as {
-    tx_ref: string
-    status: string
-    amount: number
-    currency: string
-    id: number
-    payment_type: string
-    card?: { type?: string }
-    bank?: string
-  }
+  const tx = payload.data as FlwTx
 
+  // Non-successful charge — mark failed and notify
   if (tx.status !== 'successful' || tx.currency !== 'NGN' || !tx.tx_ref) {
+    if (tx.tx_ref && tx.status !== 'successful') await markPaymentFailed(tx.tx_ref, tx.id)
     return NextResponse.json({ received: true })
   }
 
@@ -57,6 +68,7 @@ export async function POST(req: NextRequest) {
 
   const verified = await verifyRes.json()
   if (verified.status !== 'success' || verified.data?.status !== 'successful') {
+    await markPaymentFailed(tx.tx_ref, tx.id)
     return NextResponse.json({ received: true })
   }
 
@@ -69,8 +81,8 @@ export async function POST(req: NextRequest) {
     .eq('payment_reference', tx.tx_ref)
     .maybeSingle()
 
-  // Already paid (verify page beat the webhook) — nothing to do
-  if (!order || order.status === 'paid') {
+  // Already processing (verify page beat the webhook) — nothing to do
+  if (!order || order.status === 'processing') {
     return NextResponse.json({ received: true })
   }
 
@@ -88,7 +100,7 @@ export async function POST(req: NextRequest) {
   const { error: updateErr } = await supabase
     .from('orders')
     .update({
-      status: 'paid',
+      status: 'processing',
       paid_at: new Date().toISOString(),
       payment_metadata: {
         provider: 'flutterwave',
@@ -163,20 +175,25 @@ export async function POST(req: NextRequest) {
 
   const shipping = order.shipping_address as Record<string, string>
   const items = (order.items as Array<Record<string, unknown>>) ?? []
-  const jobPayload: OrderConfirmationJobPayload = {
+  const orderNum = order.id.slice(0, 8).toUpperCase()
+  const emailItems = items.map(i => ({
+    name: i.name as string,
+    quantity: i.quantity as number,
+    price: i.price as number,
+    thumbnail: (i.thumbnail as string) ?? undefined,
+    variant: Array.isArray(i.selectedVariants) && (i.selectedVariants as Array<{ value: string }>).length
+      ? (i.selectedVariants as Array<{ value: string }>).map(sv => sv.value).join(', ')
+      : undefined,
+  }))
+
+  const jobPayload: OrderJobPayload = {
+    type: 'order_processing',
     to: shipping.email,
     props: {
-      orderNumber: order.id.slice(0, 8).toUpperCase(),
+      orderNumber: orderNum,
+      orderId: order.id,
       customerName: `${shipping.firstName} ${shipping.lastName}`,
-      items: items.map(i => ({
-        name: i.name as string,
-        quantity: i.quantity as number,
-        price: i.price as number,
-        thumbnail: (i.thumbnail as string) ?? undefined,
-        variant: Array.isArray(i.selectedVariants) && (i.selectedVariants as Array<{ value: string }>).length
-          ? (i.selectedVariants as Array<{ value: string }>).map(sv => sv.value).join(', ')
-          : undefined,
-      })),
+      items: emailItems,
       subtotal: (order.subtotal ?? order.total) as number,
       shipping: (order.shipping_fee ?? 0) as number,
       total: order.total as number,
@@ -189,6 +206,21 @@ export async function POST(req: NextRequest) {
         state: shipping.state,
       },
     },
+    adminProps: {
+      orderNumber: orderNum,
+      orderId: order.id,
+      customerName: `${shipping.firstName} ${shipping.lastName}`,
+      customerEmail: shipping.email,
+      customerPhone: shipping.phone,
+      total: order.total as number,
+      paymentMethod: 'flutterwave',
+      status: 'processing',
+      items: emailItems,
+      address: shipping.address,
+      city: shipping.city,
+      state: shipping.state,
+      event: 'payment_confirmed' as const,
+    },
   }
 
   await qstash.publishJSON({
@@ -199,4 +231,37 @@ export async function POST(req: NextRequest) {
   }).catch((err) => console.error('[flutterwave-webhook] qstash enqueue failed:', err?.message))
 
   return NextResponse.json({ received: true })
+}
+
+async function markPaymentFailed(txRef: string, txId: number) {
+  try {
+    const supabase = createAdminClient()
+    const { data: order } = await supabase
+      .from('orders')
+      .select('id, shipping_address')
+      .eq('payment_reference', txRef)
+      .eq('status', 'pending_verification')
+      .maybeSingle()
+
+    if (!order) return
+
+    await supabase
+      .from('orders')
+      .update({
+        status: 'payment_failed',
+        payment_metadata: { provider: 'flutterwave', transaction_id: txId, source: 'webhook_failed' },
+      })
+      .eq('id', order.id)
+
+    const s = order.shipping_address as Record<string, string>
+
+    // Import dynamically to avoid circular deps at module level
+    const { sendPaymentFailed } = await import('@/lib/email')
+    await sendPaymentFailed(s.email, {
+      customerName: `${s.firstName} ${s.lastName}`,
+      orderNumber: order.id.slice(0, 8).toUpperCase(),
+    }).catch(() => {})
+  } catch (err) {
+    console.error('[flutterwave-webhook] markPaymentFailed error:', err)
+  }
 }
