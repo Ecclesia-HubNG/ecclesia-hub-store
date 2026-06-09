@@ -3,7 +3,7 @@
 import { Suspense, useEffect, useState } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
 import { useCart } from '@/lib/cart-context'
-import { verifyAndFinalizeOrder as flwVerify } from '@/lib/actions/flutterwave'
+import { verifyAndFinalizeOrder as flwVerify, cancelPendingOrder } from '@/lib/actions/flutterwave'
 import { verifyAndFinalizeOrder as psVerify } from '@/lib/actions/paystack'
 
 type State = 'verifying' | 'success' | 'error'
@@ -18,14 +18,16 @@ function VerifyContent() {
   useEffect(() => {
     const transactionId = searchParams.get('transaction_id')   // Flutterwave
     const status = searchParams.get('status')                   // Flutterwave
+    const txRef = searchParams.get('tx_ref')                    // Flutterwave (present on cancel)
     const reference = searchParams.get('reference') || searchParams.get('trxref') // Paystack
 
     async function verify() {
       let result: { orderId?: string; error?: string }
 
-      if (transactionId) {
+      if (transactionId || (status === 'cancelled' && txRef)) {
         // Flutterwave callback
         if (status === 'cancelled') {
+          if (txRef) await cancelPendingOrder(txRef)
           setState('error')
           setErrorMsg('Payment was cancelled.')
           return

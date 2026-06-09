@@ -406,6 +406,22 @@ export async function verifyAndFinalizeOrder(transactionId: string) {
   }
 }
 
+// Called when Flutterwave redirects back with status=cancelled.
+// Marks the pre-order as payment_failed so it doesn't linger as pending_verification.
+export async function cancelPendingOrder(txRef: string) {
+  if (!txRef) return
+  try {
+    const supabase = createAdminClient()
+    await supabase
+      .from('orders')
+      .update({ status: 'payment_failed' })
+      .eq('payment_reference', txRef)
+      .eq('status', 'pending_verification')
+  } catch (err) {
+    console.error('[flutterwave] cancelPendingOrder error:', err)
+  }
+}
+
 async function decrementVariantStock(
   supabase: ReturnType<typeof createAdminClient>,
   cartItems: SessionItem[],
