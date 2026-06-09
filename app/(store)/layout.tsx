@@ -1,6 +1,7 @@
 import StoreHeader from '@/components/store/StoreHeader'
 import StoreFooter from '@/components/store/StoreFooter'
 import WhatsAppButton from '@/components/store/WhatsAppButton'
+import NewsletterPopup from '@/components/store/NewsletterPopup'
 import { CartProvider } from '@/lib/cart-context'
 import { WishlistProvider } from '@/lib/wishlist-context'
 import { getMegaMenuConfig, getFooterConfig } from '@/lib/actions/menus'
@@ -19,6 +20,7 @@ export default async function StoreLayout({ children }: { children: React.ReactN
           <main className="flex-1">{children}</main>
           <StoreFooter footer={footer} />
           <WhatsAppButton />
+          <NewsletterPopup />
         </div>
       </WishlistProvider>
     </CartProvider>
