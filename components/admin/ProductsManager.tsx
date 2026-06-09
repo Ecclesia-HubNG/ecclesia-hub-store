@@ -127,6 +127,7 @@ function parseCSVLine(line: string): string[] {
 }
 
 type ImportRow = {
+  id?: string | null
   name: string
   price: number
   compare_at_price: number | null
@@ -181,6 +182,7 @@ function parseTemplateCSV(text: string, existing: Product[]): ImportRow[] {
   const headers = parseCSVLine(lines[0]).map(h => h.trim().toLowerCase())
   const col = (name: string) => headers.findIndex(h => h === name.toLowerCase())
 
+  const idIdx          = col('id')
   const nameIdx        = col('name')
   const priceIdx       = col('price')
   const compareIdx     = col('compare at price')
@@ -213,12 +215,14 @@ function parseTemplateCSV(text: string, existing: Product[]): ImportRow[] {
     const price = parseFloat(rawPrice)
     if (isNaN(price) || rawPrice === '') return []
 
+    const id            = idIdx !== -1 ? vals[idIdx]?.trim() || null : null
     const stock         = stockIdx !== -1 ? parseInt(vals[stockIdx] ?? '') || 0 : 0
     const is_active     = statusIdx !== -1 ? vals[statusIdx]?.trim().toLowerCase() === 'active' : true
     const is_featured   = featuredIdx !== -1 ? vals[featuredIdx]?.trim().toLowerCase() === 'yes' : false
     const compare_at_price = compareIdx !== -1 && vals[compareIdx]?.trim()
       ? parseFloat(vals[compareIdx]) || null : null
-    const isDuplicate   = existingNames.has(name.toLowerCase()) || existingSlugs.has(slugify(name))
+    // Rows with an ID are explicit updates — never flag as duplicate
+    const isDuplicate   = !id && (existingNames.has(name.toLowerCase()) || existingSlugs.has(slugify(name)))
 
     const thumbnail  = thumbIdx !== -1 ? vals[thumbIdx]?.trim() || null : null
     const imagesRaw  = imagesIdx !== -1 ? vals[imagesIdx]?.trim() : ''
@@ -244,6 +248,7 @@ function parseTemplateCSV(text: string, existing: Product[]): ImportRow[] {
     }
 
     return [{
+      id,
       name,
       price,
       compare_at_price,
@@ -597,6 +602,7 @@ export function ProductsManager({
   const handleConfirmImport = () => {
     if (!importRows) return
     const toImport = importRows.filter(r => !r.isDuplicate).map(r => ({
+      id: r.id,
       name: r.name,
       price: r.price,
       compare_at_price: r.compare_at_price ?? null,
@@ -1448,18 +1454,22 @@ export function ProductsManager({
 
               {/* Summary */}
               <div className="px-6 py-4 space-y-3">
-                <div className="grid grid-cols-3 gap-3">
+                <div className="grid grid-cols-4 gap-2">
                   <div className="p-3 bg-gray-50 dark:bg-gray-800 rounded-xl text-center">
                     <p className="text-xl font-bold text-gray-900 dark:text-white">{importRows.length}</p>
-                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">Total rows</p>
+                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">Total</p>
                   </div>
                   <div className="p-3 bg-green-50 dark:bg-green-950/40 rounded-xl text-center">
-                    <p className="text-xl font-bold text-green-700 dark:text-green-400">{importRows.filter(r => !r.isDuplicate).length}</p>
-                    <p className="text-xs text-green-600 dark:text-green-500 mt-0.5">Will import</p>
+                    <p className="text-xl font-bold text-green-700 dark:text-green-400">{importRows.filter(r => !r.isDuplicate && !r.id).length}</p>
+                    <p className="text-xs text-green-600 dark:text-green-500 mt-0.5">New</p>
+                  </div>
+                  <div className="p-3 bg-blue-50 dark:bg-blue-950/40 rounded-xl text-center">
+                    <p className="text-xl font-bold text-blue-700 dark:text-blue-400">{importRows.filter(r => !!r.id).length}</p>
+                    <p className="text-xs text-blue-600 dark:text-blue-500 mt-0.5">Updates</p>
                   </div>
                   <div className="p-3 bg-amber-50 dark:bg-amber-950/40 rounded-xl text-center">
                     <p className="text-xl font-bold text-amber-700 dark:text-amber-400">{importRows.filter(r => r.isDuplicate).length}</p>
-                    <p className="text-xs text-amber-600 dark:text-amber-500 mt-0.5">Duplicates (skip)</p>
+                    <p className="text-xs text-amber-600 dark:text-amber-500 mt-0.5">Skip</p>
                   </div>
                 </div>
 
@@ -1486,6 +1496,8 @@ export function ProductsManager({
                         </div>
                         {r.isDuplicate ? (
                           <span className="text-xs font-medium text-amber-600 dark:text-amber-500 shrink-0">duplicate</span>
+                        ) : r.id ? (
+                          <span className="text-xs font-medium text-blue-600 dark:text-blue-400 shrink-0">update</span>
                         ) : (
                           <span className="text-xs font-medium text-green-600 dark:text-green-400 shrink-0">new</span>
                         )}
@@ -1496,12 +1508,12 @@ export function ProductsManager({
 
                 {importRows.filter(r => !r.isDuplicate).length === 0 && importRows.length > 0 && (
                   <p className="text-sm text-center text-gray-500 dark:text-gray-400 py-2">
-                    All rows already exist — nothing new to import.
+                    All rows are duplicates — nothing to import.
                   </p>
                 )}
 
                 <p className="text-xs text-gray-400 dark:text-gray-600">
-                  Only new products will be imported — duplicates are automatically skipped.
+                  Rows with an ID update the existing product. Rows without an ID create new ones. Duplicates (same name, no ID) are skipped.
                   {' '}<button type="button" onClick={downloadTemplate} className="underline underline-offset-2 hover:text-gray-600 dark:hover:text-gray-400 transition-colors">Download template</button>
                 </p>
               </div>
@@ -1514,7 +1526,13 @@ export function ProductsManager({
                 </button>
                 <button type="button" onClick={handleConfirmImport} disabled={isImporting || importRows.filter(r => !r.isDuplicate).length === 0}
                   className="flex-1 px-4 py-2.5 text-sm font-medium text-white bg-gray-900 dark:bg-white dark:text-gray-900 rounded-lg hover:bg-gray-700 dark:hover:bg-gray-100 transition-colors disabled:opacity-50">
-                  {isImporting ? 'Importing…' : `Import ${importRows.filter(r => !r.isDuplicate).length} products`}
+                  {isImporting ? 'Importing…' : (() => {
+                    const newCount = importRows.filter(r => !r.isDuplicate && !r.id).length
+                    const updateCount = importRows.filter(r => !!r.id).length
+                    if (newCount && updateCount) return `Import ${newCount} new · Update ${updateCount}`
+                    if (updateCount) return `Update ${updateCount} product${updateCount !== 1 ? 's' : ''}`
+                    return `Import ${newCount} product${newCount !== 1 ? 's' : ''}`
+                  })()}
                 </button>
               </div>
             </div>

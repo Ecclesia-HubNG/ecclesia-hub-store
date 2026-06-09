@@ -108,6 +108,7 @@ export async function bulkDeleteProducts(ids: string[]) {
 }
 
 export async function bulkImportProducts(rows: Array<{
+  id?: string | null
   name: string
   description?: string | null
   short_description?: string | null
@@ -159,42 +160,65 @@ export async function bulkImportProducts(rows: Array<{
     for (const b of existingBrands ?? []) brandMap[b.name.toLowerCase()] = b.id
   }
 
-  const toInsert = rows.map((r, i) => ({
-    name: r.name,
-    slug: `${slugify(r.name)}-${now}-${i}`,
-    description: r.description ?? null,
-    short_description: r.short_description ?? null,
-    price: r.price,
-    compare_at_price: r.compare_at_price ?? null,
-    stock: r.stock,
-    is_active: r.is_active,
-    is_featured: r.is_featured,
-    thumbnail: r.thumbnail ?? null,
-    images: r.images ?? [],
-    sku: r.sku ?? null,
-    barcode: r.barcode ?? null,
-    weight: r.weight ?? null,
-    meta_title: r.meta_title ?? null,
-    meta_description: r.meta_description ?? null,
-    // Convert import shape { name, values[] } → DB shape { name, options: [{ value, price }] }
-    variants: r.variants?.length
-      ? JSON.stringify(r.variants.map(g => ({
-          name: g.name,
-          options: g.values.map(v => ({ value: v, price: null })),
-        })))
-      : '[]',
-    category_id: r.category_names?.[0]?.trim()
-      ? (categoryMap[r.category_names[0].trim().toLowerCase()] ?? null)
-      : null,
-    brand_id: r.brand_name?.trim()
-      ? (brandMap[r.brand_name.trim().toLowerCase()] ?? null)
-      : null,
-  }))
+  function buildPayload(r: typeof rows[number], insertIndex?: number) {
+    return {
+      name: r.name,
+      ...(insertIndex !== undefined ? { slug: `${slugify(r.name)}-${now}-${insertIndex}` } : {}),
+      description: r.description ?? null,
+      short_description: r.short_description ?? null,
+      price: r.price,
+      compare_at_price: r.compare_at_price ?? null,
+      stock: r.stock,
+      is_active: r.is_active,
+      is_featured: r.is_featured,
+      thumbnail: r.thumbnail ?? null,
+      images: r.images ?? [],
+      sku: r.sku ?? null,
+      barcode: r.barcode ?? null,
+      weight: r.weight ?? null,
+      meta_title: r.meta_title ?? null,
+      meta_description: r.meta_description ?? null,
+      variants: r.variants?.length
+        ? JSON.stringify(r.variants.map(g => ({
+            name: g.name,
+            options: g.values.map(v => ({ value: v, price: null })),
+          })))
+        : '[]',
+      category_id: r.category_names?.[0]?.trim()
+        ? (categoryMap[r.category_names[0].trim().toLowerCase()] ?? null)
+        : null,
+      brand_id: r.brand_name?.trim()
+        ? (brandMap[r.brand_name.trim().toLowerCase()] ?? null)
+        : null,
+    }
+  }
 
-  const { error, data } = await supabase.from('products').insert(toInsert).select('id')
-  if (error) return { error: error.message }
+  const toInsert = rows.filter(r => !r.id)
+  const toUpdate = rows.filter(r => !!r.id)
+
+  let insertCount = 0
+  let updateCount = 0
+
+  if (toInsert.length) {
+    const { error, data } = await supabase
+      .from('products')
+      .insert(toInsert.map((r, i) => buildPayload(r, i)))
+      .select('id')
+    if (error) return { error: error.message }
+    insertCount = data?.length ?? 0
+  }
+
+  if (toUpdate.length) {
+    const results = await Promise.all(
+      toUpdate.map(r => supabase.from('products').update(buildPayload(r)).eq('id', r.id!))
+    )
+    const failed = results.find(r => r.error)
+    if (failed?.error) return { error: failed.error.message }
+    updateCount = toUpdate.length
+  }
+
   revalidatePath('/admin/products')
-  return { success: true as const, count: data?.length ?? 0 }
+  return { success: true as const, count: insertCount + updateCount }
 }
 
 export async function quickUpdateProduct(id: string, data: {
