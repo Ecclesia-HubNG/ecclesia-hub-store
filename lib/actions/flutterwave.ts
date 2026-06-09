@@ -407,18 +407,96 @@ export async function verifyAndFinalizeOrder(transactionId: string) {
 }
 
 // Called when Flutterwave redirects back with status=cancelled.
-// Marks the pre-order as payment_failed so it doesn't linger as pending_verification.
+// Marks the pre-order as payment_failed and notifies the customer.
 export async function cancelPendingOrder(txRef: string) {
   if (!txRef) return
   try {
     const supabase = createAdminClient()
+    const { data: order } = await supabase
+      .from('orders')
+      .select('id, shipping_address')
+      .eq('payment_reference', txRef)
+      .eq('status', 'pending_verification')
+      .maybeSingle()
+
+    if (!order) return
+
     await supabase
       .from('orders')
       .update({ status: 'payment_failed' })
-      .eq('payment_reference', txRef)
-      .eq('status', 'pending_verification')
+      .eq('id', order.id)
+
+    const s = order.shipping_address as Record<string, string>
+    const { sendPaymentFailed } = await import('@/lib/email')
+    await sendPaymentFailed(s.email, {
+      customerName: `${s.firstName} ${s.lastName}`,
+      orderNumber: order.id.slice(0, 8).toUpperCase(),
+    }).catch(() => {})
   } catch (err) {
     console.error('[flutterwave] cancelPendingOrder error:', err)
+  }
+}
+
+// Reinitializes Flutterwave payment for a payment_failed order.
+// Allowed for the order owner (authenticated) or anyone with the order UUID (guest link).
+export async function retryPayment(orderId: string) {
+  try {
+    const admin = createAdminClient()
+    const { data: order } = await admin
+      .from('orders')
+      .select('id, status, total, shipping_address, customer_id')
+      .eq('id', orderId)
+      .eq('status', 'payment_failed')
+      .maybeSingle()
+
+    if (!order) return { error: 'Order not found or not eligible for retry.' }
+
+    // If order has a customer_id, verify the caller owns it
+    if (order.customer_id) {
+      const supabase = createClient()
+      const { data: { user } } = await supabase.auth.getUser()
+      if (user?.id !== order.customer_id) return { error: 'Not authorised.' }
+    }
+
+    const shipping = order.shipping_address as Record<string, string>
+    const txRef = `EH-${orderId.replace(/-/g, '').slice(0, 10)}-${Date.now()}`
+    const key = secretKey()
+
+    const res = await fetch(`${FLW_BASE}/payments`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        tx_ref: txRef,
+        amount: order.total,
+        currency: 'NGN',
+        redirect_url: `${process.env.NEXT_PUBLIC_APP_URL}/payment/verify`,
+        customer: {
+          email: shipping.email,
+          name: `${shipping.firstName} ${shipping.lastName}`,
+          phonenumber: shipping.phone,
+        },
+        customizations: {
+          title: 'Ecclesia Hub',
+          description: 'Complete your purchase',
+          logo: `${process.env.NEXT_PUBLIC_APP_URL}/favicon.ico`,
+        },
+      }),
+    })
+
+    if (!res.ok) return { error: 'Payment provider unavailable. Please try again.' }
+    const json = await res.json()
+    if (json.status !== 'success') return { error: json.message ?? 'Could not initialize payment.' }
+
+    const { link } = json.data as { link: string }
+
+    await admin
+      .from('orders')
+      .update({ status: 'pending_verification', payment_reference: txRef })
+      .eq('id', orderId)
+
+    return { paymentLink: link }
+  } catch {
+    return { error: 'An unexpected error occurred.' }
   }
 }
 

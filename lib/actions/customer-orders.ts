@@ -209,7 +209,7 @@ export async function claimGuestOrders() {
     .update({ customer_id: user.id })
     .is('customer_id', null)
     .filter('shipping_address->>email', 'eq', user.email)
-    .not('status', 'in', '("pending_verification","payment_failed")')
+    .not('status', 'eq', 'pending_verification')
 }
 
 export async function getMyOrders() {

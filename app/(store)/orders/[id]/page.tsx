@@ -4,13 +4,15 @@ import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import { getOrder } from '@/lib/actions/customer-orders'
 import { CancelOrderButton } from '@/components/CancelOrderButton'
+import { RetryPaymentButton } from '@/components/RetryPaymentButton'
 
 const STATUS_STEPS = ['pending', 'paid', 'processing', 'shipped', 'delivered'] as const
-type Status = typeof STATUS_STEPS[number] | 'cancelled' | 'refunded' | 'pending_verification' | 'pending_bank_transfer'
+type Status = typeof STATUS_STEPS[number] | 'cancelled' | 'refunded' | 'payment_failed' | 'pending_verification' | 'pending_bank_transfer'
 
 const STATUS_LABEL: Record<string, string> = {
   pending_verification:  'Awaiting verification',
   pending_bank_transfer: 'Awaiting bank transfer',
+  payment_failed:        'Payment failed',
   pending:               'Order placed',
   paid:                  'Payment confirmed',
   processing:            'Being prepared',
@@ -23,6 +25,7 @@ const STATUS_LABEL: Record<string, string> = {
 const STATUS_COLOUR: Record<string, string> = {
   pending_verification:  'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400',
   pending_bank_transfer: 'bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-400',
+  payment_failed:        'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400',
   pending:               'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400',
   paid:                  'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400',
   processing:            'bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-400',
@@ -33,10 +36,11 @@ const STATUS_COLOUR: Record<string, string> = {
 }
 
 function Timeline({ status }: { status: Status }) {
-  if (status === 'cancelled' || status === 'refunded') {
+  if (status === 'cancelled' || status === 'refunded' || status === 'payment_failed') {
+    const labels: Record<string, string> = { cancelled: 'Order cancelled', refunded: 'Order refunded', payment_failed: 'Payment failed' }
     return (
       <div className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-semibold ${STATUS_COLOUR[status]}`}>
-        {status === 'cancelled' ? 'Order cancelled' : 'Order refunded'}
+        {labels[status] ?? status}
       </div>
     )
   }
@@ -104,6 +108,16 @@ export default async function OrderPage({ params }: { params: { id: string } }) 
       <div className={`inline-flex items-center px-3 py-1.5 rounded-full text-xs font-semibold mb-6 ${STATUS_COLOUR[order.status] ?? STATUS_COLOUR.pending}`}>
         {STATUS_LABEL[order.status] ?? order.status}
       </div>
+
+      {/* Payment failed notice */}
+      {order.status === 'payment_failed' && (
+        <div className="bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800 rounded-2xl p-5 mb-6">
+          <p className="text-sm font-semibold text-red-800 dark:text-red-300 mb-1">Your payment was not completed</p>
+          <p className="text-sm text-red-700 dark:text-red-400">
+            Your items are still reserved. You can retry your payment below — no need to start over.
+          </p>
+        </div>
+      )}
 
       {/* Notice for orders awaiting confirmation */}
       {order.status === 'pending_verification' && (
@@ -205,14 +219,23 @@ export default async function OrderPage({ params }: { params: { id: string } }) 
       )}
 
       <div className="flex flex-col gap-3">
-        <div className="flex gap-3">
-          <Link href="/shop" className="px-5 py-2.5 bg-[#4A0F1C] text-white text-sm font-semibold rounded-xl hover:bg-[#3A0B15] transition-colors">
-            Continue shopping
-          </Link>
-          <Link href="/account/orders" className="px-5 py-2.5 border border-gray-200 dark:border-gray-700 text-sm font-medium text-gray-700 dark:text-gray-300 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
-            My orders
-          </Link>
-        </div>
+        {order.status === 'payment_failed' ? (
+          <div className="flex gap-3 flex-wrap">
+            <RetryPaymentButton orderId={order.id} />
+            <Link href="/shop" className="px-5 py-2.5 border border-gray-200 dark:border-gray-700 text-sm font-medium text-gray-700 dark:text-gray-300 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
+              Back to shop
+            </Link>
+          </div>
+        ) : (
+          <div className="flex gap-3">
+            <Link href="/shop" className="px-5 py-2.5 bg-[#4A0F1C] text-white text-sm font-semibold rounded-xl hover:bg-[#3A0B15] transition-colors">
+              Continue shopping
+            </Link>
+            <Link href="/account/orders" className="px-5 py-2.5 border border-gray-200 dark:border-gray-700 text-sm font-medium text-gray-700 dark:text-gray-300 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
+              My orders
+            </Link>
+          </div>
+        )}
         {['pending', 'pending_verification', 'pending_bank_transfer'].includes(order.status) && (
           <CancelOrderButton id={order.id} />
         )}
