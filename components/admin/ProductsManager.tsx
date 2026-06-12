@@ -399,6 +399,7 @@ export function ProductsManager({
 
   // CSV import
   const [showImportPicker, setShowImportPicker] = useState(false)
+  const [showExportModal, setShowExportModal] = useState(false)
   const [importRows, setImportRows] = useState<ImportRow[] | null>(null)
   const [isImporting, startImport] = useTransition()
   const [importDone, setImportDone] = useState('')
@@ -617,7 +618,7 @@ export function ProductsManager({
                 <div className="absolute right-0 top-full mt-1.5 z-20 w-44 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl shadow-lg py-1 overflow-hidden">
                   <button
                     type="button"
-                    onClick={() => { exportToCSV(filtered); setShowMoreActions(false) }}
+                    onClick={() => { setShowExportModal(true); setShowMoreActions(false) }}
                     className="flex items-center gap-2.5 w-full px-4 py-2.5 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
                   >
                     <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
@@ -1154,6 +1155,61 @@ export function ProductsManager({
             </svg>
           </button>
         </div>
+      )}
+
+      {/* Export modal */}
+      {showExportModal && (
+        <>
+          <div className="fixed inset-0 z-40 bg-black/50 backdrop-blur-[2px]" onClick={() => setShowExportModal(false)} />
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden">
+              <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 dark:border-gray-800">
+                <div>
+                  <h2 className="font-semibold text-gray-900 dark:text-white">Export Products</h2>
+                  <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">Choose which products to export as CSV</p>
+                </div>
+                <button type="button" onClick={() => setShowExportModal(false)}
+                  className="w-8 h-8 flex items-center justify-center rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+              <div className="p-4 flex flex-col gap-3">
+                <button
+                  type="button"
+                  onClick={() => { exportToCSV(products); setShowExportModal(false) }}
+                  className="flex items-center gap-4 w-full px-4 py-4 rounded-xl border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors text-left"
+                >
+                  <div className="w-10 h-10 rounded-xl bg-gray-100 dark:bg-gray-800 flex items-center justify-center flex-shrink-0">
+                    <svg className="w-5 h-5 text-gray-600 dark:text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M20.25 7.5l-.625 10.632a2.25 2.25 0 0 1-2.247 2.118H6.622a2.25 2.25 0 0 1-2.247-2.118L3.75 7.5M10 11.25h4M3.375 7.5h17.25c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125Z" />
+                    </svg>
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-gray-900 dark:text-white">All Products</p>
+                    <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">{products.length} products total</p>
+                  </div>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => { exportToCSV(products.filter(p => p.stock === 0)); setShowExportModal(false) }}
+                  className="flex items-center gap-4 w-full px-4 py-4 rounded-xl border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors text-left"
+                >
+                  <div className="w-10 h-10 rounded-xl bg-red-50 dark:bg-red-950/40 flex items-center justify-center flex-shrink-0">
+                    <svg className="w-5 h-5 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126ZM12 15.75h.007v.008H12v-.008Z" />
+                    </svg>
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-gray-900 dark:text-white">Out of Stock</p>
+                    <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">{products.filter(p => p.stock === 0).length} products with 0 stock</p>
+                  </div>
+                </button>
+              </div>
+            </div>
+          </div>
+        </>
       )}
 
       {/* Import picker modal */}
