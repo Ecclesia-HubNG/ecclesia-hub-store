@@ -317,7 +317,9 @@ function exportToCSV(products: Product[]) {
   const a = document.createElement('a')
   a.href = url
   a.download = `products-${new Date().toISOString().split('T')[0]}.csv`
+  document.body.appendChild(a)
   a.click()
+  document.body.removeChild(a)
   URL.revokeObjectURL(url)
 }
 

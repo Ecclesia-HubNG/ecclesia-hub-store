@@ -161,7 +161,9 @@ function exportOrdersCSV(orders: Order[]) {
   const a = document.createElement('a')
   a.href = url
   a.download = `orders-${new Date().toISOString().split('T')[0]}.csv`
+  document.body.appendChild(a)
   a.click()
+  document.body.removeChild(a)
   URL.revokeObjectURL(url)
 }
 
