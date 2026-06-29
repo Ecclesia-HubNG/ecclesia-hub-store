@@ -273,8 +273,7 @@ function MobileDrawer({
 export default function StoreHeader({ megaMenu }: { megaMenu?: MegaMenuConfig }) {
   const shopColumns = megaMenu?.columns ?? DEFAULT_MEGA_MENU.columns
   const plainNav    = megaMenu?.plainNav ?? DEFAULT_MEGA_MENU.plainNav
-  const [announcementVisible, setAnnouncementVisible] = useState(true)
-  const [megaOpen, setMegaOpen] = useState(false)
+const [megaOpen, setMegaOpen] = useState(false)
   const [mobileOpen, setMobileOpen] = useState(false)
   const [accountOpen, setAccountOpen] = useState(false)
   const [searchOpen, setSearchOpen] = useState(false)
@@ -338,27 +337,6 @@ export default function StoreHeader({ megaMenu }: { megaMenu?: MegaMenuConfig })
     <>
       {searchOpen && <SearchOverlay onClose={() => setSearchOpen(false)} />}
 
-      {/* ── Announcement bar ── */}
-      {announcementVisible && (
-        <div className="bg-[#4A0F1C] text-white text-xs py-2.5 px-5 flex items-center justify-center relative">
-          <p className="text-center tracking-wide">
-            Free delivery on orders over ₦50,000 &nbsp;·&nbsp;{' '}
-            <Link href="/shop" className="font-semibold underline underline-offset-2 hover:no-underline">
-              Shop Now
-            </Link>
-          </p>
-          <button
-            type="button"
-            onClick={() => setAnnouncementVisible(false)}
-            aria-label="Dismiss"
-            className="absolute right-4 top-1/2 -translate-y-1/2 p-1 text-white/50 hover:text-white transition-colors"
-          >
-            <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" />
-            </svg>
-          </button>
-        </div>
-      )}
 
       {/* ── Sticky header ── */}
       <header className="sticky top-0 z-40 bg-white border-b border-gray-100">
