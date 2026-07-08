@@ -155,6 +155,33 @@ export async function getOrder(id: string) {
   return order
 }
 
+// Lightweight poll used by the order page to reflect status/tracking changes
+// (e.g. admin marks an order shipped) without a full page reload. Same
+// access rule as getOrder() — narrow column set since it's called repeatedly.
+export async function getOrderStatus(id: string) {
+  const admin = createAdminClient()
+  const { data: order, error } = await admin
+    .from('orders')
+    .select('id, status, tracking_number, carrier, customer_id')
+    .eq('id', id)
+    .is('deleted_at', null)
+    .single()
+
+  if (error || !order) return null
+
+  if (order.customer_id) {
+    const supabase = createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user || user.id !== order.customer_id) return null
+  }
+
+  return {
+    status: order.status as string,
+    tracking_number: order.tracking_number as string | null,
+    carrier: order.carrier as string | null,
+  }
+}
+
 export async function cancelMyOrder(id: string): Promise<{ error?: string }> {
   const admin = createAdminClient()
 
