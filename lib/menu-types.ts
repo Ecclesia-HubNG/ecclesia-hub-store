@@ -81,7 +81,7 @@ export const DEFAULT_FOOTER: FooterConfig = {
       title: 'Help',
       links: [
         { label: 'Help Center',       href: '/about#faq' },
-        { label: 'Returns',           href: '#' },
+        { label: 'Returns',           href: '/returns' },
         { label: 'Contact Us',        href: '/about' },
         { label: 'Privacy Policy',    href: '/privacy' },
         { label: 'Terms of Service',  href: '/terms' },
