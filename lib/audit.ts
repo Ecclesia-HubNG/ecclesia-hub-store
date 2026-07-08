@@ -4,7 +4,7 @@ import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 
 export type AuditAction =
-  | 'product.create'   | 'product.update'   | 'product.delete'
+  | 'product.create'   | 'product.update'   | 'product.delete' | 'product.bumpa_sync'
   | 'category.create'  | 'category.update'  | 'category.delete'
   | 'order.paid'       | 'order.status_change'
   | 'upload.file'

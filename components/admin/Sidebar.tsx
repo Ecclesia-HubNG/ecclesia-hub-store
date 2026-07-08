@@ -48,6 +48,7 @@ const ALL_NAV: NavItem[] = [
       { label: 'Best Sellers',      href: '/admin/bestsellers' },
       { label: 'Gift Items',        href: '/admin/gift-items' },
       { label: 'Product of Month',  href: '/admin/products/product-of-month' },
+      { label: 'Bumpa Sync',        href: '/admin/products/bumpa-sync' },
       { label: 'Promotions',        href: '/admin/promotions' },
       { label: 'Coupons',           href: '/admin/coupons', section: 'coupons' },
     ],
