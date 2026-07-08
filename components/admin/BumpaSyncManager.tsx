@@ -30,6 +30,11 @@ export function BumpaSyncManager() {
       const text = String(reader.result ?? '')
       const rows = parseBumpaCSV(text)
       const res = await matchBumpaRows(rows)
+      if (res.error) {
+        setResult(`Error reading your products — nothing was matched: ${res.error}`)
+        setIsParsing(false)
+        return
+      }
       setMatched(res.matched)
       setAmbiguous(res.ambiguous)
       setUnmatched(res.unmatched)
@@ -97,7 +102,11 @@ export function BumpaSyncManager() {
       </div>
 
       {result && (
-        <div className="mb-6 px-4 py-3 rounded-xl bg-green-50 dark:bg-green-950/40 text-green-700 dark:text-green-400 text-sm">
+        <div className={`mb-6 px-4 py-3 rounded-xl text-sm ${
+          result.startsWith('Error')
+            ? 'bg-red-50 dark:bg-red-950/40 text-red-700 dark:text-red-400'
+            : 'bg-green-50 dark:bg-green-950/40 text-green-700 dark:text-green-400'
+        }`}>
           {result}
         </div>
       )}

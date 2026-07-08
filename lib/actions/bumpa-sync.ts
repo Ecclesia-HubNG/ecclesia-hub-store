@@ -39,11 +39,17 @@ export async function matchBumpaRows(rows: BumpaRow[]): Promise<{
   matched: MatchedRow[]
   ambiguous: AmbiguousRow[]
   unmatched: UnmatchedRow[]
+  error?: string
 }> {
   const supabase = createAdminClient()
-  const { data: products } = await supabase
+  const { data: products, error } = await supabase
     .from('products')
     .select('id, name, bumpa_id, price, cost_price, stock')
+
+  // Surface DB errors explicitly — without this, a failed query (e.g. a
+  // missing column) silently produces an empty product list, which makes
+  // every row look "not found" instead of showing the real problem.
+  if (error) return { matched: [], ambiguous: [], unmatched: [], error: error.message }
 
   const all = (products ?? []) as Array<Candidate & { bumpa_id: string | null }>
 
