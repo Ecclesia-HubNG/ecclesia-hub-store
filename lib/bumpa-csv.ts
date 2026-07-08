@@ -8,6 +8,11 @@ export type BumpaRow = {
   price: number | null
   cost: number | null
   stock: number | null
+  isActive: boolean
+  description: string | null
+  thumbnail: string | null
+  images: string[]
+  categoryName: string | null
 }
 
 // Full-document CSV parser: handles quoted fields containing commas,
@@ -60,12 +65,18 @@ export function parseBumpaCSV(text: string): BumpaRow[] {
   const headers = rows[0].map(h => h.trim().toLowerCase())
   const col = (name: string) => headers.findIndex(h => h === name.toLowerCase())
 
-  const productIdIdx = col('Product ID')
+  const productIdIdx  = col('Product ID')
   const rowTypeIdx    = col('Row Type')
   const titleIdx      = col('Title')
   const priceIdx      = col('Price')
   const costIdx       = col('Cost')
   const stockIdx      = col('Stock')
+  const isActiveIdx   = col('Is Active')
+  const descIdx       = col('Description')
+  const detailsIdx    = col('Details')
+  const mainImageIdx  = col('Main Image')
+  const addlImagesIdx = col('Additional Images')
+  const collectionsIdx = col('Collections')
 
   if (productIdIdx === -1 || titleIdx === -1) return []
 
@@ -78,12 +89,31 @@ export function parseBumpaCSV(text: string): BumpaRow[] {
     const title = r[titleIdx]?.trim()
     if (!bumpaId || !title) continue
 
+    const thumbnail = mainImageIdx !== -1 ? r[mainImageIdx]?.trim() || null : null
+    const addlImages = addlImagesIdx !== -1 && r[addlImagesIdx]?.trim()
+      ? r[addlImagesIdx].split('|').map(s => s.trim()).filter(Boolean)
+      : []
+    const images = Array.from(new Set([thumbnail, ...addlImages].filter((s): s is string => !!s)))
+
+    const description = (detailsIdx !== -1 && r[detailsIdx]?.trim())
+      || (descIdx !== -1 && r[descIdx]?.trim())
+      || null
+
+    const categoryName = collectionsIdx !== -1 && r[collectionsIdx]?.trim()
+      ? r[collectionsIdx].split('|')[0].trim() || null
+      : null
+
     out.push({
       bumpaId,
       title,
       price: priceIdx !== -1 ? toNumber(r[priceIdx]) : null,
       cost:  costIdx !== -1 ? toNumber(r[costIdx]) : null,
       stock: stockIdx !== -1 ? (r[stockIdx]?.trim() !== '' ? parseInt(r[stockIdx], 10) : null) : null,
+      isActive: isActiveIdx !== -1 ? r[isActiveIdx]?.trim() === '1' : true,
+      description,
+      thumbnail,
+      images,
+      categoryName,
     })
   }
   return out

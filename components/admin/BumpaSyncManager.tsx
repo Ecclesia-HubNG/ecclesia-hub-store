@@ -1,8 +1,11 @@
 'use client'
 
 import { useState, useTransition } from 'react'
-import { parseBumpaCSV } from '@/lib/bumpa-csv'
-import { matchBumpaRows, applyBumpaSync, type MatchedRow, type AmbiguousRow, type UnmatchedRow } from '@/lib/actions/bumpa-sync'
+import { parseBumpaCSV, type BumpaRow } from '@/lib/bumpa-csv'
+import {
+  matchBumpaRows, applyBumpaSync, createBumpaProducts,
+  type MatchedRow, type AmbiguousRow, type PossibleDuplicateRow, type NewProductRow,
+} from '@/lib/actions/bumpa-sync'
 
 function fmt(n: number | null) {
   if (n === null) return '—'
@@ -13,11 +16,15 @@ export function BumpaSyncManager() {
   const [isParsing, setIsParsing] = useState(false)
   const [matched, setMatched] = useState<MatchedRow[] | null>(null)
   const [ambiguous, setAmbiguous] = useState<AmbiguousRow[]>([])
-  const [unmatched, setUnmatched] = useState<UnmatchedRow[]>([])
+  const [possibleDuplicates, setPossibleDuplicates] = useState<PossibleDuplicateRow[]>([])
+  const [newProducts, setNewProducts] = useState<NewProductRow[]>([])
   const [excluded, setExcluded] = useState<Set<string>>(new Set())
+  const [excludedNew, setExcludedNew] = useState<Set<string>>(new Set())
+  const [createAnyway, setCreateAnyway] = useState<Set<string>>(new Set())
   const [resolved, setResolved] = useState<Record<string, string>>({}) // bumpaId -> chosen productId
-  const [showUnmatched, setShowUnmatched] = useState(false)
+  const [showDuplicates, setShowDuplicates] = useState(false)
   const [isApplying, startApply] = useTransition()
+  const [isCreating, startCreate] = useTransition()
   const [result, setResult] = useState<string>('')
 
   function handleFile(e: React.ChangeEvent<HTMLInputElement>) {
@@ -37,8 +44,11 @@ export function BumpaSyncManager() {
       }
       setMatched(res.matched)
       setAmbiguous(res.ambiguous)
-      setUnmatched(res.unmatched)
+      setPossibleDuplicates(res.possibleDuplicates)
+      setNewProducts(res.newProducts)
       setExcluded(new Set())
+      setExcludedNew(new Set())
+      setCreateAnyway(new Set())
       setResolved({})
       setIsParsing(false)
     }
@@ -48,6 +58,24 @@ export function BumpaSyncManager() {
 
   function toggleExclude(bumpaId: string) {
     setExcluded(prev => {
+      const next = new Set(prev)
+      if (next.has(bumpaId)) next.delete(bumpaId)
+      else next.add(bumpaId)
+      return next
+    })
+  }
+
+  function toggleExcludeNew(bumpaId: string) {
+    setExcludedNew(prev => {
+      const next = new Set(prev)
+      if (next.has(bumpaId)) next.delete(bumpaId)
+      else next.add(bumpaId)
+      return next
+    })
+  }
+
+  function toggleCreateAnyway(bumpaId: string) {
+    setCreateAnyway(prev => {
       const next = new Set(prev)
       if (next.has(bumpaId)) next.delete(bumpaId)
       else next.add(bumpaId)
@@ -80,20 +108,37 @@ export function BumpaSyncManager() {
       setResult(`${res.count} product${res.count !== 1 ? 's' : ''} synced.`)
       setMatched(null)
       setAmbiguous([])
-      setUnmatched([])
+    })
+  }
+
+  function handleCreate() {
+    const rows: BumpaRow[] = [
+      ...newProducts.filter(n => !excludedNew.has(n.bumpaId)).map(n => n.row),
+      ...possibleDuplicates.filter(d => createAnyway.has(d.bumpaId)).map(d => d.row),
+    ]
+    if (!rows.length) return
+
+    startCreate(async () => {
+      const res = await createBumpaProducts(rows)
+      if ('error' in res) { setResult(`Error creating products: ${res.error}`); return }
+      setResult(`${res.count} new product${res.count !== 1 ? 's' : ''} created.`)
+      setNewProducts([])
+      setPossibleDuplicates(prev => prev.filter(d => !createAnyway.has(d.bumpaId)))
+      setCreateAnyway(new Set())
     })
   }
 
   const includedCount = matched ? matched.filter(r => !excluded.has(r.bumpaId)).length : 0
+  const includedNewCount = newProducts.filter(n => !excludedNew.has(n.bumpaId)).length + createAnyway.size
 
   return (
     <div className="max-w-5xl">
       <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl p-6 mb-6">
         <h2 className="font-semibold text-gray-900 dark:text-white mb-1">Sync from Bumpa</h2>
         <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
-          Upload a Bumpa product export CSV. This only updates <strong>price, cost, and stock</strong> on
-          products that already exist here — it never touches descriptions, images, categories, or slugs,
-          and never creates duplicates.
+          Upload a Bumpa product export CSV. Existing products only ever get <strong>price, cost, and stock</strong>{' '}
+          updated — descriptions, images, categories, and slugs are never touched. Products that genuinely don't
+          exist here yet can optionally be created as new listings, reviewed below before anything is added.
         </p>
         <label className="inline-flex items-center gap-2 px-4 py-2.5 text-sm font-medium rounded-xl bg-[#4A0F1C] text-white cursor-pointer hover:bg-[#3a0c16] transition-colors">
           {isParsing ? 'Reading file…' : 'Choose Bumpa CSV'}
@@ -117,7 +162,8 @@ export function BumpaSyncManager() {
             <div className="text-sm text-gray-600 dark:text-gray-400">
               <strong className="text-gray-900 dark:text-white">{includedCount}</strong> will update
               {ambiguous.length > 0 && <> · <strong className="text-amber-600">{ambiguous.length}</strong> need review</>}
-              {unmatched.length > 0 && <> · <strong className="text-gray-400">{unmatched.length}</strong> not found (skipped)</>}
+              {newProducts.length > 0 && <> · <strong className="text-blue-600">{newProducts.length}</strong> look genuinely new</>}
+              {possibleDuplicates.length > 0 && <> · <strong className="text-gray-400">{possibleDuplicates.length}</strong> possible renames</>}
             </div>
             <button
               type="button"
@@ -202,19 +248,76 @@ export function BumpaSyncManager() {
             </div>
           )}
 
-          {unmatched.length > 0 && (
-            <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl p-5">
-              <button
-                type="button"
-                onClick={() => setShowUnmatched(v => !v)}
-                className="text-xs font-semibold uppercase tracking-wide text-gray-400 dark:text-gray-600"
-              >
-                {showUnmatched ? 'Hide' : 'Show'} {unmatched.length} not found in your store
-              </button>
-              {showUnmatched && (
-                <ul className="mt-3 text-sm text-gray-500 dark:text-gray-400 space-y-1 max-h-64 overflow-y-auto">
-                  {unmatched.map(u => <li key={u.bumpaId}>{u.title}</li>)}
-                </ul>
+          {(newProducts.length > 0 || possibleDuplicates.length > 0) && (
+            <div className="bg-white dark:bg-gray-900 border border-blue-200 dark:border-blue-900 rounded-2xl p-5">
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="text-xs font-semibold uppercase tracking-wide text-blue-600">
+                  New products not currently in your store
+                </h3>
+                <button
+                  type="button"
+                  onClick={handleCreate}
+                  disabled={isCreating || includedNewCount === 0}
+                  className="px-4 py-2 text-sm font-medium rounded-xl bg-[#4A0F1C] text-white disabled:opacity-40 hover:bg-[#3a0c16] transition-colors"
+                >
+                  {isCreating ? 'Creating…' : `Create ${includedNewCount} new product${includedNewCount !== 1 ? 's' : ''}`}
+                </button>
+              </div>
+
+              {newProducts.length > 0 && (
+                <div className="space-y-1.5 mb-4 max-h-64 overflow-y-auto">
+                  {newProducts.map(n => (
+                    <label key={n.bumpaId} className="flex items-center gap-2.5 text-sm py-1">
+                      <input
+                        type="checkbox"
+                        checked={!excludedNew.has(n.bumpaId)}
+                        onChange={() => toggleExcludeNew(n.bumpaId)}
+                        className="rounded"
+                      />
+                      <span className={excludedNew.has(n.bumpaId) ? 'text-gray-400 line-through' : 'text-gray-900 dark:text-white'}>
+                        {n.row.title}
+                      </span>
+                      <span className="text-gray-400 dark:text-gray-500">
+                        {fmt(n.row.price)} · stock {n.row.stock ?? 0}
+                      </span>
+                    </label>
+                  ))}
+                </div>
+              )}
+
+              {possibleDuplicates.length > 0 && (
+                <div>
+                  <button
+                    type="button"
+                    onClick={() => setShowDuplicates(v => !v)}
+                    className="text-xs font-semibold uppercase tracking-wide text-gray-400 dark:text-gray-600"
+                  >
+                    {showDuplicates ? 'Hide' : 'Show'} {possibleDuplicates.length} possible renames — skipped by default
+                  </button>
+                  {showDuplicates && (
+                    <div className="mt-3 space-y-2 max-h-64 overflow-y-auto">
+                      {possibleDuplicates.map(d => (
+                        <div key={d.bumpaId} className="flex items-center justify-between gap-4 text-sm py-1">
+                          <div className="min-w-0">
+                            <p className="text-gray-900 dark:text-white truncate">{d.title}</p>
+                            <p className="text-xs text-gray-400 dark:text-gray-500 truncate">
+                              {Math.round(d.similarity * 100)}% similar to &ldquo;{d.closestMatch.name}&rdquo;
+                            </p>
+                          </div>
+                          <label className="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400 shrink-0">
+                            <input
+                              type="checkbox"
+                              checked={createAnyway.has(d.bumpaId)}
+                              onChange={() => toggleCreateAnyway(d.bumpaId)}
+                              className="rounded"
+                            />
+                            Create as new anyway
+                          </label>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
               )}
             </div>
           )}

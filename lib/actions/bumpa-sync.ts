@@ -26,19 +26,44 @@ export type AmbiguousRow = {
   candidates: Array<{ id: string; name: string }>
 }
 
-export type UnmatchedRow = {
+export type PossibleDuplicateRow = {
   bumpaId: string
   title: string
+  closestMatch: { id: string; name: string }
+  similarity: number
+  row: BumpaRow
+}
+
+export type NewProductRow = {
+  bumpaId: string
+  row: BumpaRow
 }
 
 function normalize(name: string) {
   return name.toLowerCase().trim().replace(/\s+/g, ' ')
 }
 
+function tokenize(name: string): Set<string> {
+  return new Set(normalize(name).split(' ').filter(Boolean))
+}
+
+function jaccard(a: Set<string>, b: Set<string>): number {
+  let intersection = 0
+  a.forEach(t => { if (b.has(t)) intersection++ })
+  const union = a.size + b.size - intersection
+  return union === 0 ? 0 : intersection / union
+}
+
+// Above this word-overlap threshold, a "not found" row is treated as a
+// likely rename/variant of an existing product and held for manual review
+// instead of being auto-created as a new, possibly-duplicate listing.
+const DUPLICATE_SIMILARITY_THRESHOLD = 0.5
+
 export async function matchBumpaRows(rows: BumpaRow[]): Promise<{
   matched: MatchedRow[]
   ambiguous: AmbiguousRow[]
-  unmatched: UnmatchedRow[]
+  possibleDuplicates: PossibleDuplicateRow[]
+  newProducts: NewProductRow[]
   error?: string
 }> {
   const supabase = createAdminClient()
@@ -49,23 +74,26 @@ export async function matchBumpaRows(rows: BumpaRow[]): Promise<{
   // Surface DB errors explicitly — without this, a failed query (e.g. a
   // missing column) silently produces an empty product list, which makes
   // every row look "not found" instead of showing the real problem.
-  if (error) return { matched: [], ambiguous: [], unmatched: [], error: error.message }
+  if (error) return { matched: [], ambiguous: [], possibleDuplicates: [], newProducts: [], error: error.message }
 
   const all = (products ?? []) as Array<Candidate & { bumpa_id: string | null }>
 
   const byBumpaId = new Map<string, Candidate & { bumpa_id: string | null }>()
   const byName = new Map<string, Array<Candidate & { bumpa_id: string | null }>>()
+  const tokensById = new Map<string, Set<string>>()
   for (const p of all) {
     if (p.bumpa_id) byBumpaId.set(p.bumpa_id, p)
     const key = normalize(p.name)
     const list = byName.get(key) ?? []
     list.push(p)
     byName.set(key, list)
+    tokensById.set(p.id, tokenize(p.name))
   }
 
   const matched: MatchedRow[] = []
   const ambiguous: AmbiguousRow[] = []
-  const unmatched: UnmatchedRow[] = []
+  const possibleDuplicates: PossibleDuplicateRow[] = []
+  const newProducts: NewProductRow[] = []
 
   for (const row of rows) {
     const linked = byBumpaId.get(row.bumpaId)
@@ -107,11 +135,82 @@ export async function matchBumpaRows(rows: BumpaRow[]): Promise<{
         candidates: candidates.map(c => ({ id: c.id, name: c.name })),
       })
     } else {
-      unmatched.push({ bumpaId: row.bumpaId, title: row.title })
+      // No exact name match — check word-overlap against every existing
+      // product before concluding it's genuinely new, so a renamed/variant
+      // product doesn't get created as a duplicate.
+      const rowTokens = tokenize(row.title)
+      let best: { p: Candidate; score: number } | null = null
+      for (const p of all) {
+        const score = jaccard(rowTokens, tokensById.get(p.id)!)
+        if (!best || score > best.score) best = { p, score }
+      }
+
+      if (best && best.score >= DUPLICATE_SIMILARITY_THRESHOLD) {
+        possibleDuplicates.push({
+          bumpaId: row.bumpaId,
+          title: row.title,
+          closestMatch: { id: best.p.id, name: best.p.name },
+          similarity: best.score,
+          row,
+        })
+      } else {
+        newProducts.push({ bumpaId: row.bumpaId, row })
+      }
     }
   }
 
-  return { matched, ambiguous, unmatched }
+  return { matched, ambiguous, possibleDuplicates, newProducts }
+}
+
+function slugify(s: string) {
+  return s.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '')
+}
+
+// Creates genuinely-new products from Bumpa rows that matched nothing in
+// the store (not even a near-duplicate by name). Each is linked to its
+// bumpa_id immediately so it's matched directly on every future sync.
+export async function createBumpaProducts(rowsToCreate: BumpaRow[]) {
+  if (!rowsToCreate.length) return { success: true as const, count: 0 }
+  const supabase = createAdminClient()
+  const now = Date.now()
+
+  const categoryMap: Record<string, string> = {}
+  const uniqueCategoryNames = Array.from(new Set(
+    rowsToCreate.flatMap(r => r.categoryName?.trim() ? [r.categoryName.trim()] : [])
+  ))
+  if (uniqueCategoryNames.length) {
+    const { data: existing } = await supabase.from('categories').select('id, name').in('name', uniqueCategoryNames)
+    for (const cat of existing ?? []) categoryMap[cat.name.toLowerCase()] = cat.id
+    const missing = uniqueCategoryNames.filter(n => !categoryMap[n.toLowerCase()])
+    if (missing.length) {
+      const { data: created } = await supabase
+        .from('categories')
+        .insert(missing.map((name, i) => ({ name, slug: `${slugify(name)}-${now}-${i}` })))
+        .select('id, name')
+      for (const cat of created ?? []) categoryMap[cat.name.toLowerCase()] = cat.id
+    }
+  }
+
+  const payload = rowsToCreate.map((r, i) => ({
+    name: r.title,
+    slug: `${slugify(r.title)}-${now}-${i}`,
+    description: r.description,
+    price: r.price ?? 0,
+    cost_price: r.cost,
+    stock: r.stock ?? 0,
+    is_active: r.isActive,
+    thumbnail: r.thumbnail,
+    images: r.images,
+    category_id: r.categoryName?.trim() ? (categoryMap[r.categoryName.trim().toLowerCase()] ?? null) : null,
+    bumpa_id: r.bumpaId,
+  }))
+
+  const { error, data } = await supabase.from('products').insert(payload).select('id')
+  if (error) return { error: error.message }
+
+  logAudit('product.bumpa_sync', 'product', 'bulk', { created: data?.length ?? 0 }).catch(() => {})
+  revalidatePath('/admin/products')
+  return { success: true as const, count: data?.length ?? 0 }
 }
 
 export async function applyBumpaSync(updates: Array<{
