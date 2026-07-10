@@ -1,6 +1,4 @@
 /** @type {import('next').NextConfig} */
-import { withSentryConfig } from '@sentry/nextjs'
-
 const supabaseHost = 'paiongqpgggxgfiacspt.supabase.co'
 const r2Host = 'pub-10bc4fec8b2b43a0992e28a4cf1acf41.r2.dev'
 const isDev = process.env.NODE_ENV !== 'production'
@@ -30,11 +28,8 @@ const securityHeaders = [
       // Allow images from any HTTPS source — product images can come from any URL
       "img-src 'self' data: blob: https:",
       "font-src 'self'",
-      // Sentry's session replay runs in a worker loaded from a blob: URL
-      "worker-src 'self' blob:",
-      // Supabase API + realtime + Sentry error reporting (note the .us. region segment — a bare
-      // *.ingest.sentry.io does NOT match *.ingest.us.sentry.io) + GA4 measurement beacons
-      `connect-src 'self' https://${supabaseHost} wss://${supabaseHost} https://api.flutterwave.com https://checkout.flutterwave.com https://*.ingest.sentry.io https://*.ingest.us.sentry.io https://*.ingest.de.sentry.io https://www.googletagmanager.com https://www.google-analytics.com https://*.google-analytics.com https://*.analytics.google.com`,
+      // Supabase API + realtime + GA4 measurement beacons
+      `connect-src 'self' https://${supabaseHost} wss://${supabaseHost} https://api.flutterwave.com https://checkout.flutterwave.com https://www.googletagmanager.com https://www.google-analytics.com https://*.google-analytics.com https://*.analytics.google.com`,
       // Flutterwave checkout uses iframes for 3DS and bank auth flows
       "frame-src 'self' https://checkout.flutterwave.com https://*.flutterwave.com",
       // Remove X-Frame-Options conflict — frame-src handles it
@@ -71,11 +66,4 @@ const nextConfig = {
   },
 };
 
-export default withSentryConfig(nextConfig, {
-  org: 'zaane-technologies',
-  project: 'ecclesiahub',
-  silent: !process.env.CI,
-  widenClientFileUpload: true,
-  hideSourceMaps: true,
-  disableLogger: true,
-})
+export default nextConfig
