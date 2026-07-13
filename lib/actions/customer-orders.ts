@@ -159,7 +159,7 @@ export async function getOrder(id: string) {
 // (e.g. admin marks an order shipped) without a full page reload. Same
 // access rule as getOrder() — narrow column set since it's called repeatedly.
 export async function getOrderStatus(id: string) {
-  const admin = createAdminClient()
+  const admin = createAdminClient({ noStore: true })
   const { data: order, error } = await admin
     .from('orders')
     .select('id, status, tracking_number, carrier, customer_id')

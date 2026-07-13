@@ -1,17 +1,21 @@
 export const revalidate = 60
 
-import { createClient } from '@/lib/supabase/server'
-import { createAdminClient } from '@/lib/supabase/admin'
+import { createPublicClient } from '@/lib/supabase/server'
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import ImageGallery from '@/components/store/ImageGallery'
 import AddToCart from '@/components/store/AddToCart'
 import WishlistButton from '@/components/store/WishlistButton'
 
+// Pre-rendering all ~800 product pages at build time meant every deploy had
+// to do ~800 individual database round-trips before it could go live, which
+// was pushing builds past Vercel's timeout. Rendering nothing at build time
+// and letting each page generate on its first real visit (then cache for
+// `revalidate` seconds, same as before) keeps deploys fast regardless of
+// how large the catalog grows. `dynamicParams` defaults to true, so this
+// doesn't change what pages are reachable — only when they get built.
 export async function generateStaticParams() {
-  const supabase = createAdminClient()
-  const { data } = await supabase.from('products').select('slug').eq('is_active', true)
-  return (data ?? []).map(p => ({ slug: p.slug }))
+  return []
 }
 
 function fmt(n: number) {
@@ -19,7 +23,7 @@ function fmt(n: number) {
 }
 
 export default async function ProductPage({ params }: { params: { slug: string } }) {
-  const supabase = createClient()
+  const supabase = createPublicClient()
 
   const { data: product } = await supabase
     .from('products')
