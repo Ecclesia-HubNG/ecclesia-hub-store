@@ -227,6 +227,7 @@ export async function quickUpdateProduct(id: string, data: {
   compare_at_price: number | null
   stock: number
   category_id: string | null
+  category_ids: string[]
   brand_id: string | null
   is_active: boolean
   is_featured: boolean

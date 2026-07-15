@@ -20,6 +20,7 @@ type Product = {
   is_featured: boolean
   created_at: string
   category_id: string | null
+  category_ids?: string[] | null
   brand_id: string | null
   sku: string | null
   variants: Array<{ name: string; options: Array<{ value: string; price?: number | null }> }> | null
@@ -31,7 +32,7 @@ type Product = {
   brands: { name: string } | null
 }
 
-type Category = { id: string; name: string }
+type Category = { id: string; name: string; parent_id?: string | null }
 type Brand = { id: string; name: string }
 type StatusFilter = 'all' | 'active' | 'inactive' | 'featured' | 'out_of_stock'
 
@@ -365,7 +366,7 @@ export function ProductsManager({
   const [qPrice, setQPrice] = useState('')
   const [qCompare, setQCompare] = useState('')
   const [qStock, setQStock] = useState('')
-  const [qCategoryId, setQCategoryId] = useState('')
+  const [qCategoryIds, setQCategoryIds] = useState<string[]>([])
   const [qBrandId, setQBrandId] = useState('')
   const [qActive, setQActive] = useState(true)
   const [qFeatured, setQFeatured] = useState(false)
@@ -469,13 +470,17 @@ export function ProductsManager({
     setQPrice(p.price.toString())
     setQCompare(p.compare_at_price?.toString() ?? '')
     setQStock(p.stock.toString())
-    setQCategoryId(p.category_id ?? '')
+    setQCategoryIds(p.category_ids?.length ? p.category_ids : p.category_id ? [p.category_id] : [])
     setQBrandId(p.brand_id ?? '')
     setQActive(p.is_active)
     setQFeatured(p.is_featured)
   }
 
   const closeQuickEdit = () => setEditingProduct(null)
+
+  const toggleQCategory = (id: string) => setQCategoryIds(prev =>
+    prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]
+  )
 
   const handleSave = () => {
     if (!editingProduct) return
@@ -485,7 +490,8 @@ export function ProductsManager({
       price: parseFloat(qPrice) || 0,
       compare_at_price: qCompare ? parseFloat(qCompare) : null,
       stock: parseInt(qStock) || 0,
-      category_id: qCategoryId || null,
+      category_id: qCategoryIds[0] ?? null,
+      category_ids: qCategoryIds,
       brand_id: qBrandId || null,
       is_active: qActive,
       is_featured: qFeatured,
@@ -1520,14 +1526,47 @@ export function ProductsManager({
                   <input type="number" min="0" step="1" value={qStock} onChange={e => setQStock(e.target.value)} className={inputCls} />
                 </div>
 
-                {/* Category */}
+                {/* Categories */}
                 <div>
-                  <label className={labelCls}>Category</label>
-                  <select value={qCategoryId} onChange={e => setQCategoryId(e.target.value)}
-                    className={`${inputCls} appearance-none`}>
-                    <option value="">No category</option>
-                    {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-                  </select>
+                  <label className={labelCls}>
+                    Categories
+                    {qCategoryIds.length > 0 && (
+                      <span className="ml-1.5 text-xs font-normal text-gray-400">({qCategoryIds.length} selected)</span>
+                    )}
+                  </label>
+                  {categories.length > 0 ? (
+                    <div className="max-h-48 overflow-y-auto border border-gray-200 dark:border-gray-700 rounded-xl p-2 space-y-0.5">
+                      {categories.filter(c => !c.parent_id).map(parent => {
+                        const subs = categories.filter(c => c.parent_id === parent.id)
+                        return (
+                          <div key={parent.id}>
+                            <label className="flex items-center gap-2.5 px-2 py-1.5 rounded-lg hover:bg-gray-50 dark:hover:bg-white/5 cursor-pointer">
+                              <input
+                                type="checkbox"
+                                checked={qCategoryIds.includes(parent.id)}
+                                onChange={() => toggleQCategory(parent.id)}
+                                className="w-3.5 h-3.5 rounded border-gray-300 accent-[#4A0F1C] cursor-pointer"
+                              />
+                              <span className="text-sm font-medium text-gray-800 dark:text-gray-200">{parent.name}</span>
+                            </label>
+                            {subs.map(sub => (
+                              <label key={sub.id} className="flex items-center gap-2.5 pl-7 pr-2 py-1.5 rounded-lg hover:bg-gray-50 dark:hover:bg-white/5 cursor-pointer">
+                                <input
+                                  type="checkbox"
+                                  checked={qCategoryIds.includes(sub.id)}
+                                  onChange={() => toggleQCategory(sub.id)}
+                                  className="w-3.5 h-3.5 rounded border-gray-300 accent-[#4A0F1C] cursor-pointer"
+                                />
+                                <span className="text-sm text-gray-600 dark:text-gray-400">{sub.name}</span>
+                              </label>
+                            ))}
+                          </div>
+                        )
+                      })}
+                    </div>
+                  ) : (
+                    <p className="text-xs text-gray-400 py-2">No categories yet.</p>
+                  )}
                 </div>
 
                 {/* Brand */}

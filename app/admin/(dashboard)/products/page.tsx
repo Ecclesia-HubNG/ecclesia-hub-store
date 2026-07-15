@@ -10,9 +10,9 @@ export default async function AdminProductsPage({ searchParams }: { searchParams
   const [{ data: products }, { data: categories }, { data: brands }] = await Promise.all([
     supabase
       .from('products')
-      .select('id, name, slug, thumbnail, price, compare_at_price, stock, is_active, is_featured, created_at, category_id, brand_id, sku, variants, images, description, meta_title, meta_description, categories(name), brands(name)')
+      .select('id, name, slug, thumbnail, price, compare_at_price, stock, is_active, is_featured, created_at, category_id, category_ids, brand_id, sku, variants, images, description, meta_title, meta_description, categories(name), brands(name)')
       .order('created_at', { ascending: false }),
-    supabase.from('categories').select('id, name').order('name'),
+    supabase.from('categories').select('id, name, parent_id').order('name'),
     supabase.from('brands').select('id, name').order('name'),
   ])
 
