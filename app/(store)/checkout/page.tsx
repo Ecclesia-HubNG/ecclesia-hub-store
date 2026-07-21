@@ -7,10 +7,11 @@ import { useRouter } from 'next/navigation'
 import { useCart } from '@/lib/cart-context'
 import { createCheckoutSession, createBankTransferOrder } from '@/lib/actions/customer-orders'
 import { initializePayment as initFlutterwave } from '@/lib/actions/flutterwave'
+import { initializePayment as initPaystack } from '@/lib/actions/paystack'
 import { getActiveShippingTree, type ShippingState, type ShippingBranch, type ShippingLocation } from '@/lib/actions/shipping'
 import { createClient } from '@/lib/supabase/client'
 
-type PaymentMethod = 'flutterwave' | 'bank_transfer'
+type PaymentMethod = 'flutterwave' | 'paystack' | 'bank_transfer'
 
 type BankConfirm = {
   orderId: string
@@ -62,7 +63,7 @@ export default function CheckoutPage() {
   function calcProcessingFee(amount: number) {
     return Math.min(Math.round(amount * 0.014), 2000)
   }
-  const processingFee = paymentMethod === 'flutterwave' && shippingFee !== null
+  const processingFee = (paymentMethod === 'flutterwave' || paymentMethod === 'paystack') && shippingFee !== null
     ? calcProcessingFee(orderTotal)
     : 0
   const grandTotal = orderTotal + processingFee
@@ -128,6 +129,11 @@ export default function CheckoutPage() {
         const payResult = await initFlutterwave(sid, form.email, grandTotal, customerName, form.phone)
         if ('error' in payResult) { setError(payResult.error ?? 'Could not initialize payment.'); return }
         window.location.href = payResult.paymentLink
+
+      } else if (paymentMethod === 'paystack') {
+        const payResult = await initPaystack(sid, form.email, grandTotal, customerName, form.phone)
+        if ('error' in payResult) { setError(payResult.error ?? 'Could not initialize payment.'); return }
+        window.location.href = payResult.authorizationUrl
 
       } else {
         const bankResult = await createBankTransferOrder(sid)
@@ -418,6 +424,7 @@ export default function CheckoutPage() {
                   {([
                     { id: 'bank_transfer' as PaymentMethod, label: 'Bank Transfer', desc: 'Transfer directly to our UBA account' },
                     { id: 'flutterwave' as PaymentMethod, label: 'Flutterwave', desc: 'Card, bank, mobile money · 1.4% processing fee applies' },
+                    { id: 'paystack' as PaymentMethod, label: 'Paystack', desc: 'Card, bank, USSD · 1.4% processing fee applies' },
                   ] as const).map(m => (
                     <button
                       key={m.id}
@@ -458,6 +465,8 @@ export default function CheckoutPage() {
                   ? 'Select delivery location'
                   : paymentMethod === 'bank_transfer'
                   ? 'Place Order — Bank Transfer'
+                  : paymentMethod === 'paystack'
+                  ? 'Pay with Paystack'
                   : 'Pay with Flutterwave'}
               </button>
               <p className="text-[10px] text-gray-400 text-center mt-3">

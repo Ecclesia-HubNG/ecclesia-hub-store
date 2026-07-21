@@ -95,7 +95,19 @@ export async function matchBumpaRows(rows: BumpaRow[]): Promise<{
   const possibleDuplicates: PossibleDuplicateRow[] = []
   const newProducts: NewProductRow[] = []
 
-  for (const row of rows) {
+  // Bumpa exports can repeat the same Product ID across multiple rows (e.g.
+  // per-location stock breakdowns even on "product" row type). Keep only the
+  // first occurrence so every bumpaId is processed once — otherwise two
+  // "new" rows sharing an id would both attempt to insert with the same
+  // bumpa_id and violate the unique constraint on that column.
+  const seenBumpaIds = new Set<string>()
+  const dedupedRows = rows.filter(row => {
+    if (seenBumpaIds.has(row.bumpaId)) return false
+    seenBumpaIds.add(row.bumpaId)
+    return true
+  })
+
+  for (const row of dedupedRows) {
     const linked = byBumpaId.get(row.bumpaId)
     if (linked) {
       matched.push({
@@ -171,6 +183,16 @@ function slugify(s: string) {
 // bumpa_id immediately so it's matched directly on every future sync.
 export async function createBumpaProducts(rowsToCreate: BumpaRow[]) {
   if (!rowsToCreate.length) return { success: true as const, count: 0 }
+
+  // Defensive: a batch insert with two rows sharing a bumpa_id violates the
+  // unique constraint on that column and rolls back the whole insert.
+  const seenBumpaIds = new Set<string>()
+  rowsToCreate = rowsToCreate.filter(r => {
+    if (seenBumpaIds.has(r.bumpaId)) return false
+    seenBumpaIds.add(r.bumpaId)
+    return true
+  })
+
   const supabase = createAdminClient()
   const now = Date.now()
 
