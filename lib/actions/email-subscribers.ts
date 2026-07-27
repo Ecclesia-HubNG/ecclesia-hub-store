@@ -2,18 +2,34 @@
 
 import { revalidatePath } from 'next/cache'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { sendNewsletterWelcomeEmail } from '@/lib/email'
 
 const PATH = '/admin/emails/subscribers'
 
-export async function addSubscriber(email: string, name?: string) {
+export async function addSubscriber(email: string, name?: string, source: 'manual' | 'popup' = 'manual') {
   const admin = createAdminClient()
+  const normalizedEmail = email.trim().toLowerCase()
+
+  const { data: existing } = await admin
+    .from('email_subscribers')
+    .select('id')
+    .eq('email', normalizedEmail)
+    .maybeSingle()
+
   const { error } = await admin
     .from('email_subscribers')
     .upsert(
-      { email: email.trim().toLowerCase(), name: name?.trim() || null, status: 'active' },
+      { email: normalizedEmail, name: name?.trim() || null, status: 'active', source },
       { onConflict: 'email' },
     )
   if (error) return { error: error.message }
+
+  if (!existing && source === 'popup') {
+    sendNewsletterWelcomeEmail(normalizedEmail, { email: normalizedEmail }).catch(err =>
+      console.error('[newsletter-welcome] send failed:', err?.message),
+    )
+  }
+
   revalidatePath(PATH)
   return { success: true }
 }

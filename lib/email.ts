@@ -11,6 +11,7 @@ import OrderShipped, { type OrderShippedProps } from '@/emails/OrderShipped'
 import WelcomeEmail, { type WelcomeEmailProps } from '@/emails/WelcomeEmail'
 import PromoEmail, { type PromoEmailProps } from '@/emails/PromoEmail'
 import NewsletterEmail, { type NewsletterEmailProps } from '@/emails/NewsletterEmail'
+import NewsletterWelcomeEmail, { type NewsletterWelcomeEmailProps } from '@/emails/NewsletterWelcomeEmail'
 import InviteEmail, { type InviteEmailProps } from '@/emails/InviteEmail'
 import PasswordResetEmail, { type PasswordResetEmailProps } from '@/emails/PasswordResetEmail'
 
@@ -111,12 +112,13 @@ export async function sendWelcomeEmail(to: string, props: WelcomeEmailProps) {
 export async function sendPromoEmail(recipients: string[], props: PromoEmailProps) {
   const subject = props.subject
   let sent = 0, failed = 0
-  // Resend allows up to 50 recipients per batch call
-  const chunks = chunkArray(recipients, 50)
+  const html = await render(createElement(PromoEmail, props))
+  // Resend batch.send allows up to 100 individual messages per call — each
+  // recipient gets their own email so no one sees the others' addresses.
+  const chunks = chunkArray(recipients, 100)
   for (const chunk of chunks) {
     try {
-      const html = await render(createElement(PromoEmail, props))
-      await resend.emails.send({ from: FROM, to: chunk, subject, html })
+      await resend.batch.send(chunk.map(to => ({ from: FROM, to, subject, html })))
       sent += chunk.length
     } catch (err: any) {
       failed += chunk.length
@@ -130,11 +132,13 @@ export async function sendPromoEmail(recipients: string[], props: PromoEmailProp
 export async function sendNewsletter(recipients: string[], props: NewsletterEmailProps) {
   const subject = props.subject
   let sent = 0, failed = 0
-  const chunks = chunkArray(recipients, 50)
+  const html = await render(createElement(NewsletterEmail, props))
+  // Resend batch.send allows up to 100 individual messages per call — each
+  // recipient gets their own email so no one sees the others' addresses.
+  const chunks = chunkArray(recipients, 100)
   for (const chunk of chunks) {
     try {
-      const html = await render(createElement(NewsletterEmail, props))
-      await resend.emails.send({ from: FROM, to: chunk, subject, html })
+      await resend.batch.send(chunk.map(to => ({ from: FROM, to, subject, html })))
       sent += chunk.length
     } catch (err: any) {
       failed += chunk.length
@@ -143,6 +147,18 @@ export async function sendNewsletter(recipients: string[], props: NewsletterEmai
   }
   if (sent > 0) await logEmail('newsletter', `${sent} recipients`, subject, 'sent', undefined, { total: recipients.length, sent, failed })
   return { sent, failed }
+}
+
+export async function sendNewsletterWelcomeEmail(to: string, props: NewsletterWelcomeEmailProps) {
+  const subject = `Here's your ${props.discountPercent ?? 15}% off code`
+  try {
+    const html = await render(createElement(NewsletterWelcomeEmail, props))
+    await resend.emails.send({ from: FROM, to, subject, html })
+    await logEmail('newsletter_welcome', to, subject, 'sent')
+  } catch (err: any) {
+    await logEmail('newsletter_welcome', to, subject, 'failed', err?.message)
+    throw err
+  }
 }
 
 export async function sendStaffInvite(to: string, props: InviteEmailProps) {

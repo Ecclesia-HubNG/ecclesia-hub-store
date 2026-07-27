@@ -20,17 +20,20 @@ export async function POST(req: NextRequest) {
   let emails: string[] = []
 
   if (sendTo === 'subscribers') {
-    const { data } = await admin.from('email_subscribers').select('email').eq('status', 'active')
+    const { data, error } = await admin.from('email_subscribers').select('email').eq('status', 'active')
+    if (error) return NextResponse.json({ error: `Failed to load subscribers: ${error.message}` }, { status: 500 })
     emails = (data ?? []).map((r: any) => r.email).filter(Boolean)
   } else if (sendTo === 'users') {
-    const { data: authUsers } = await admin.auth.admin.listUsers({ perPage: 1000 })
+    const { data: authUsers, error } = await admin.auth.admin.listUsers({ perPage: 1000 })
+    if (error) return NextResponse.json({ error: `Failed to load users: ${error.message}` }, { status: 500 })
     emails = (authUsers?.users ?? [])
       .filter((u: any) => u.app_metadata?.role && u.email)
       .map((u: any) => u.email as string)
   } else {
-    const { data: customers } = await admin
+    const { data: customers, error } = await admin
       .from('customers').select('email')
       .not('email', 'is', null).eq('is_archived', false).eq('is_blocked', false)
+    if (error) return NextResponse.json({ error: `Failed to load customers: ${error.message}` }, { status: 500 })
     emails = (customers ?? []).map((c: any) => c.email).filter(Boolean)
   }
 

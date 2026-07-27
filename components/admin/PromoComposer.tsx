@@ -135,7 +135,8 @@ export default function PromoComposer({
   }
 
   async function sendPromo() {
-    if (!promoSubject.trim() || selectedProducts.length === 0) return
+    if (!promoSubject.trim()) { setResult({ error: 'Subject line is required.' }); return }
+    if (selectedProducts.length === 0) { setResult({ error: 'Select at least one product to feature.' }); return }
     setResult(null)
     const chosenProducts = products.filter(p => selectedProducts.includes(p.id)).map(p => ({
       name: p.name,
@@ -145,27 +146,31 @@ export default function PromoComposer({
       slug: p.slug,
     }))
     startTransition(async () => {
-      const res = await fetch('/api/email', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          type: 'promo',
-          sendTo,
-          props: {
-            subject: promoSubject,
-            headline: promoHeadline || promoSubject,
-            subheadline: promoSubheadline || undefined,
-            bannerText: promoBanner || '🎉 SPECIAL OFFER',
-            bannerImage: bannerImage || undefined,
-            products: chosenProducts,
-            ctaText: promoCta,
-            ctaUrl: 'https://ecclesiahub.store/shop',
-          },
-        }),
-      })
-      const data = await res.json()
-      setResult(data)
-      if (data.success) { setPromoSubject(''); setPromoHeadline(''); setSelectedProducts([]); setBannerImage('') }
+      try {
+        const res = await fetch('/api/email', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            type: 'promo',
+            sendTo,
+            props: {
+              subject: promoSubject,
+              headline: promoHeadline || promoSubject,
+              subheadline: promoSubheadline || undefined,
+              bannerText: promoBanner || '🎉 SPECIAL OFFER',
+              bannerImage: bannerImage || undefined,
+              products: chosenProducts,
+              ctaText: promoCta,
+              ctaUrl: 'https://ecclesiahub.store/shop',
+            },
+          }),
+        })
+        const data = await res.json().catch(() => ({ error: `Server returned an unexpected response (status ${res.status}).` }))
+        setResult(data)
+        if (data.success) { setPromoSubject(''); setPromoHeadline(''); setSelectedProducts([]); setBannerImage('') }
+      } catch (err: any) {
+        setResult({ error: err?.message || 'Network error — could not reach the server.' })
+      }
     })
   }
 

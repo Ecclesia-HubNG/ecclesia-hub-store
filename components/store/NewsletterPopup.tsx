@@ -50,7 +50,7 @@ export default function NewsletterPopup({ config }: Props) {
     if (!email.trim()) return
     setError('')
     startTransition(async () => {
-      const res = await addSubscriber(email.trim())
+      const res = await addSubscriber(email.trim(), undefined, 'popup')
       if (res && 'error' in res) {
         setError('Something went wrong. Please try again.')
         return

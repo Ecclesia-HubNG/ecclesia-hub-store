@@ -102,24 +102,29 @@ export default function NewsletterComposer({
   }
 
   async function handleSend() {
-    if (!subject.trim() || !bodyHtml.trim()) return
+    if (!subject.trim()) { setResult({ error: 'Subject line is required.' }); return }
+    if (!bodyHtml.trim()) { setResult({ error: 'Newsletter content is required.' }); return }
     setResult(null)
     startTransition(async () => {
-      const res = await fetch('/api/email', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          type: 'newsletter',
-          sendTo,
-          subject,
-          bodyHtml,
-          issueNumber: issueNumber ? Number(issueNumber) : undefined,
-          headerImage: headerImage || undefined,
-        }),
-      })
-      const data = await res.json()
-      setResult(data)
-      if (data.success) { setSubject(''); setBodyHtml(''); setIssueNumber(''); setHeaderImage('') }
+      try {
+        const res = await fetch('/api/email', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            type: 'newsletter',
+            sendTo,
+            subject,
+            bodyHtml,
+            issueNumber: issueNumber ? Number(issueNumber) : undefined,
+            headerImage: headerImage || undefined,
+          }),
+        })
+        const data = await res.json().catch(() => ({ error: `Server returned an unexpected response (status ${res.status}).` }))
+        setResult(data)
+        if (data.success) { setSubject(''); setBodyHtml(''); setIssueNumber(''); setHeaderImage('') }
+      } catch (err: any) {
+        setResult({ error: err?.message || 'Network error — could not reach the server.' })
+      }
     })
   }
 
