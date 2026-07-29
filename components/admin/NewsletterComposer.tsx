@@ -5,6 +5,22 @@ import { uploadEmailAsset } from '@/lib/actions/upload'
 import RichTextEditor from '@/components/admin/RichTextEditor'
 
 // ── Live preview ──────────────────────────────────────────────────────────────
+// Mirrors the `.nl-body` rules in emails/NewsletterEmail.tsx so the preview
+// shows the same paragraph/heading/list spacing recipients will actually get.
+const previewBodyStyles = `
+  .nl-preview-body { font-size: 13px; color: #333; line-height: 1.85; }
+  .nl-preview-body h1 { font-size: 20px; font-weight: 700; color: #111; margin: 0 0 14px; line-height: 1.3; }
+  .nl-preview-body h2 { font-size: 17px; font-weight: 700; color: #111; margin: 0 0 12px; line-height: 1.3; }
+  .nl-preview-body h3 { font-size: 15px; font-weight: 700; color: #111; margin: 0 0 10px; }
+  .nl-preview-body p  { margin: 0 0 13px; }
+  .nl-preview-body ul { padding-left: 20px; margin: 0 0 13px; }
+  .nl-preview-body ol { padding-left: 20px; margin: 0 0 13px; }
+  .nl-preview-body li { margin-bottom: 5px; }
+  .nl-preview-body blockquote { border-left: 3px solid #4A0F1C; padding-left: 14px; margin: 0 0 13px; color: #666; }
+  .nl-preview-body hr  { border: none; border-top: 1px solid #eee; margin: 18px 0; }
+  .nl-preview-body img { max-width: 100%; border-radius: 6px; margin: 6px 0; display: block; }
+`
+
 function NewsletterPreview({
   subject, bodyHtml, issueNumber, headerImage,
 }: {
@@ -45,8 +61,9 @@ function NewsletterPreview({
 
       {/* Body */}
       <div style={{ backgroundColor: '#fff', padding: '0 28px 28px', borderRadius: '0 0 10px 10px' }}>
+        <style>{previewBodyStyles}</style>
         {bodyHtml
-          ? <div style={{ fontSize: 13, color: '#333', lineHeight: 1.85 }} dangerouslySetInnerHTML={{ __html: bodyHtml }} />
+          ? <div className="nl-preview-body" dangerouslySetInnerHTML={{ __html: bodyHtml }} />
           : <p style={{ fontSize: 13, color: '#ccc', lineHeight: 1.85, margin: 0 }}>Your newsletter content will appear here…</p>
         }
         <hr style={{ border: 'none', borderTop: '1px solid #eee', margin: '18px 0 14px' }} />
