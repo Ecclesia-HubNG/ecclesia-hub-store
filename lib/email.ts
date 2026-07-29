@@ -16,7 +16,7 @@ import InviteEmail, { type InviteEmailProps } from '@/emails/InviteEmail'
 import PasswordResetEmail, { type PasswordResetEmailProps } from '@/emails/PasswordResetEmail'
 
 const resend = new Resend(process.env.RESEND_API_KEY)
-const FROM = process.env.FROM_EMAIL ?? 'no-reply@ecclesiahub.store'
+const FROM = process.env.FROM_EMAIL ?? 'Ecclesia Hub <no-reply@ecclesiahub.store>'
 
 async function logEmail(type: string, to: string | string[], subject: string, status: 'sent' | 'failed', error?: string, metadata?: Record<string, unknown>) {
   try {
