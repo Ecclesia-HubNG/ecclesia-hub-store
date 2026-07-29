@@ -121,7 +121,10 @@ export function BumpaSyncManager() {
     startCreate(async () => {
       const res = await createBumpaProducts(rows)
       if ('error' in res) { setResult(`Error creating products: ${res.error}`); return }
-      setResult(`${res.count} new product${res.count !== 1 ? 's' : ''} created.`)
+      const skippedNote = res.skipped.length
+        ? ` (skipped ${res.skipped.length} already linked to an existing product: ${res.skipped.join(', ')})`
+        : ''
+      setResult(`${res.count} new product${res.count !== 1 ? 's' : ''} created.${skippedNote}`)
       setNewProducts([])
       setPossibleDuplicates(prev => prev.filter(d => !createAnyway.has(d.bumpaId)))
       setCreateAnyway(new Set())

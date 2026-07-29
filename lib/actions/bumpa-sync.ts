@@ -66,7 +66,7 @@ export async function matchBumpaRows(rows: BumpaRow[]): Promise<{
   newProducts: NewProductRow[]
   error?: string
 }> {
-  const supabase = createAdminClient()
+  const supabase = createAdminClient({ noStore: true })
   const { data: products, error } = await supabase
     .from('products')
     .select('id, name, bumpa_id, price, cost_price, stock')
@@ -182,7 +182,7 @@ function slugify(s: string) {
 // the store (not even a near-duplicate by name). Each is linked to its
 // bumpa_id immediately so it's matched directly on every future sync.
 export async function createBumpaProducts(rowsToCreate: BumpaRow[]) {
-  if (!rowsToCreate.length) return { success: true as const, count: 0 }
+  if (!rowsToCreate.length) return { success: true as const, count: 0, skipped: [] as string[] }
 
   // Defensive: a batch insert with two rows sharing a bumpa_id violates the
   // unique constraint on that column and rolls back the whole insert.
@@ -193,8 +193,23 @@ export async function createBumpaProducts(rowsToCreate: BumpaRow[]) {
     return true
   })
 
-  const supabase = createAdminClient()
+  const supabase = createAdminClient({ noStore: true })
   const now = Date.now()
+
+  // Defensive: even with a fresh read, a row can carry a bumpa_id that's
+  // already linked to an existing product (e.g. linked by an Apply-updates
+  // click run moments earlier in the same session). Drop those rather than
+  // letting one bad row fail the whole batch insert.
+  const incomingIds = rowsToCreate.map(r => r.bumpaId)
+  const { data: alreadyLinked } = await supabase
+    .from('products').select('bumpa_id').in('bumpa_id', incomingIds)
+  const linkedIds = new Set((alreadyLinked ?? []).map((p: any) => p.bumpa_id))
+  const skipped = rowsToCreate.filter(r => linkedIds.has(r.bumpaId))
+  rowsToCreate = rowsToCreate.filter(r => !linkedIds.has(r.bumpaId))
+
+  if (!rowsToCreate.length) {
+    return { success: true as const, count: 0, skipped: skipped.map(r => r.title) }
+  }
 
   const categoryMap: Record<string, string> = {}
   const uniqueCategoryNames = Array.from(new Set(
@@ -232,7 +247,7 @@ export async function createBumpaProducts(rowsToCreate: BumpaRow[]) {
 
   logAudit('product.bumpa_sync', 'product', 'bulk', { created: data?.length ?? 0 }).catch(() => {})
   revalidatePath('/admin/products')
-  return { success: true as const, count: data?.length ?? 0 }
+  return { success: true as const, count: data?.length ?? 0, skipped: skipped.map(r => r.title) }
 }
 
 export async function applyBumpaSync(updates: Array<{
@@ -243,7 +258,7 @@ export async function applyBumpaSync(updates: Array<{
   stock: number | null
 }>) {
   if (!updates.length) return { success: true as const, count: 0 }
-  const supabase = createAdminClient()
+  const supabase = createAdminClient({ noStore: true })
 
   const results = await Promise.all(updates.map(u => {
     const payload: Record<string, unknown> = { bumpa_id: u.bumpaId }
