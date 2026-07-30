@@ -470,7 +470,9 @@ export function ProductsManager({
     setQPrice(p.price.toString())
     setQCompare(p.compare_at_price?.toString() ?? '')
     setQStock(p.stock.toString())
-    setQCategoryIds(p.category_ids?.length ? p.category_ids : p.category_id ? [p.category_id] : [])
+    const validCategoryIds = new Set(categories.map(c => c.id))
+    const rawCategoryIds = p.category_ids?.length ? p.category_ids : p.category_id ? [p.category_id] : []
+    setQCategoryIds(rawCategoryIds.filter(id => validCategoryIds.has(id)))
     setQBrandId(p.brand_id ?? '')
     setQActive(p.is_active)
     setQFeatured(p.is_featured)

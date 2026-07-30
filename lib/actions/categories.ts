@@ -48,6 +48,16 @@ export async function updateCategory(id: string, _: unknown, formData: FormData)
 export async function deleteCategory(formData: FormData) {
   const supabase = createAdminClient()
   const id = formData.get('id') as string
+
+  // category_ids has no FK constraint, so deleted category ids would otherwise
+  // linger in products' arrays and cause a foreign key error on next quick-edit save
+  const { data: affected } = await supabase.from('products').select('id, category_ids').contains('category_ids', [id])
+  if (affected?.length) {
+    await Promise.all(affected.map(p =>
+      supabase.from('products').update({ category_ids: (p.category_ids ?? []).filter((cid: string) => cid !== id) }).eq('id', p.id)
+    ))
+  }
+
   await supabase.from('categories').delete().eq('id', id)
   logAudit('category.delete', 'category', id).catch(() => {})
   revalidatePath('/admin/categories')
