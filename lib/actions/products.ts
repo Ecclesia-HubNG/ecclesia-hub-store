@@ -179,11 +179,11 @@ export async function bulkImportProducts(rows: Array<{
       meta_title: r.meta_title ?? null,
       meta_description: r.meta_description ?? null,
       variants: r.variants?.length
-        ? JSON.stringify(r.variants.map(g => ({
+        ? r.variants.map(g => ({
             name: g.name,
             options: g.values.map(v => ({ value: v, price: null })),
-          })))
-        : '[]',
+          }))
+        : [],
       category_id: r.category_names?.[0]?.trim()
         ? (categoryMap[r.category_names[0].trim().toLowerCase()] ?? null)
         : null,

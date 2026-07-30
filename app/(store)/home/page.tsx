@@ -99,7 +99,7 @@ export default async function HomePage() {
         <ProductOfMonth product={{
           ...potmRaw,
           images: (potmRaw.images ?? []) as string[],
-          variants: (potmRaw.variants ?? []) as any,
+          variants: (Array.isArray(potmRaw.variants) ? potmRaw.variants : []) as any,
           categories: Array.isArray(potmRaw.categories) ? (potmRaw.categories[0] ?? null) : potmRaw.categories,
           brand: Array.isArray((potmRaw as any).brands) ? ((potmRaw as any).brands[0] ?? null) : (potmRaw as any).brands,
         }} />
