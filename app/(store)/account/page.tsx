@@ -3,6 +3,7 @@
 import { useState, useEffect, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
+import Turnstile from '@/components/Turnstile'
 
 type Tab = 'signin' | 'signup' | 'forgot'
 
@@ -41,10 +42,12 @@ export default function AccountPage() {
     e.preventDefault()
     setMsg(null)
     const fd = new FormData(e.currentTarget)
+    const captchaToken = fd.get('cf-turnstile-response') as string | null
     startTransition(async () => {
       const { error } = await supabase.auth.signInWithPassword({
         email: fd.get('email') as string,
         password: fd.get('password') as string,
+        options: captchaToken ? { captchaToken } : undefined,
       })
       if (error) { setMsg({ type: 'error', text: error.message }); return }
       router.replace('/account/orders')
@@ -55,11 +58,12 @@ export default function AccountPage() {
     e.preventDefault()
     setMsg(null)
     const fd = new FormData(e.currentTarget)
+    const captchaToken = fd.get('cf-turnstile-response') as string | null
     startTransition(async () => {
       const { error } = await supabase.auth.signUp({
         email: fd.get('email') as string,
         password: fd.get('password') as string,
-        options: { data: { full_name: fd.get('name') as string } },
+        options: { data: { full_name: fd.get('name') as string }, ...(captchaToken ? { captchaToken } : {}) },
       })
       if (error) { setMsg({ type: 'error', text: error.message }); return }
       setMsg({ type: 'success', text: 'Check your email to confirm your account. If you don\'t see it, check your spam folder.' })
@@ -70,10 +74,14 @@ export default function AccountPage() {
     e.preventDefault()
     setMsg(null)
     const fd = new FormData(e.currentTarget)
+    const captchaToken = fd.get('cf-turnstile-response') as string | null
     startTransition(async () => {
       const { error } = await supabase.auth.resetPasswordForEmail(
         fd.get('email') as string,
-        { redirectTo: `${window.location.origin}/auth/callback?next=/account/reset-password` }
+        {
+          redirectTo: `${window.location.origin}/auth/callback?next=/account/reset-password`,
+          ...(captchaToken ? { captchaToken } : {}),
+        }
       )
       if (error) { setMsg({ type: 'error', text: error.message }); return }
       setMsg({ type: 'success', text: 'Check your email for a reset link. If you don\'t see it, check your spam folder.' })
@@ -158,6 +166,7 @@ export default function AccountPage() {
             <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1.5">Email</label>
             <input name="email" type="email" placeholder="you@example.com" required className={inputCls} />
           </div>
+          <Turnstile />
           <button type="submit" disabled={pending} className="w-full py-2.5 bg-[#4A0F1C] text-white text-sm font-semibold rounded-xl hover:bg-[#3A0B15] disabled:opacity-60 transition-colors mt-1">
             {pending ? 'Sending…' : 'Send reset link'}
           </button>
@@ -182,6 +191,7 @@ export default function AccountPage() {
               </button>
             </div>
           </div>
+          <Turnstile />
           <button type="submit" disabled={pending} className="w-full py-2.5 bg-[#4A0F1C] text-white text-sm font-semibold rounded-xl hover:bg-[#3A0B15] disabled:opacity-60 transition-colors mt-1">
             {pending ? 'Signing in…' : 'Sign in'}
           </button>
@@ -205,6 +215,7 @@ export default function AccountPage() {
               </button>
             </div>
           </div>
+          <Turnstile />
           <button type="submit" disabled={pending} className="w-full py-2.5 bg-[#4A0F1C] text-white text-sm font-semibold rounded-xl hover:bg-[#3A0B15] disabled:opacity-60 transition-colors mt-1">
             {pending ? 'Creating account…' : 'Create account'}
           </button>

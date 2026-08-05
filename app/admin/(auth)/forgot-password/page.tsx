@@ -4,6 +4,7 @@ import { useFormState, useFormStatus } from 'react-dom'
 import Link from 'next/link'
 import { forgotPassword } from '@/lib/actions/auth'
 import { AuthLayout } from '@/components/admin/AuthLayout'
+import Turnstile from '@/components/Turnstile'
 
 function SubmitButton() {
   const { pending } = useFormStatus()
@@ -93,6 +94,8 @@ export default function ForgotPasswordPage() {
             className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-white/10 bg-gray-50 dark:bg-white/5 text-sm text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-600 focus:outline-none focus:ring-2 focus:ring-[#6B1A2A] focus:border-transparent transition-shadow"
           />
         </div>
+
+        <Turnstile className="pt-1" />
 
         <div className="pt-1">
           <SubmitButton />

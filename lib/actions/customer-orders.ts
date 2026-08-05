@@ -5,6 +5,8 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { sendOrderConfirmation, sendAdminOrderNotification } from '@/lib/email'
 import type { CartItem } from '@/lib/cart-context'
 import { logOrderEvent } from '@/lib/actions/order-events'
+import { verifyTurnstile } from '@/lib/turnstile'
+import { headers } from 'next/headers'
 
 export type ShippingAddress = {
   firstName: string
@@ -58,7 +60,12 @@ export async function createCheckoutSession(
   deliveryLabel: string,
   couponCode: string | null = null,
   discountAmount: number = 0,
+  captchaToken: string | null = null,
 ): Promise<{ sessionId: string } | { error: string }> {
+  const ip = headers().get('x-forwarded-for')?.split(',')[0]?.trim()
+  const captchaOk = await verifyTurnstile(captchaToken, ip)
+  if (!captchaOk) return { error: 'Verification failed. Please refresh the page and try again.' }
+
   const stockError = await validateStock(items)
   if (stockError) return { error: stockError }
 

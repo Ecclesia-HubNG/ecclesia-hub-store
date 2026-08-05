@@ -10,6 +10,7 @@ import { initializePayment as initFlutterwave } from '@/lib/actions/flutterwave'
 import { initializePayment as initPaystack } from '@/lib/actions/paystack'
 import { getActiveShippingTree, type ShippingState, type ShippingBranch, type ShippingLocation } from '@/lib/actions/shipping'
 import { createClient } from '@/lib/supabase/client'
+import Turnstile from '@/components/Turnstile'
 
 type PaymentMethod = 'flutterwave' | 'paystack' | 'bank_transfer'
 
@@ -31,6 +32,7 @@ export default function CheckoutPage() {
   const [bankConfirm, setBankConfirm] = useState<BankConfirm | null>(null)
   const [isLoggedIn, setIsLoggedIn] = useState<boolean | null>(null)
   const [authBannerDismissed, setAuthBannerDismissed] = useState(false)
+  const [captchaToken, setCaptchaToken] = useState<string | null>(null)
 
   // Shipping tree
   const [shippingStates, setShippingStates] = useState<ShippingState[]>([])
@@ -93,6 +95,7 @@ export default function CheckoutPage() {
       setError('Please fill in all fields.')
       return
     }
+    if (!captchaToken) { setError('Please complete the verification check.'); return }
 
     startTransition(async () => {
       const shipping = {
@@ -115,6 +118,7 @@ export default function CheckoutPage() {
         deliveryLabel,
         coupon?.code ?? null,
         discountAmount,
+        captchaToken,
       )
 
       if ('error' in sessionResult) {
@@ -454,9 +458,11 @@ export default function CheckoutPage() {
                 <p className="text-xs text-red-500 mb-3 bg-red-50 dark:bg-red-950/30 px-3 py-2 rounded-lg">{error}</p>
               )}
 
+              <Turnstile className="mb-3" onVerify={setCaptchaToken} />
+
               <button
                 type="submit"
-                disabled={pending || !selectedLocation}
+                disabled={pending || !selectedLocation || !captchaToken}
                 className="w-full py-3 bg-[#4A0F1C] text-white text-sm font-semibold rounded-xl hover:bg-[#3A0B15] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
               >
                 {pending

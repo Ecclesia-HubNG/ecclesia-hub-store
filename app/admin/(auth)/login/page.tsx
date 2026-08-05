@@ -7,6 +7,7 @@ import { signIn } from '@/lib/actions/auth'
 import { createClient } from '@/lib/supabase/client'
 import { AuthLayout } from '@/components/admin/AuthLayout'
 import { PasswordInput } from '@/components/admin/PasswordInput'
+import Turnstile from '@/components/Turnstile'
 
 function SubmitButton() {
   const { pending } = useFormStatus()
@@ -118,6 +119,8 @@ export default function AdminLoginPage() {
           </div>
           <PasswordInput name="password" autoComplete="current-password" />
         </div>
+
+        <Turnstile className="pt-1" />
 
         <div className="pt-1">
           <SubmitButton />

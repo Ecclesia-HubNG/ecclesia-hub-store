@@ -7,10 +7,12 @@ import { sendWelcomeEmail } from '@/lib/email'
 
 export async function signIn(_: unknown, formData: FormData) {
   const supabase = createClient()
+  const captchaToken = formData.get('cf-turnstile-response') as string | null
 
   const { error } = await supabase.auth.signInWithPassword({
     email: formData.get('email') as string,
     password: formData.get('password') as string,
+    options: captchaToken ? { captchaToken } : undefined,
   })
 
   if (error) return { error: error.message }
@@ -24,12 +26,14 @@ export async function signUp(_: unknown, formData: FormData) {
   const email = formData.get('email') as string
   const firstName = formData.get('first_name') as string
   const lastName = formData.get('last_name') as string
+  const captchaToken = formData.get('cf-turnstile-response') as string | null
 
   const { error } = await supabase.auth.signUp({
     email,
     password: formData.get('password') as string,
     options: {
       data: { full_name: `${firstName} ${lastName}`.trim() },
+      ...(captchaToken ? { captchaToken } : {}),
     },
   })
 
@@ -47,9 +51,11 @@ export async function signUp(_: unknown, formData: FormData) {
 export async function forgotPassword(_: unknown, formData: FormData) {
   const supabase = createClient()
   const email = formData.get('email') as string
+  const captchaToken = formData.get('cf-turnstile-response') as string | null
 
   const { error } = await supabase.auth.resetPasswordForEmail(email, {
     redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL ?? ''}/admin/reset-password`,
+    ...(captchaToken ? { captchaToken } : {}),
   })
 
   if (error) return { error: error.message }
