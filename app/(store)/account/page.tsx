@@ -4,6 +4,7 @@ import { useState, useEffect, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import Turnstile from '@/components/Turnstile'
+import { customerSignIn, customerSignUp, customerForgotPassword } from '@/lib/actions/customer-auth'
 
 type Tab = 'signin' | 'signup' | 'forgot'
 
@@ -44,12 +45,8 @@ export default function AccountPage() {
     const fd = new FormData(e.currentTarget)
     const captchaToken = fd.get('cf-turnstile-response') as string | null
     startTransition(async () => {
-      const { error } = await supabase.auth.signInWithPassword({
-        email: fd.get('email') as string,
-        password: fd.get('password') as string,
-        options: captchaToken ? { captchaToken } : undefined,
-      })
-      if (error) { setMsg({ type: 'error', text: error.message }); return }
+      const result = await customerSignIn(fd.get('email') as string, fd.get('password') as string, captchaToken)
+      if (result.error) { setMsg({ type: 'error', text: result.error }); return }
       router.replace('/account/orders')
     })
   }
@@ -60,12 +57,8 @@ export default function AccountPage() {
     const fd = new FormData(e.currentTarget)
     const captchaToken = fd.get('cf-turnstile-response') as string | null
     startTransition(async () => {
-      const { error } = await supabase.auth.signUp({
-        email: fd.get('email') as string,
-        password: fd.get('password') as string,
-        options: { data: { full_name: fd.get('name') as string }, ...(captchaToken ? { captchaToken } : {}) },
-      })
-      if (error) { setMsg({ type: 'error', text: error.message }); return }
+      const result = await customerSignUp(fd.get('email') as string, fd.get('password') as string, fd.get('name') as string, captchaToken)
+      if (result.error) { setMsg({ type: 'error', text: result.error }); return }
       setMsg({ type: 'success', text: 'Check your email to confirm your account. If you don\'t see it, check your spam folder.' })
     })
   }
@@ -76,14 +69,12 @@ export default function AccountPage() {
     const fd = new FormData(e.currentTarget)
     const captchaToken = fd.get('cf-turnstile-response') as string | null
     startTransition(async () => {
-      const { error } = await supabase.auth.resetPasswordForEmail(
+      const result = await customerForgotPassword(
         fd.get('email') as string,
-        {
-          redirectTo: `${window.location.origin}/auth/callback?next=/account/reset-password`,
-          ...(captchaToken ? { captchaToken } : {}),
-        }
+        `${window.location.origin}/auth/callback?next=/account/reset-password`,
+        captchaToken,
       )
-      if (error) { setMsg({ type: 'error', text: error.message }); return }
+      if (result.error) { setMsg({ type: 'error', text: result.error }); return }
       setMsg({ type: 'success', text: 'Check your email for a reset link. If you don\'t see it, check your spam folder.' })
     })
   }
