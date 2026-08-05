@@ -1,10 +1,11 @@
 'use client'
 
+import { useEffect, useRef } from 'react'
 import { useFormState, useFormStatus } from 'react-dom'
 import Link from 'next/link'
 import { forgotPassword } from '@/lib/actions/auth'
 import { AuthLayout } from '@/components/admin/AuthLayout'
-import Turnstile from '@/components/Turnstile'
+import Turnstile, { type TurnstileHandle } from '@/components/Turnstile'
 
 function SubmitButton() {
   const { pending } = useFormStatus()
@@ -21,6 +22,11 @@ function SubmitButton() {
 
 export default function ForgotPasswordPage() {
   const [state, action] = useFormState(forgotPassword, null)
+  const turnstileRef = useRef<TurnstileHandle>(null)
+
+  useEffect(() => {
+    if (state?.error) turnstileRef.current?.reset()
+  }, [state])
 
   if (state?.success) {
     return (
@@ -95,7 +101,7 @@ export default function ForgotPasswordPage() {
           />
         </div>
 
-        <Turnstile className="pt-1" />
+        <Turnstile ref={turnstileRef} className="pt-1" />
 
         <div className="pt-1">
           <SubmitButton />

@@ -1,13 +1,13 @@
 'use client'
 
-import { useTransition } from 'react'
+import { useEffect, useRef, useTransition } from 'react'
 import { useFormState, useFormStatus } from 'react-dom'
 import Link from 'next/link'
 import { signIn } from '@/lib/actions/auth'
 import { createClient } from '@/lib/supabase/client'
 import { AuthLayout } from '@/components/admin/AuthLayout'
 import { PasswordInput } from '@/components/admin/PasswordInput'
-import Turnstile from '@/components/Turnstile'
+import Turnstile, { type TurnstileHandle } from '@/components/Turnstile'
 
 function SubmitButton() {
   const { pending } = useFormStatus()
@@ -61,6 +61,14 @@ function GoogleButton() {
 
 export default function AdminLoginPage() {
   const [state, action] = useFormState(signIn, null)
+  const turnstileRef = useRef<TurnstileHandle>(null)
+
+  // Turnstile tokens are single-use — reset so a retry after a failed
+  // sign-in (wrong password, etc.) gets a fresh token instead of silently
+  // failing the captcha check with the already-consumed one.
+  useEffect(() => {
+    if (state?.error) turnstileRef.current?.reset()
+  }, [state])
 
   return (
     <AuthLayout
@@ -120,7 +128,7 @@ export default function AdminLoginPage() {
           <PasswordInput name="password" autoComplete="current-password" />
         </div>
 
-        <Turnstile className="pt-1" />
+        <Turnstile ref={turnstileRef} className="pt-1" />
 
         <div className="pt-1">
           <SubmitButton />

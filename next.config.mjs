@@ -22,16 +22,17 @@ const securityHeaders = [
       // 'unsafe-eval' is added in dev only — Next's dev bundler wraps modules in eval() for Fast Refresh,
       // and without this every client component silently fails to hydrate in `next dev` (production build
       // doesn't need it, since it doesn't use eval-based devtool).
-      `script-src 'self' 'unsafe-inline' https://www.googletagmanager.com${isDev ? " 'unsafe-eval'" : ''}`,
+      // Cloudflare Turnstile (bot-check widget on auth + checkout forms)
+      `script-src 'self' 'unsafe-inline' https://www.googletagmanager.com https://challenges.cloudflare.com${isDev ? " 'unsafe-eval'" : ''}`,
       // Tailwind + Next.js inject inline styles
       "style-src 'self' 'unsafe-inline'",
       // Allow images from any HTTPS source — product images can come from any URL
       "img-src 'self' data: blob: https:",
       "font-src 'self'",
       // Supabase API + realtime + GA4 measurement beacons
-      `connect-src 'self' https://${supabaseHost} wss://${supabaseHost} https://api.flutterwave.com https://checkout.flutterwave.com https://www.googletagmanager.com https://www.google-analytics.com https://*.google-analytics.com https://*.analytics.google.com`,
-      // Flutterwave checkout uses iframes for 3DS and bank auth flows
-      "frame-src 'self' https://checkout.flutterwave.com https://*.flutterwave.com",
+      `connect-src 'self' https://${supabaseHost} wss://${supabaseHost} https://api.flutterwave.com https://checkout.flutterwave.com https://www.googletagmanager.com https://www.google-analytics.com https://*.google-analytics.com https://*.analytics.google.com https://challenges.cloudflare.com`,
+      // Flutterwave checkout uses iframes for 3DS and bank auth flows; Turnstile renders its challenge in an iframe too
+      "frame-src 'self' https://checkout.flutterwave.com https://*.flutterwave.com https://challenges.cloudflare.com",
       // Remove X-Frame-Options conflict — frame-src handles it
       "object-src 'none'",
       "base-uri 'self'",

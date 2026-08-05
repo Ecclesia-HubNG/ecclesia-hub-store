@@ -2,7 +2,7 @@
 
 export const dynamic = 'force-dynamic'
 
-import { useState, useTransition, useEffect, useMemo } from 'react'
+import { useState, useTransition, useEffect, useMemo, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { useCart } from '@/lib/cart-context'
 import { createCheckoutSession, createBankTransferOrder } from '@/lib/actions/customer-orders'
@@ -10,7 +10,7 @@ import { initializePayment as initFlutterwave } from '@/lib/actions/flutterwave'
 import { initializePayment as initPaystack } from '@/lib/actions/paystack'
 import { getActiveShippingTree, type ShippingState, type ShippingBranch, type ShippingLocation } from '@/lib/actions/shipping'
 import { createClient } from '@/lib/supabase/client'
-import Turnstile from '@/components/Turnstile'
+import Turnstile, { type TurnstileHandle } from '@/components/Turnstile'
 
 type PaymentMethod = 'flutterwave' | 'paystack' | 'bank_transfer'
 
@@ -33,6 +33,16 @@ export default function CheckoutPage() {
   const [isLoggedIn, setIsLoggedIn] = useState<boolean | null>(null)
   const [authBannerDismissed, setAuthBannerDismissed] = useState(false)
   const [captchaToken, setCaptchaToken] = useState<string | null>(null)
+  const turnstileRef = useRef<TurnstileHandle>(null)
+
+  // Turnstile tokens are single-use — reset after any failure past the
+  // point the token would've been consumed, so a retry (different payment
+  // method, gateway hiccup, etc.) gets a fresh token instead of silently
+  // failing captcha verification with the already-used one.
+  function resetCaptcha() {
+    turnstileRef.current?.reset()
+    setCaptchaToken(null)
+  }
 
   // Shipping tree
   const [shippingStates, setShippingStates] = useState<ShippingState[]>([])
@@ -123,6 +133,7 @@ export default function CheckoutPage() {
 
       if ('error' in sessionResult) {
         setError(sessionResult.error)
+        resetCaptcha()
         return
       }
 
@@ -131,17 +142,17 @@ export default function CheckoutPage() {
 
       if (paymentMethod === 'flutterwave') {
         const payResult = await initFlutterwave(sid, form.email, grandTotal, customerName, form.phone)
-        if ('error' in payResult) { setError(payResult.error ?? 'Could not initialize payment.'); return }
+        if ('error' in payResult) { setError(payResult.error ?? 'Could not initialize payment.'); resetCaptcha(); return }
         window.location.href = payResult.paymentLink
 
       } else if (paymentMethod === 'paystack') {
         const payResult = await initPaystack(sid, form.email, grandTotal, customerName, form.phone)
-        if ('error' in payResult) { setError(payResult.error ?? 'Could not initialize payment.'); return }
+        if ('error' in payResult) { setError(payResult.error ?? 'Could not initialize payment.'); resetCaptcha(); return }
         window.location.href = payResult.authorizationUrl
 
       } else {
         const bankResult = await createBankTransferOrder(sid)
-        if ('error' in bankResult) { setError(bankResult.error); return }
+        if ('error' in bankResult) { setError(bankResult.error); resetCaptcha(); return }
         clearCart()
         setBankConfirm({ orderId: bankResult.orderId, orderNumber: bankResult.orderNumber, total: orderTotal, bankDetails: bankResult.bankDetails })
       }
@@ -458,7 +469,7 @@ export default function CheckoutPage() {
                 <p className="text-xs text-red-500 mb-3 bg-red-50 dark:bg-red-950/30 px-3 py-2 rounded-lg">{error}</p>
               )}
 
-              <Turnstile className="mb-3" onVerify={setCaptchaToken} />
+              <Turnstile ref={turnstileRef} className="mb-3" onVerify={setCaptchaToken} />
 
               <button
                 type="submit"

@@ -1,13 +1,13 @@
 'use client'
 
-import { useTransition } from 'react'
+import { useEffect, useRef, useTransition } from 'react'
 import { useFormState, useFormStatus } from 'react-dom'
 import Link from 'next/link'
 import { signUp } from '@/lib/actions/auth'
 import { createClient } from '@/lib/supabase/client'
 import { AuthLayout } from '@/components/admin/AuthLayout'
 import { PasswordInput } from '@/components/admin/PasswordInput'
-import Turnstile from '@/components/Turnstile'
+import Turnstile, { type TurnstileHandle } from '@/components/Turnstile'
 
 function SubmitButton() {
   const { pending } = useFormStatus()
@@ -61,6 +61,11 @@ function GoogleButton() {
 
 export default function AdminRegisterPage() {
   const [state, action] = useFormState(signUp, null)
+  const turnstileRef = useRef<TurnstileHandle>(null)
+
+  useEffect(() => {
+    if (state?.error) turnstileRef.current?.reset()
+  }, [state])
 
   if (state?.success) {
     return (
@@ -175,7 +180,7 @@ export default function AdminRegisterPage() {
           />
         </div>
 
-        <Turnstile className="pt-1" />
+        <Turnstile ref={turnstileRef} className="pt-1" />
 
         <div className="pt-1">
           <SubmitButton />

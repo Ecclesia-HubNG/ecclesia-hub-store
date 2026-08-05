@@ -1,9 +1,9 @@
 'use client'
 
-import { useState, useEffect, useTransition } from 'react'
+import { useState, useEffect, useRef, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
-import Turnstile from '@/components/Turnstile'
+import Turnstile, { type TurnstileHandle } from '@/components/Turnstile'
 import { customerSignIn, customerSignUp, customerForgotPassword } from '@/lib/actions/customer-auth'
 
 type Tab = 'signin' | 'signup' | 'forgot'
@@ -31,6 +31,7 @@ export default function AccountPage() {
   const [msg, setMsg] = useState<{ type: 'error' | 'success'; text: string } | null>(null)
   const [showSignInPwd, setShowSignInPwd] = useState(false)
   const [showSignUpPwd, setShowSignUpPwd] = useState(false)
+  const turnstileRef = useRef<TurnstileHandle>(null)
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data: { user } }) => {
@@ -38,6 +39,13 @@ export default function AccountPage() {
     })
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
+
+  // Turnstile tokens are single-use — reset after every failed attempt so a
+  // retry (wrong password, duplicate email, etc.) gets a fresh token instead
+  // of silently failing the captcha check with the already-consumed one.
+  useEffect(() => {
+    if (msg?.type === 'error') turnstileRef.current?.reset()
+  }, [msg])
 
   function handleSignIn(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
@@ -157,7 +165,7 @@ export default function AccountPage() {
             <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1.5">Email</label>
             <input name="email" type="email" placeholder="you@example.com" required className={inputCls} />
           </div>
-          <Turnstile />
+          <Turnstile ref={turnstileRef} />
           <button type="submit" disabled={pending} className="w-full py-2.5 bg-[#4A0F1C] text-white text-sm font-semibold rounded-xl hover:bg-[#3A0B15] disabled:opacity-60 transition-colors mt-1">
             {pending ? 'Sending…' : 'Send reset link'}
           </button>
@@ -182,7 +190,7 @@ export default function AccountPage() {
               </button>
             </div>
           </div>
-          <Turnstile />
+          <Turnstile ref={turnstileRef} />
           <button type="submit" disabled={pending} className="w-full py-2.5 bg-[#4A0F1C] text-white text-sm font-semibold rounded-xl hover:bg-[#3A0B15] disabled:opacity-60 transition-colors mt-1">
             {pending ? 'Signing in…' : 'Sign in'}
           </button>
@@ -206,7 +214,7 @@ export default function AccountPage() {
               </button>
             </div>
           </div>
-          <Turnstile />
+          <Turnstile ref={turnstileRef} />
           <button type="submit" disabled={pending} className="w-full py-2.5 bg-[#4A0F1C] text-white text-sm font-semibold rounded-xl hover:bg-[#3A0B15] disabled:opacity-60 transition-colors mt-1">
             {pending ? 'Creating account…' : 'Create account'}
           </button>
