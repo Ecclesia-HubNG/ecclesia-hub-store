@@ -4,6 +4,7 @@ import { logAudit } from '@/lib/audit'
 import { qstash } from '@/lib/qstash'
 import type { OrderJobPayload } from '@/app/api/jobs/order-confirmation/route'
 import { logOrderEvent } from '@/lib/actions/order-events'
+import { decrementStock } from '@/lib/stock'
 
 export const runtime = 'nodejs'
 
@@ -123,47 +124,15 @@ export async function POST(req: NextRequest) {
   // Clean up checkout session
   await supabase.from('checkout_sessions').delete().eq('tx_ref', tx.tx_ref)
 
-  // Decrement variant stock
+  // Decrement stock — variant stock for items with a selected variant,
+  // otherwise the product's own stock count.
   type SessionItem = {
     productId: string
     selectedVariants: Array<{ groupName: string; value: string }> | null
     quantity: number
   }
   const cartItems = (order.items as SessionItem[]) ?? []
-  const variantItems = cartItems.filter(i => Array.isArray(i.selectedVariants) && i.selectedVariants.length > 0)
-  if (variantItems.length > 0) {
-    const productIds = Array.from(new Set(variantItems.map(i => i.productId)))
-    const { data: products } = await supabase.from('products').select('id, variants').in('id', productIds)
-
-    for (const item of variantItems) {
-      const product = products?.find(p => p.id === item.productId)
-      if (!product) continue
-
-      type VOption = { value: string; stock?: number | null }
-      type VGroup = { name: string; options: VOption[] }
-      const productVariants: VGroup[] = Array.isArray(product.variants)
-        ? (product.variants as VGroup[]).map(v => ({ ...v, options: [...v.options] }))
-        : []
-      let changed = false
-
-      for (const sv of item.selectedVariants ?? []) {
-        const gIdx = productVariants.findIndex(v => v.name === sv.groupName)
-        if (gIdx === -1) continue
-        const group: VGroup = { ...productVariants[gIdx], options: [...productVariants[gIdx].options] }
-        const oIdx = group.options.findIndex(o => o.value === sv.value)
-        if (oIdx === -1) continue
-        const opt = { ...group.options[oIdx] }
-        if (opt.stock != null) {
-          opt.stock = Math.max(0, opt.stock - item.quantity)
-          group.options[oIdx] = opt
-          productVariants[gIdx] = group
-          changed = true
-        }
-      }
-
-      if (changed) await supabase.from('products').update({ variants: productVariants }).eq('id', product.id)
-    }
-  }
+  await decrementStock(supabase, cartItems)
 
   logAudit('order.paid', 'order', order.id, {
     provider: 'flutterwave',

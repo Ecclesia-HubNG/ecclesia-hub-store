@@ -7,6 +7,7 @@ import type { CartItem } from '@/lib/cart-context'
 import { logOrderEvent } from '@/lib/actions/order-events'
 import { verifyTurnstile } from '@/lib/turnstile'
 import { headers } from 'next/headers'
+import { validateStock } from '@/lib/stock'
 
 export type ShippingAddress = {
   firstName: string
@@ -16,34 +17,6 @@ export type ShippingAddress = {
   address: string
   city: string
   state: string
-}
-
-// ── Stock validator (shared between session create and order finalise) ──
-async function validateStock(items: CartItem[]): Promise<string | null> {
-  const adminSupabase = createAdminClient()
-  const productIds = Array.from(new Set(items.map(i => i.productId)))
-  const { data: products } = await adminSupabase
-    .from('products')
-    .select('id, name, variants')
-    .in('id', productIds)
-
-  for (const item of items) {
-    if (!item.selectedVariants?.length) continue
-    const product = products?.find(p => p.id === item.productId)
-    if (!product) continue
-    const productVariants = Array.isArray(product.variants) ? product.variants : []
-    for (const sv of item.selectedVariants) {
-      const group = productVariants.find((v: { name: string }) => v.name === sv.groupName)
-      if (!group) continue
-      const opt = (group.options ?? []).find((o: { value: string; stock?: number | null }) => o.value === sv.value)
-      if (opt?.stock != null && opt.stock < item.quantity) {
-        return opt.stock === 0
-          ? `"${item.name} — ${sv.value}" is out of stock.`
-          : `"${item.name} — ${sv.value}" only has ${opt.stock} left in stock.`
-      }
-    }
-  }
-  return null
 }
 
 // ── Checkout session ────────────────────────────────────────────────────
@@ -66,7 +39,7 @@ export async function createCheckoutSession(
   const captchaOk = await verifyTurnstile(captchaToken, ip)
   if (!captchaOk) return { error: 'Verification failed. Please refresh the page and try again.' }
 
-  const stockError = await validateStock(items)
+  const stockError = await validateStock(createAdminClient(), items)
   if (stockError) return { error: stockError }
 
   const supabase = createClient()
@@ -107,7 +80,7 @@ export async function createCheckoutSession(
 
 // ── Kept for admin manual-order flow (not used in storefront checkout) ──
 export async function createOrder(items: CartItem[], shipping: ShippingAddress, total: number, shippingFee = 0) {
-  const stockError = await validateStock(items)
+  const stockError = await validateStock(createAdminClient(), items)
   if (stockError) return { error: stockError }
 
   const supabase = createClient()
@@ -284,6 +257,9 @@ export async function createBankTransferOrder(sessionId: string): Promise<
   }
   const cartItems = (session.cart_items ?? []) as SessionItem[]
   const shipping = session.shipping as Record<string, string>
+
+  const stockError = await validateStock(admin, cartItems)
+  if (stockError) return { error: stockError }
 
   const { data: order, error: orderErr } = await admin
     .from('orders')

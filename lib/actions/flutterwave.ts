@@ -4,6 +4,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { createClient } from '@/lib/supabase/server'
 import { sendOrderProcessing, sendPaymentFailed, sendAdminOrderNotification } from '@/lib/email'
 import { logOrderEvent } from '@/lib/actions/order-events'
+import { validateStock, decrementStock } from '@/lib/stock'
 
 
 const FLW_BASE = 'https://api.flutterwave.com/v3'
@@ -233,7 +234,7 @@ export async function verifyAndFinalizeOrder(transactionId: string) {
       await supabase.from('checkout_sessions').delete().eq('tx_ref', tx.tx_ref)
 
       const cartItems = (existingOrder.items ?? []) as SessionItem[]
-      await decrementVariantStock(supabase, cartItems)
+      await decrementStock(supabase, cartItems)
 
       const shipping = existingOrder.shipping_address as Record<string, string>
       const orderNum = existingOrder.id.slice(0, 8).toUpperCase()
@@ -306,33 +307,9 @@ export async function verifyAndFinalizeOrder(transactionId: string) {
     const cartItems = (session.cart_items ?? []) as SessionItem[]
     const shipping = session.shipping as Record<string, string>
 
-    // Stock re-validation
-    const variantItems = cartItems.filter(i => Array.isArray(i.selectedVariants) && i.selectedVariants.length > 0)
-    if (variantItems.length > 0) {
-      const productIds = Array.from(new Set(variantItems.map(i => i.productId)))
-      const { data: products } = await supabase
-        .from('products')
-        .select('id, name, variants')
-        .in('id', productIds)
-
-      for (const item of variantItems) {
-        const product = products?.find(p => p.id === item.productId)
-        if (!product) continue
-        const productVariants = Array.isArray(product.variants) ? product.variants : []
-        for (const sv of item.selectedVariants ?? []) {
-          const group = productVariants.find((v: { name: string }) => v.name === sv.groupName)
-          if (!group) continue
-          const opt = (group.options ?? []).find((o: { value: string; stock?: number | null }) => o.value === sv.value)
-          if (opt?.stock != null && opt.stock < item.quantity) {
-            return {
-              error: opt.stock === 0
-                ? `"${item.name} — ${sv.value}" sold out while you were paying. Please contact us.`
-                : `"${item.name} — ${sv.value}" only has ${opt.stock} left. Please contact us.`,
-            }
-          }
-        }
-      }
-    }
+    // Stock re-validation — cart may have sat unpaid long enough to sell out
+    const stockError = await validateStock(supabase, cartItems)
+    if (stockError) return { error: `${stockError} Please contact us.` }
 
     const { data: newOrder, error: orderError } = await supabase
       .from('orders')
@@ -364,7 +341,7 @@ export async function verifyAndFinalizeOrder(transactionId: string) {
 
     if (orderError) return { error: orderError.message }
 
-    await decrementVariantStock(supabase, cartItems)
+    await decrementStock(supabase, cartItems)
     await supabase.from('checkout_sessions').delete().eq('id', session.id)
 
     const orderNum = newOrder.id.slice(0, 8).toUpperCase()
@@ -505,44 +482,3 @@ export async function retryPayment(orderId: string) {
   }
 }
 
-async function decrementVariantStock(
-  supabase: ReturnType<typeof createAdminClient>,
-  cartItems: SessionItem[],
-) {
-  const variantItems = cartItems.filter(i => Array.isArray(i.selectedVariants) && i.selectedVariants.length > 0)
-  if (variantItems.length === 0) return
-
-  const productIds = Array.from(new Set(variantItems.map(i => i.productId)))
-  const { data: products } = await supabase.from('products').select('id, variants').in('id', productIds)
-
-  for (const item of variantItems) {
-    const product = products?.find(p => p.id === item.productId)
-    if (!product) continue
-
-    type VOption = { value: string; stock?: number | null }
-    type VGroup = { name: string; options: VOption[] }
-    const productVariants: VGroup[] = Array.isArray(product.variants)
-      ? (product.variants as VGroup[]).map(v => ({ ...v, options: [...v.options] }))
-      : []
-    let changed = false
-
-    for (const sv of item.selectedVariants ?? []) {
-      const groupIdx = productVariants.findIndex(v => v.name === sv.groupName)
-      if (groupIdx === -1) continue
-      const group: VGroup = { ...productVariants[groupIdx], options: [...productVariants[groupIdx].options] }
-      const optIdx = group.options.findIndex(o => o.value === sv.value)
-      if (optIdx === -1) continue
-      const opt = { ...group.options[optIdx] }
-      if (opt.stock != null) {
-        opt.stock = Math.max(0, opt.stock - item.quantity)
-        group.options[optIdx] = opt
-        productVariants[groupIdx] = group
-        changed = true
-      }
-    }
-
-    if (changed) {
-      await supabase.from('products').update({ variants: productVariants }).eq('id', item.productId)
-    }
-  }
-}

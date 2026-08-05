@@ -2,6 +2,7 @@
 
 import { createAdminClient } from '@/lib/supabase/admin'
 import { sendOrderConfirmation } from '@/lib/email'
+import { validateStock, decrementStock } from '@/lib/stock'
 
 const PAYSTACK_BASE = 'https://api.paystack.co'
 
@@ -120,6 +121,10 @@ export async function verifyAndFinalizeOrder(reference: string) {
     const cartItems = (session.cart_items ?? []) as SessionItem[]
     const shipping = session.shipping as Record<string, string>
 
+    // Stock re-validation — cart may have sat unpaid long enough to sell out
+    const stockError = await validateStock(supabase, cartItems)
+    if (stockError) return { error: `${stockError} Please contact us.` }
+
     // Create order as paid
     const { data: newOrder, error: orderError } = await supabase
       .from('orders')
@@ -148,33 +153,7 @@ export async function verifyAndFinalizeOrder(reference: string) {
 
     if (orderError) return { error: orderError.message }
 
-    // Decrement variant stock
-    const variantItems = cartItems.filter(i => Array.isArray(i.selectedVariants) && i.selectedVariants.length > 0)
-    if (variantItems.length > 0) {
-      const productIds = Array.from(new Set(variantItems.map(i => i.productId)))
-      const { data: products } = await supabase.from('products').select('id, variants').in('id', productIds)
-
-      for (const item of variantItems) {
-        const product = products?.find(p => p.id === item.productId)
-        if (!product) continue
-        type VOption = { value: string; stock?: number | null }
-        type VGroup = { name: string; options: VOption[] }
-        const productVariants: VGroup[] = Array.isArray(product.variants)
-          ? (product.variants as VGroup[]).map(v => ({ ...v, options: [...v.options] })) : []
-        let changed = false
-        for (const sv of item.selectedVariants ?? []) {
-          const gIdx = productVariants.findIndex(v => v.name === sv.groupName)
-          if (gIdx === -1) continue
-          const group: VGroup = { ...productVariants[gIdx], options: [...productVariants[gIdx].options] }
-          const oIdx = group.options.findIndex(o => o.value === sv.value)
-          if (oIdx === -1) continue
-          const opt = { ...group.options[oIdx] }
-          if (opt.stock != null) { opt.stock = Math.max(0, opt.stock - item.quantity); group.options[oIdx] = opt; productVariants[gIdx] = group; changed = true }
-        }
-        if (changed) await supabase.from('products').update({ variants: productVariants }).eq('id', item.productId)
-      }
-    }
-
+    await decrementStock(supabase, cartItems)
     await supabase.from('checkout_sessions').delete().eq('id', session.id)
 
     sendOrderConfirmation(shipping.email, {

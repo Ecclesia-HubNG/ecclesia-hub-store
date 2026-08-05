@@ -5,6 +5,28 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { revalidatePath } from 'next/cache'
 import { sendOrderShipped, sendOrderConfirmation } from '@/lib/email'
 import { logOrderEvent } from '@/lib/actions/order-events'
+import { decrementStock, isStockConfirmingTransition, isConfirmedOrderStatus } from '@/lib/stock'
+
+// Order line items come from two different origins with two different key
+// styles: checkout-flow items use `productId` (camelCase), manual-order
+// items use `product_id` (snake_case). Custom line items (no real product
+// behind them) are prefixed "custom_" and skipped.
+type RawOrderItem = {
+  productId?: string
+  product_id?: string
+  quantity: number
+  selectedVariants?: Array<{ groupName: string; value: string }> | null
+}
+
+function toStockItems(items: RawOrderItem[]) {
+  const result: Array<{ productId: string; quantity: number; selectedVariants?: RawOrderItem['selectedVariants'] }> = []
+  for (const i of items) {
+    const productId = i.productId ?? i.product_id
+    if (!productId || productId.startsWith('custom_')) continue
+    result.push({ productId, quantity: i.quantity, selectedVariants: i.selectedVariants })
+  }
+  return result
+}
 
 export async function updateOrderStatus(formData: FormData) {
   const supabase = createClient()
@@ -13,12 +35,19 @@ export async function updateOrderStatus(formData: FormData) {
 
   const { data: order } = await supabase
     .from('orders')
-    .select('items, shipping_address, tracking_number, carrier, total, subtotal, shipping_fee')
+    .select('status, items, shipping_address, tracking_number, carrier, total, subtotal, shipping_fee')
     .eq('id', id)
     .single()
 
   await supabase.from('orders').update({ status }).eq('id', id)
   await logOrderEvent(id, 'status', `Status changed to ${status}`)
+
+  if (order && isStockConfirmingTransition(order.status, status)) {
+    await decrementStock(createAdminClient(), toStockItems((order.items ?? []) as RawOrderItem[]))
+    revalidatePath('/admin/products')
+    revalidatePath('/home')
+    revalidatePath('/shop')
+  }
 
   const addr = order?.shipping_address
   const orderNumber = id.slice(0, 8).toUpperCase()
@@ -82,7 +111,21 @@ export async function updateOrderTracking(formData: FormData) {
 
 export async function bulkUpdateOrderStatus(ids: string[], status: string) {
   const supabase = createClient()
+
+  const { data: orders } = await supabase.from('orders').select('id, status, items').in('id', ids)
   await supabase.from('orders').update({ status }).in('id', ids)
+
+  const toDecrement = (orders ?? []).filter(o => isStockConfirmingTransition(o.status, status))
+  if (toDecrement.length > 0) {
+    const admin = createAdminClient()
+    for (const order of toDecrement) {
+      await decrementStock(admin, toStockItems((order.items ?? []) as RawOrderItem[]))
+    }
+    revalidatePath('/admin/products')
+    revalidatePath('/home')
+    revalidatePath('/shop')
+  }
+
   revalidatePath('/admin/orders')
   revalidatePath('/admin')
 }
@@ -220,7 +263,15 @@ export async function createManualOrder(payload: {
 
   if (error) return { error: error.message }
 
-  await decrementProductStock(supabase, payload.items)
+  // Manual orders record a sale that's already happened (in-store, DM,
+  // etc.), so inventory needs to come down the same as a paid online order
+  // would. Only decrement here if it's created already "confirmed" (paid /
+  // processing) — if it starts as pending, updateOrderStatus decrements it
+  // once the admin later confirms it, so decrementing both here AND there
+  // would double-count.
+  if (isConfirmedOrderStatus(payload.status)) {
+    await decrementStock(supabase, toStockItems(payload.items))
+  }
 
   revalidatePath('/admin/orders')
   revalidatePath('/admin')
@@ -228,27 +279,4 @@ export async function createManualOrder(payload: {
   revalidatePath('/home')
   revalidatePath('/shop')
   return { id: data.id }
-}
-
-// Manual orders record a sale that's already happened (in-store, DM, etc.),
-// so inventory needs to come down the same as a paid online order would —
-// otherwise the storefront keeps showing a product as available after it's
-// actually sold out. Custom line items (product_id starting with "custom_")
-// aren't real catalog products and are skipped.
-async function decrementProductStock(supabase: ReturnType<typeof createAdminClient>, items: ManualOrderItem[]) {
-  const quantityByProductId = new Map<string, number>()
-  for (const item of items) {
-    if (!item.product_id || item.product_id.startsWith('custom_')) continue
-    quantityByProductId.set(item.product_id, (quantityByProductId.get(item.product_id) ?? 0) + item.quantity)
-  }
-  if (quantityByProductId.size === 0) return
-
-  const productIds = Array.from(quantityByProductId.keys())
-  const { data: products } = await supabase.from('products').select('id, stock').in('id', productIds)
-
-  for (const product of products ?? []) {
-    const orderedQty = quantityByProductId.get(product.id) ?? 0
-    if (orderedQty <= 0) continue
-    await supabase.from('products').update({ stock: Math.max(0, product.stock - orderedQty) }).eq('id', product.id)
-  }
 }
