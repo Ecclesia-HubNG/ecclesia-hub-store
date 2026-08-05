@@ -33,11 +33,15 @@ export default async function CategoryDeals() {
     // Get linked products for this promotion
     const { data: linked } = await admin
       .from('promotion_products')
-      .select('products ( id, name, slug, price, compare_at_price, thumbnail, short_description )')
+      .select('products ( id, name, slug, price, compare_at_price, thumbnail, short_description, stock )')
       .eq('promotion_id', homePromo.id)
-      .limit(4)
+      .limit(8)
 
-    products = (linked ?? []).map((r: any) => r.products).filter(Boolean)
+    products = (linked ?? [])
+      .map((r: any) => r.products)
+      .filter(Boolean)
+      .filter((p: any) => p.stock > 0)
+      .slice(0, 4)
   }
 
   // Fallback: no promo pinned or promo has no linked products
@@ -48,6 +52,7 @@ export default async function CategoryDeals() {
       .eq('is_active', true)
       .not('compare_at_price', 'is', null)
       .gt('compare_at_price', 0)
+      .gt('stock', 0)
       .order('compare_at_price', { ascending: false })
       .limit(4)
     products = data ?? []
