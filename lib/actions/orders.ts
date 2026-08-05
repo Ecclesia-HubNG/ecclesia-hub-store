@@ -220,7 +220,35 @@ export async function createManualOrder(payload: {
 
   if (error) return { error: error.message }
 
+  await decrementProductStock(supabase, payload.items)
+
   revalidatePath('/admin/orders')
   revalidatePath('/admin')
+  revalidatePath('/admin/products')
+  revalidatePath('/home')
+  revalidatePath('/shop')
   return { id: data.id }
+}
+
+// Manual orders record a sale that's already happened (in-store, DM, etc.),
+// so inventory needs to come down the same as a paid online order would —
+// otherwise the storefront keeps showing a product as available after it's
+// actually sold out. Custom line items (product_id starting with "custom_")
+// aren't real catalog products and are skipped.
+async function decrementProductStock(supabase: ReturnType<typeof createAdminClient>, items: ManualOrderItem[]) {
+  const quantityByProductId = new Map<string, number>()
+  for (const item of items) {
+    if (!item.product_id || item.product_id.startsWith('custom_')) continue
+    quantityByProductId.set(item.product_id, (quantityByProductId.get(item.product_id) ?? 0) + item.quantity)
+  }
+  if (quantityByProductId.size === 0) return
+
+  const productIds = Array.from(quantityByProductId.keys())
+  const { data: products } = await supabase.from('products').select('id, stock').in('id', productIds)
+
+  for (const product of products ?? []) {
+    const orderedQty = quantityByProductId.get(product.id) ?? 0
+    if (orderedQty <= 0) continue
+    await supabase.from('products').update({ stock: Math.max(0, product.stock - orderedQty) }).eq('id', product.id)
+  }
 }
