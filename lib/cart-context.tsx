@@ -36,6 +36,17 @@ type CartContextType = {
   removeCoupon: () => void
 }
 
+// Coupons carry discount_type/discount_value so callers can recompute the
+// discount against the *current* subtotal — never trust a cached ₦ amount,
+// since it goes stale (and under-discounts or over-discounts) the moment
+// the cart changes after the coupon was applied.
+export function calcDiscount(coupon: AppliedCoupon | null, subtotal: number): number {
+  if (!coupon) return 0
+  return coupon.discount_type === 'percentage'
+    ? Math.round(subtotal * (coupon.discount_value / 100))
+    : Math.min(coupon.discount_value, subtotal)
+}
+
 export function itemKey(productId: string, variants?: SelectedVariant[]) {
   if (!variants || variants.length === 0) return productId
   const sorted = [...variants].sort((a, b) => a.groupName.localeCompare(b.groupName))

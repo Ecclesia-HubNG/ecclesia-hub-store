@@ -8,6 +8,7 @@ import { logOrderEvent } from '@/lib/actions/order-events'
 import { verifyTurnstile } from '@/lib/turnstile'
 import { headers } from 'next/headers'
 import { validateStock } from '@/lib/stock'
+import { validateCoupon } from '@/lib/actions/coupons'
 
 export type ShippingAddress = {
   firstName: string
@@ -42,6 +43,17 @@ export async function createCheckoutSession(
   const stockError = await validateStock(createAdminClient(), items)
   if (stockError) return { error: stockError }
 
+  // Re-derive the discount from the coupon itself against the server-side
+  // subtotal — never trust the client-sent discount amount. It can go stale
+  // (cart edited after the coupon was applied) or be tampered with directly
+  // in the request, both of which under/over-discount the order.
+  let verifiedDiscount = 0
+  if (couponCode) {
+    const result = await validateCoupon(couponCode, subtotal)
+    if (!('error' in result)) verifiedDiscount = result.discountAmount
+  }
+  const verifiedTotal = Math.max(0, total - (discountAmount - verifiedDiscount))
+
   const supabase = createClient()
   const { data: { user } } = await supabase.auth.getUser()
 
@@ -64,11 +76,11 @@ export async function createCheckoutSession(
       shipping,
       subtotal,
       shipping_fee: shippingFee,
-      total,
+      total: verifiedTotal,
       delivery_rate_id: deliveryRateId || null,
       delivery_label: deliveryLabel || null,
       coupon_code: couponCode || null,
-      discount_amount: discountAmount,
+      discount_amount: verifiedDiscount,
       customer_id: user?.id ?? null,
     })
     .select('id')

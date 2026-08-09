@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from 'react'
 import Link from 'next/link'
-import { useCart, itemKey, type SelectedVariant } from '@/lib/cart-context'
+import { useCart, itemKey, calcDiscount, type SelectedVariant } from '@/lib/cart-context'
 import { validateCoupon } from '@/lib/actions/coupons'
 
 // ── Stepper ───────────────────────────────────────────────────────────────────
@@ -41,7 +41,7 @@ export default function CartPage() {
   const [couponError, setCouponError] = useState('')
   const [isPending, startTransition] = useTransition()
 
-  const discountAmount = coupon?.discountAmount ?? 0
+  const discountAmount = calcDiscount(coupon, total)
   const discountedTotal = Math.max(0, total - discountAmount)
 
   function handleApplyCoupon() {

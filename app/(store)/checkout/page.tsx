@@ -4,7 +4,7 @@ export const dynamic = 'force-dynamic'
 
 import { useState, useTransition, useEffect, useMemo, useRef } from 'react'
 import { useRouter } from 'next/navigation'
-import { useCart } from '@/lib/cart-context'
+import { useCart, calcDiscount } from '@/lib/cart-context'
 import { createCheckoutSession, createBankTransferOrder } from '@/lib/actions/customer-orders'
 import { initializePayment as initFlutterwave } from '@/lib/actions/flutterwave'
 import { initializePayment as initPaystack } from '@/lib/actions/paystack'
@@ -69,7 +69,7 @@ export default function CheckoutPage() {
   const locationsForBranch = useMemo(() => selectedBranch?.locations ?? [], [selectedBranch])
   const selectedLocation = useMemo(() => locationsForBranch.find(l => l.id === selectedLocationId) ?? null, [locationsForBranch, selectedLocationId])
   const shippingFee = selectedLocation?.price ?? null
-  const discountAmount = coupon?.discountAmount ?? 0
+  const discountAmount = calcDiscount(coupon, subtotal)
   const orderTotal = Math.max(0, subtotal - discountAmount) + (shippingFee ?? 0)
 
   function calcProcessingFee(amount: number) {
