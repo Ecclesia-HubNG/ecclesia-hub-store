@@ -69,7 +69,7 @@ export default function CheckoutPage() {
   const locationsForBranch = useMemo(() => selectedBranch?.locations ?? [], [selectedBranch])
   const selectedLocation = useMemo(() => locationsForBranch.find(l => l.id === selectedLocationId) ?? null, [locationsForBranch, selectedLocationId])
   const shippingFee = selectedLocation?.price ?? null
-  const discountAmount = calcDiscount(coupon, subtotal)
+  const discountAmount = calcDiscount(coupon, items)
   const orderTotal = Math.max(0, subtotal - discountAmount) + (shippingFee ?? 0)
 
   function calcProcessingFee(amount: number) {

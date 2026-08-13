@@ -21,6 +21,9 @@ export type AppliedCoupon = {
   discount_type: 'percentage' | 'fixed'
   discount_value: number
   discountAmount: number
+  // null = applies to every item. Non-null = only these product IDs qualify,
+  // resolved server-side when the coupon was applied (see validateCoupon).
+  eligibleProductIds: string[] | null
 }
 
 type CartContextType = {
@@ -37,14 +40,20 @@ type CartContextType = {
 }
 
 // Coupons carry discount_type/discount_value so callers can recompute the
-// discount against the *current* subtotal — never trust a cached ₦ amount,
-// since it goes stale (and under-discounts or over-discounts) the moment
-// the cart changes after the coupon was applied.
-export function calcDiscount(coupon: AppliedCoupon | null, subtotal: number): number {
+// discount against the *current* cart — never trust a cached ₦ amount, since
+// it goes stale (and under/over-discounts) the moment the cart changes after
+// the coupon was applied. eligibleProductIds does the same for product/
+// category-restricted coupons: if the qualifying item gets removed, the
+// discount recomputes to 0 instead of still applying to the rest of the cart.
+export function calcDiscount(coupon: AppliedCoupon | null, items: CartItem[]): number {
   if (!coupon) return 0
+  const eligibleItems = coupon.eligibleProductIds === null
+    ? items
+    : items.filter(i => coupon.eligibleProductIds!.includes(i.productId))
+  const eligibleSubtotal = eligibleItems.reduce((sum, i) => sum + i.price * i.quantity, 0)
   return coupon.discount_type === 'percentage'
-    ? Math.round(subtotal * (coupon.discount_value / 100))
-    : Math.min(coupon.discount_value, subtotal)
+    ? Math.round(eligibleSubtotal * (coupon.discount_value / 100))
+    : Math.min(coupon.discount_value, eligibleSubtotal)
 }
 
 export function itemKey(productId: string, variants?: SelectedVariant[]) {

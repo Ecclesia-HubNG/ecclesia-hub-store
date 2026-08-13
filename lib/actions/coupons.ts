@@ -75,16 +75,23 @@ export type ValidatedCoupon = {
   discount_type: 'percentage' | 'fixed'
   discount_value: number
   discountAmount: number
+  // null = every product qualifies. Non-null = only these product IDs do —
+  // callers (cart/checkout) filter line items against this on every
+  // recompute so the discount never applies to items it shouldn't.
+  eligibleProductIds: string[] | null
 }
+
+export type CouponCartItem = { productId: string; price: number; quantity: number }
 
 export async function validateCoupon(
   code: string,
   subtotal: number,
+  items: CouponCartItem[] = [],
 ): Promise<ValidatedCoupon | { error: string }> {
   const supabase = createAdminClient()
   const { data: coupon } = await supabase
     .from('coupons')
-    .select('id, code, description, discount_type, discount_value, min_order_amount, max_uses, used_count, expires_at, is_active')
+    .select('id, code, description, discount_type, discount_value, min_order_amount, max_uses, used_count, expires_at, is_active, applies_to, product_ids, category_ids')
     .eq('code', code.toUpperCase().trim())
     .maybeSingle()
 
@@ -95,9 +102,31 @@ export async function validateCoupon(
     return { error: `Minimum order amount for this coupon is ₦${Number(coupon.min_order_amount).toLocaleString('en')}.` }
   }
 
+  // Resolve which product IDs this coupon is allowed to discount. Resolved
+  // fresh from the coupon's own scoping every call — never trust a client-
+  // supplied list — so a category's membership changing is always honored.
+  let eligibleProductIds: string[] | null = null
+  if (coupon.applies_to === 'products') {
+    eligibleProductIds = coupon.product_ids ?? []
+  } else if (coupon.applies_to === 'categories') {
+    const categoryIds = coupon.category_ids ?? []
+    const { data: matches } = categoryIds.length
+      ? await supabase.from('products').select('id').overlaps('category_ids', categoryIds)
+      : { data: [] }
+    eligibleProductIds = (matches ?? []).map(p => p.id)
+  }
+
+  const eligibleSubtotal = eligibleProductIds === null
+    ? subtotal
+    : items.filter(i => eligibleProductIds!.includes(i.productId)).reduce((sum, i) => sum + i.price * i.quantity, 0)
+
+  if (eligibleProductIds !== null && eligibleSubtotal === 0) {
+    return { error: 'This coupon doesn\'t apply to any items in your cart.' }
+  }
+
   const discountAmount = coupon.discount_type === 'percentage'
-    ? Math.round(subtotal * (Number(coupon.discount_value) / 100))
-    : Math.min(Number(coupon.discount_value), subtotal)
+    ? Math.round(eligibleSubtotal * (Number(coupon.discount_value) / 100))
+    : Math.min(Number(coupon.discount_value), eligibleSubtotal)
 
   return {
     code: coupon.code,
@@ -105,6 +134,7 @@ export async function validateCoupon(
     discount_type: coupon.discount_type as 'percentage' | 'fixed',
     discount_value: Number(coupon.discount_value),
     discountAmount,
+    eligibleProductIds,
   }
 }
 

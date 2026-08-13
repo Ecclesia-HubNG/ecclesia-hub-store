@@ -41,14 +41,15 @@ export default function CartPage() {
   const [couponError, setCouponError] = useState('')
   const [isPending, startTransition] = useTransition()
 
-  const discountAmount = calcDiscount(coupon, total)
+  const discountAmount = calcDiscount(coupon, items)
   const discountedTotal = Math.max(0, total - discountAmount)
 
   function handleApplyCoupon() {
     if (!couponInput.trim()) return
     setCouponError('')
     startTransition(async () => {
-      const result = await validateCoupon(couponInput.trim(), total)
+      const cartItems = items.map(i => ({ productId: i.productId, price: i.price, quantity: i.quantity }))
+      const result = await validateCoupon(couponInput.trim(), total, cartItems)
       if ('error' in result) setCouponError(result.error)
       else { applyCoupon(result); setCouponInput('') }
     })

@@ -49,7 +49,8 @@ export async function createCheckoutSession(
   // in the request, both of which under/over-discount the order.
   let verifiedDiscount = 0
   if (couponCode) {
-    const result = await validateCoupon(couponCode, subtotal)
+    const cartItems = items.map(i => ({ productId: i.productId, price: i.price, quantity: i.quantity }))
+    const result = await validateCoupon(couponCode, subtotal, cartItems)
     if (!('error' in result)) verifiedDiscount = result.discountAmount
   }
   const verifiedTotal = Math.max(0, total - (discountAmount - verifiedDiscount))
