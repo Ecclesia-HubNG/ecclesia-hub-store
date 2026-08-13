@@ -16,6 +16,9 @@ type Coupon = {
   expires_at: string | null
   is_active: boolean
   created_at: string
+  applies_to: 'all' | 'products' | 'categories'
+  product_ids: string[]
+  category_ids: string[]
 }
 
 type AppliesTo = 'all' | 'products' | 'categories'
@@ -99,9 +102,9 @@ export default function CouponsManager({ coupons: initial, products, categories 
       max_uses: c.max_uses != null ? String(c.max_uses) : '',
       expires_at: c.expires_at ? new Date(c.expires_at).toISOString().slice(0, 16) : '',
       is_active: c.is_active,
-      applies_to: (c as any).applies_to ?? 'all',
-      product_ids: (c as any).product_ids ?? [],
-      category_ids: (c as any).category_ids ?? [],
+      applies_to: c.applies_to ?? 'all',
+      product_ids: c.product_ids ?? [],
+      category_ids: c.category_ids ?? [],
     })
     setError('')
     setView('edit')
@@ -412,9 +415,9 @@ export default function CouponsManager({ coupons: initial, products, categories 
             <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
               {coupons.map(c => {
                 const expiry = formatExpiry(c.expires_at)
-                const appliesTo = (c as any).applies_to ?? 'all'
-                const productCount = ((c as any).product_ids ?? []).length
-                const categoryCount = ((c as any).category_ids ?? []).length
+                const appliesTo = c.applies_to ?? 'all'
+                const productCount = (c.product_ids ?? []).length
+                const categoryCount = (c.category_ids ?? []).length
                 return (
                   <tr key={c.id} className="hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors">
                     {/* Code */}

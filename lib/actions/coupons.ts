@@ -12,6 +12,23 @@ type CouponInput = {
   max_uses: number | null
   expires_at: string | null
   is_active: boolean
+  applies_to: 'all' | 'products' | 'categories'
+  product_ids: string[]
+  category_ids: string[]
+}
+
+// The newsletter popup and its linked coupon can be edited from either admin
+// page, so a coupon-side edit needs to push code/value/active back into
+// popup_config the same way updatePopupConfig pushes the other way — otherwise
+// renaming or re-valuing the coupon here silently orphans the popup's copy.
+async function syncLinkedPopup(supabase: ReturnType<typeof createAdminClient>, previousCode: string, input: CouponInput) {
+  const { data: popup } = await supabase.from('popup_config').select('id').eq('coupon_code', previousCode).maybeSingle()
+  if (!popup) return
+  const newCode = input.code.toUpperCase().trim()
+  const updates: Record<string, unknown> = { coupon_code: newCode, is_enabled: input.is_active }
+  if (input.discount_type === 'percentage') updates.discount_value = input.discount_value
+  await supabase.from('popup_config').update(updates).eq('id', popup.id)
+  revalidatePath('/', 'layout')
 }
 
 export async function createCoupon(input: CouponInput) {
@@ -24,8 +41,10 @@ export async function createCoupon(input: CouponInput) {
 
 export async function updateCoupon(id: string, input: CouponInput) {
   const supabase = createAdminClient()
+  const { data: before } = await supabase.from('coupons').select('code').eq('id', id).single()
   const { error } = await supabase.from('coupons').update({ ...input, code: input.code.toUpperCase().trim() }).eq('id', id)
   if (error) return { error: error.message }
+  if (before?.code) await syncLinkedPopup(supabase, before.code, input)
   revalidatePath('/admin/coupons')
   return { success: true as const }
 }
@@ -38,7 +57,15 @@ export async function deleteCoupon(id: string) {
 
 export async function toggleCouponActive(id: string, is_active: boolean) {
   const supabase = createAdminClient()
+  const { data: coupon } = await supabase.from('coupons').select('code').eq('id', id).single()
   await supabase.from('coupons').update({ is_active }).eq('id', id)
+  if (coupon?.code) {
+    const { data: popup } = await supabase.from('popup_config').select('id').eq('coupon_code', coupon.code).maybeSingle()
+    if (popup) {
+      await supabase.from('popup_config').update({ is_enabled: is_active }).eq('id', popup.id)
+      revalidatePath('/', 'layout')
+    }
+  }
   revalidatePath('/admin/coupons')
 }
 
