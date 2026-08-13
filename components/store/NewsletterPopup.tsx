@@ -10,15 +10,22 @@ type Props = {
   config?: PopupConfig | null
 }
 
+// Lets admin copy embed the live discount % (e.g. "UNLOCK {{discount}}% OFF") so
+// the wording always matches whatever the linked coupon actually grants.
+function withDiscount(text: string, discountValue: number) {
+  return text.replace(/\{\{discount\}\}/g, String(discountValue))
+}
+
 export default function NewsletterPopup({ config }: Props) {
   const isEnabled  = config?.is_enabled  ?? true
   const delayMs    = (config?.delay_seconds ?? 3) * 1000
   const suppressMs = (config?.suppress_days ?? 14) * 24 * 60 * 60 * 1000
   const imageUrl   = config?.image_url   ?? null
+  const discountValue = config?.discount_value ?? 15
   const preHeadline = config?.pre_headline ?? 'Join the community'
-  const headline   = config?.headline    ?? 'UNLOCK\n15% OFF'
+  const headline   = withDiscount(config?.headline    ?? 'UNLOCK\n{{discount}}% OFF', discountValue)
   const bodyText   = config?.body_text   ?? 'On your next order. Sign up for exclusive updates, new arrivals & insider-only discounts.'
-  const buttonText = config?.button_text ?? 'SUBSCRIBE & SAVE 15%'
+  const buttonText = withDiscount(config?.button_text ?? 'SUBSCRIBE & SAVE {{discount}}%', discountValue)
   const dismissText = config?.dismiss_text ?? "No thanks, I'll pay full price"
 
   const [visible, setVisible] = useState(false)

@@ -3,6 +3,7 @@
 import { revalidatePath } from 'next/cache'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { sendNewsletterWelcomeEmail } from '@/lib/email'
+import { getPopupConfig } from '@/lib/actions/popup-config'
 
 const PATH = '/admin/emails/subscribers'
 
@@ -25,7 +26,12 @@ export async function addSubscriber(email: string, name?: string, source: 'manua
   if (error) return { error: error.message }
 
   if (!existing && source === 'popup') {
-    sendNewsletterWelcomeEmail(normalizedEmail, { email: normalizedEmail }).catch(err =>
+    const popupConfig = await getPopupConfig()
+    sendNewsletterWelcomeEmail(normalizedEmail, {
+      email: normalizedEmail,
+      couponCode: popupConfig?.coupon_code,
+      discountPercent: popupConfig?.discount_value,
+    }).catch(err =>
       console.error('[newsletter-welcome] send failed:', err?.message),
     )
   }

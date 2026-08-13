@@ -17,6 +17,10 @@ const PAGE_OPTIONS = [
   { value: '/wishlist',     label: 'Wishlist' },
 ]
 
+function withDiscount(text: string, discountValue: number) {
+  return text.replace(/\{\{discount\}\}/g, String(discountValue))
+}
+
 export default function PopupManager({ config: initial }: { config: PopupConfig }) {
   const [cfg, setCfg] = useState(initial)
   const [saved, setSaved] = useState(false)
@@ -43,16 +47,18 @@ export default function PopupManager({ config: initial }: { config: PopupConfig 
     setSaveError('')
     startTransition(async () => {
       const res = await updatePopupConfig({
-        is_enabled:    cfg.is_enabled,
-        image_url:     cfg.image_url,
-        pre_headline:  cfg.pre_headline,
-        headline:      cfg.headline,
-        body_text:     cfg.body_text,
-        button_text:   cfg.button_text,
-        dismiss_text:  cfg.dismiss_text,
-        delay_seconds: cfg.delay_seconds,
-        suppress_days: cfg.suppress_days,
-        show_on_pages: cfg.show_on_pages,
+        is_enabled:     cfg.is_enabled,
+        image_url:      cfg.image_url,
+        pre_headline:   cfg.pre_headline,
+        headline:       cfg.headline,
+        body_text:      cfg.body_text,
+        button_text:    cfg.button_text,
+        dismiss_text:   cfg.dismiss_text,
+        delay_seconds:  cfg.delay_seconds,
+        suppress_days:  cfg.suppress_days,
+        show_on_pages:  cfg.show_on_pages,
+        discount_value: cfg.discount_value,
+        coupon_code:    cfg.coupon_code,
       })
       if ('error' in res) { setSaveError(res.error ?? 'Save failed'); return }
       setSaved(true)
@@ -73,7 +79,7 @@ export default function PopupManager({ config: initial }: { config: PopupConfig 
         <div className="flex items-center justify-between p-4 bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800">
           <div>
             <p className="text-sm font-semibold text-gray-900 dark:text-white">Popup enabled</p>
-            <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">Show the newsletter popup to storefront visitors</p>
+            <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">Show the newsletter popup to storefront visitors. Turning it off also deactivates the {cfg.coupon_code} coupon, so the code stops working at checkout too.</p>
           </div>
           <button
             type="button"
@@ -107,9 +113,32 @@ export default function PopupManager({ config: initial }: { config: PopupConfig 
           </div>
         </div>
 
+        {/* Discount */}
+        <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 p-5 space-y-3">
+          <h3 className="text-sm font-semibold text-gray-900 dark:text-white">Discount</h3>
+          <p className="text-xs text-gray-500 dark:text-gray-400 -mt-1">
+            The single source of truth for this offer. Changing it updates the <span className="font-mono">{cfg.coupon_code}</span> coupon that gets emailed to subscribers, so what's shown here is always what checkout actually honors.
+          </p>
+          <div className="max-w-[140px]">
+            <label className={labelCls}>Discount %</label>
+            <div className="relative">
+              <input
+                type="number" min={0} max={100} step={1}
+                value={cfg.discount_value}
+                onChange={e => set('discount_value', Number(e.target.value))}
+                className={inputCls}
+              />
+              <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-gray-400">%</span>
+            </div>
+          </div>
+        </div>
+
         {/* Text */}
         <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 p-5 space-y-4">
           <h3 className="text-sm font-semibold text-gray-900 dark:text-white">Text content</h3>
+          <p className="text-xs text-gray-500 dark:text-gray-400 -mt-1">
+            Use <span className="font-mono">{'{{discount}}'}</span> anywhere you want the discount % above inserted — it'll always stay in sync.
+          </p>
           <div>
             <label className={labelCls}>Pre-headline <span className="text-gray-400">(small text above)</span></label>
             <input type="text" value={cfg.pre_headline} onChange={e => set('pre_headline', e.target.value)} className={inputCls} />
@@ -260,13 +289,13 @@ export default function PopupManager({ config: initial }: { config: PopupConfig 
                     </svg>
                   </div>
                   <p className="text-[#6B1A2A] font-bold uppercase tracking-wider truncate mb-1" style={{ fontSize: '7px' }}>
-                    {cfg.pre_headline}
+                    {withDiscount(cfg.pre_headline, cfg.discount_value)}
                   </p>
                   <p className="font-black text-gray-900 leading-tight mb-1.5 truncate" style={{ fontSize: '11px' }}>
-                    {cfg.headline}
+                    {withDiscount(cfg.headline, cfg.discount_value)}
                   </p>
                   <p className="text-gray-500 leading-snug mb-2" style={{ fontSize: '7px', lineHeight: '1.4', display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
-                    {cfg.body_text}
+                    {withDiscount(cfg.body_text, cfg.discount_value)}
                   </p>
                   {/* Input */}
                   <div className="border border-gray-200 rounded px-1.5 py-1 mb-1.5 text-gray-400" style={{ fontSize: '7px' }}>
@@ -274,7 +303,7 @@ export default function PopupManager({ config: initial }: { config: PopupConfig 
                   </div>
                   {/* Button */}
                   <div className="bg-[#4A0F1C] rounded px-2 py-1 text-white text-center font-bold truncate" style={{ fontSize: '7px' }}>
-                    {cfg.button_text}
+                    {withDiscount(cfg.button_text, cfg.discount_value)}
                   </div>
                   {/* Dismiss */}
                   <p className="text-center text-gray-400 mt-1 truncate" style={{ fontSize: '6px' }}>
