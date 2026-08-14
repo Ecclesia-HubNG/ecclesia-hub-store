@@ -68,10 +68,11 @@ function Section({ title, children }: { title: string; children: React.ReactNode
   )
 }
 
-export default function CouponsManager({ coupons: initial, products, categories }: {
+export default function CouponsManager({ coupons: initial, products, categories, linkedCouponCode }: {
   coupons: Coupon[]
   products: Product[]
   categories: Category[]
+  linkedCouponCode: string | null
 }) {
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
@@ -82,6 +83,7 @@ export default function CouponsManager({ coupons: initial, products, categories 
   const [editingId, setEditingId] = useState<string | null>(null)
   const [form, setForm] = useState<FormState>(empty)
   const [error, setError] = useState('')
+  const [deleteError, setDeleteError] = useState('')
   const [copied, setCopied] = useState<string | null>(null)
   const [productSearch, setProductSearch] = useState('')
   const [categorySearch, setCategorySearch] = useState('')
@@ -141,8 +143,13 @@ export default function CouponsManager({ coupons: initial, products, categories 
 
   const handleDelete = (id: string, code: string) => {
     if (!confirm(`Delete coupon "${code}"? This can't be undone.`)) return
-    setCoupons(prev => prev.filter(c => c.id !== id))
-    startTransition(async () => { await deleteCoupon(id); router.refresh() })
+    setDeleteError('')
+    startTransition(async () => {
+      const result = await deleteCoupon(id)
+      if (result && 'error' in result) { setDeleteError(result.error); return }
+      setCoupons(prev => prev.filter(c => c.id !== id))
+      router.refresh()
+    })
   }
 
   const handleToggleActive = (id: string, current: boolean) => {
@@ -161,6 +168,9 @@ export default function CouponsManager({ coupons: initial, products, categories 
 
   const filteredProducts = products.filter(p => p.name.toLowerCase().includes(productSearch.toLowerCase()))
   const filteredCategories = categories.filter(c => c.name.toLowerCase().includes(categorySearch.toLowerCase()))
+
+  const linkedCoupon = linkedCouponCode ? coupons.find(c => c.code === linkedCouponCode) : null
+  const isEditingLinkedCoupon = view === 'edit' && !!linkedCoupon && editingId === linkedCoupon.id
 
   // ─── CREATE / EDIT FORM ───────────────────────────────────────────────────
   if (view === 'create' || view === 'edit') {
@@ -186,6 +196,12 @@ export default function CouponsManager({ coupons: initial, products, categories 
         {error && (
           <div className="mb-4 px-4 py-3 bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-800 rounded-xl text-sm text-red-600 dark:text-red-400">
             {error}
+          </div>
+        )}
+
+        {isEditingLinkedCoupon && (
+          <div className="mb-4 px-4 py-3 bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-800 rounded-xl text-sm text-blue-700 dark:text-blue-400">
+            This coupon powers the newsletter popup. Renaming it, changing its % value, or toggling it active updates the popup automatically. If you switch it to a fixed ₦ amount, the popup's displayed % won't update on its own — edit the popup copy manually from /admin/popup afterward.
           </div>
         )}
 
@@ -387,6 +403,15 @@ export default function CouponsManager({ coupons: initial, products, categories 
         </button>
       </div>
 
+      {deleteError && (
+        <div className="mb-4 px-4 py-3 bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-800 rounded-xl text-sm text-red-600 dark:text-red-400 flex items-start justify-between gap-3">
+          <span>{deleteError}</span>
+          <button type="button" onClick={() => setDeleteError('')} className="shrink-0 text-red-400 hover:text-red-600">
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" /></svg>
+          </button>
+        </div>
+      )}
+
       {/* Empty */}
       {coupons.length === 0 ? (
         <div className="text-center py-24 border-2 border-dashed border-gray-200 dark:border-gray-800 rounded-2xl">
@@ -424,6 +449,11 @@ export default function CouponsManager({ coupons: initial, products, categories 
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-2">
                         <span className="font-mono font-bold text-gray-900 dark:text-white tracking-wide">{c.code}</span>
+                        {c.code === linkedCouponCode && (
+                          <span className="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-blue-50 dark:bg-blue-950/50 text-blue-600 dark:text-blue-400" title="Linked to the newsletter popup">
+                            Popup
+                          </span>
+                        )}
                         <button type="button" onClick={() => copyCode(c.code)} className="text-gray-300 dark:text-gray-600 hover:text-gray-500 dark:hover:text-gray-400 transition-colors" title="Copy">
                           {copied === c.code ? (
                             <svg className="w-3.5 h-3.5 text-green-500" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="m4.5 12.75 6 6 9-13.5" /></svg>

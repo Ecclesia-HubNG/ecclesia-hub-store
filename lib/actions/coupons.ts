@@ -49,10 +49,20 @@ export async function updateCoupon(id: string, input: CouponInput) {
   return { success: true as const }
 }
 
-export async function deleteCoupon(id: string) {
+export async function deleteCoupon(id: string): Promise<{ error: string } | { success: true }> {
   const supabase = createAdminClient()
+  const { data: coupon } = await supabase.from('coupons').select('code').eq('id', id).single()
+  if (coupon?.code) {
+    const { data: popup } = await supabase.from('popup_config').select('id').eq('coupon_code', coupon.code).maybeSingle()
+    if (popup) {
+      return {
+        error: `"${coupon.code}" is the coupon the newsletter popup emails to new subscribers. Deleting it would leave the popup pointing at a coupon that no longer exists. Toggle it inactive instead if you want to stop offering it — that also turns the popup off.`,
+      }
+    }
+  }
   await supabase.from('coupons').delete().eq('id', id)
   revalidatePath('/admin/coupons')
+  return { success: true as const }
 }
 
 export async function toggleCouponActive(id: string, is_active: boolean) {
